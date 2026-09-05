@@ -55,7 +55,9 @@ def main() -> int:
 
     if failures:
         for failure in failures:
-            print(f"SMOKE FAIL: {failure}", file=sys.stderr)
+            # Failure taxonomy (AGENTS.md section 6): packaging-gate breaches
+            # are Schema-category failures. Never a bare "failed".
+            print(f"SMOKE FAIL [taxonomy: Schema]: {failure}", file=sys.stderr)
         return 1
     print("SMOKE OK: packaging baseline verified.")
     return 0

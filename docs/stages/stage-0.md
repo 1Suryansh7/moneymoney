@@ -43,6 +43,13 @@ Native Linux (Ubuntu 22.04+, Docker Engine 25+/Compose v2.24+): same without `ws
 `make` does NOT exist on stock Windows PowerShell — WSL is the sanctioned path,
 not a workaround (PREREQUISITES.md sections 1–2, ADR-014).
 
+Known limitation (audit 2026-09-05): `make setup` does NOT run
+`pre-commit install`. Hooks execute under the committer's host Python, which
+Stage 0 deliberately does not require on Windows; a container-installed hook
+would point at an interpreter that does not exist on the host. Equivalent
+enforcement lives in `make test` (same ruff + mypy checks, in-container) and
+in CI. Revisit only if a host Python toolchain becomes mandatory.
+
 ## 5. Pinned toolchain contract (Commit 1)
 
 | Component | Pin | State |
@@ -106,3 +113,35 @@ OBSERVED 2026-09-05 in WSL2 Ubuntu (GNU Make 4.3, Docker 29.6.2), from repo root
   (3) mypy `safe-super` on super-calls to abstract stubs — doubles now raise
   directly, and tests invoke stub bodies via the base class so they prove the
   STUBS raise.
+
+## 8. Adversarial self-audit (2026-09-05, after REJECTED verdict without specifics)
+
+Protocol: AGENTS.md section 14.5 checklist, executed by the authoring agent
+(no second model family available in-session; every check below cites its
+evidence command). Findings:
+
+- F-1 — SCOPE (process): Commit 2 added 443 Python lines, over the ~400-line
+  hard cap (`git diff ecda6f8..598b2ba --numstat`). Committed and green, so no
+  rewrite; corrective action is structural — Stage 1 stays split 1A–1G and all
+  future commits target 100–250 lines.
+- F-2 — DOCS-HONESTY (fixed): `make setup` never ran `pre-commit install`
+  despite the "configure hooks" wording. Fixed by documenting the limitation
+  in section 4 (hooks need host Python; enforcement lives in `make test`/CI).
+- F-3 — ERROR WORDING (fixed): smoke failures lacked a taxonomy category.
+  Fixed: `SMOKE FAIL [taxonomy: Schema]` in `examples/smoke.py`.
+- Verified clean, with evidence:
+  - File inventory: 35 tracked files, no `.env`, no caches, no secrets
+    (`git ls-files`; secret-pattern grep hits only the redacted
+    `AIzaSy...` example in PREREQUISITES.md and policy prose).
+  - Line endings: every text file `i/lf w/lf` (`git ls-files --eol`).
+  - No side doors: `src/` contains no subprocess/sqlite/network imports.
+  - No fabricated numbers: only the `"10MHz"` banned-example and the `0.1`
+    version constant in code; all reported versions/pins/digests observed.
+  - No green-washing: no xfail/skip; `filterwarnings=error` with zero warnings.
+  - EDA fail-closed PROVEN: `docker compose --profile eda build app-eda`
+    exits 1 with the designed UNPINNED message; `app` + `app-eda` both
+    resolve in `compose config`.
+  - Headroom: 938 GB free; Docker footprint ~1.6 GB. EDA build is disk-safe.
+- Explicitly NOT Stage-0 defects (tracked separately): EDA layer unbuilt
+  (V-4), local `act` run pending (V-6), `actions/checkout@v4` floating major
+  (accepted for Stage 0; Dependabot later).
