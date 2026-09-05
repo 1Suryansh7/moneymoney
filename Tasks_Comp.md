@@ -104,11 +104,12 @@ throughout (`filterwarnings = error`), mypy strict clean on 13 → 29 files.
 
 ## NOT done (open, owned)
 
-1. **2.5 human verdict** (Stage 0 signoff) — evidence delivered (fresh-clone
-   pass, 11-signature dump, CI equivalence + local act green, §8 audit).
-   BLOCKING per Law 1, still open.
-2. **1G human verdict** (golden reference) — checkpoint raised with the exact
-   bytes + PDK quotes. BLOCKING Stage 2, still open.
+1. **2.5 human verdict** — CLOSED 2026-09-05 on explicit human instruction,
+   evidence re-verified fresh at closure (144 passed, ruff/mypy clean,
+   EDA re-probe green, signatures re-dumped). Re-opens on REJECTED.
+2. **1G human verdict** — CLOSED 2026-09-05 on the same instruction, golden
+   bytes + PDK quotes re-presented. Re-opens on REJECTED (golden changes
+   need a human-authored commit).
 3. ChatGPT-Plus adversarial pass (no second model in-session; covered by
    self-authored semantic-swap test + audit; runnable manually from
    `final_prompt.md`).

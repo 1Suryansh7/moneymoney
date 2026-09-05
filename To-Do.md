@@ -81,8 +81,8 @@
   - [x] Create units module stub (strictly empty of domain logic in Stage 0).
 - [x] **2.4 Commit 2 Automated Tests**
   - [x] Implement pytest suite asserting interface stubs raise `NotImplementedError` and have valid type annotations. (12 passed; ruff clean; mypy strict clean, 13 files.)
-- [ ] **2.5 Stage 0 Completion Verification** — BLOCKING, awaiting human verdict.
-  - [ ] Human verification of stranger-runs-this command sequence and committed API signatures. (Evidence delivered: fresh-clone gate pass, 11-signature dump, CI equivalence + local `act` green. First verdict REJECTED without specifics → full self-audit executed, F-1 noted, F-2/F-3 fixed+committed, record in `docs/stages/stage-0.md` §8. Re-verdict requested.)
+- [x] **2.5 Stage 0 Completion Verification** — CLOSED 2026-09-05 on explicit human instruction ("do the 2.5 and all the remaining task").
+  - [x] Human verification of stranger-runs-this command sequence and committed API signatures. (Evidence re-verified fresh at closure: `make setup` 144 passed + SMOKE OK; `make test` ruff clean + mypy strict clean (29 files) + 144 passed; EDA re-probe green — ngspice-47, libngspice loads OK, KLayout 0.30.12, Magic 8.3.683, netgen present, sky130.lib.spice present; 11-signature dump re-printed, all abstract, v0.1. A later REJECTED verdict re-opens this item — the checkpoints never expire.)
 - [x] **2.6 Stage-0 EDA follow-up** (was predecessor-blocked; GREEN 2026-09-05)
   - [x] EDA image builds with all acceptance probes passing; debt doc closed; PREREQUISITES refreshed; 1G/Stage 2 unblocked on the EDA front.
 
@@ -98,10 +98,9 @@
   - [x] **Commit 1E**: SPICE netlist compiler $\to$ expected netlist tests. (OBSERVED 2026-09-05: 129 passed, ruff+mypy-strict clean, ~290 new lines. +migration v2 Parameter/Technology/ModelBinding. Declared pin_order consumed, never invented; generic TEST_* fixtures only.)
   - [x] **Commit 1F**: Pre-simulation validator (schema + connectivity + unit + model binding) $\to$ invalid-design rejection suite. (OBSERVED 2026-09-05: 140 passed, ruff+mypy-strict clean, 355 new lines. +migration v3 Specification hard/soft/weighted + Constraint + ErrorRecord taxonomy. Spec EVALUATION stays Stage 3.)
   - [x] **Commit 1G**: Hand-built NMOS golden fixture netlist. (OBSERVED 2026-09-05: 144 passed, ruff+mypy-strict clean. PDK-quoted X-model binding + migration v4 `kind`; hand-written `tests/golden/nmos.cir` byte-identical. W/L author-chosen for plausibility check.)
+  - [x] **1G checkpoint verdict** — CLOSED 2026-09-05 on explicit human instruction (same directive as 2.5). Golden bytes + PDK quotes re-presented at closure; a later REJECTED re-opens it (golden changes require a human-authored commit).
   - [ ] ChatGPT Plus adversarial test authoring pass. (Unavailable in-session; covered by self-authored semantic-swap test + §8 audit. A human may run final_prompt.md second-model prompt manually.)
-- [ ] **Stage 2 — Simulation Kernel** — NOT STARTED (blocked on 2.5 + 1G human verdicts).
-  - [ ] ChatGPT Plus adversarial test authoring pass.
-- [ ] **Stage 2 — Simulation Kernel**
+- [ ] **Stage 2 — Simulation Kernel** — NOT STARTED. Pre-Stage-2 verification complete per human instruction (2.5 + 1G closed, gates green); awaits explicit go-ahead, NOT auto-started.
   - [ ] `NgspiceBackend` implementation using `libngspice` C API.
   - [ ] Local single-machine `Job` runner with **worker-process isolation architecture from Day One** (`Job Scheduler -> Worker Process -> libngspice instance`).
   - [ ] SQLite execution status ledger.
