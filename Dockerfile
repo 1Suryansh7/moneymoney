@@ -23,17 +23,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /workspace
 
-# Mirrors pyproject.toml [project.optional-dependencies] dev floors.
-# (Commit 2 switches this to `pip install -e ".[dev]"` once src/ exists;
-# installing an editable package with no src layout would fail, so the
-# explicit list keeps Commit 1 exactly packaging-only. See debt doc D-6.)
+# Single source of truth: pyproject.toml [project.optional-dependencies] dev.
+# (Commit 1 used an explicit duplicate list because src/ did not exist yet;
+# debt doc D-6 closed here.)
+COPY pyproject.toml ./
+COPY src/ ./src/
 RUN pip install --upgrade pip \
-    && pip install \
-        "pytest>=8.0.0" \
-        "pytest-cov>=5.0.0" \
-        "mypy>=1.9.0" \
-        "ruff>=0.3.0" \
-        "pre-commit>=3.6.0" \
+    && pip install -e ".[dev]" \
     && pip freeze > /image-requirements-frozen.txt
 
 COPY . .

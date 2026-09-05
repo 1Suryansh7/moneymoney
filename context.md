@@ -107,6 +107,9 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── scripts/check_models.py # no-network alias health check
 ├── examples/smoke.py       # packaging baseline verification
 ├── tests/test_smoke.py     # packaging contract tests
+├── tests/test_interfaces.py  # Law 4 backend contract tests (Commit 2)
+├── tests/test_engine_api.py  # DesignEngine v0.1 freeze tests (Commit 2)
+├── src/analog_ic_design/     # ENGINE_API_VERSION=0.1, interfaces/, engine/, units/ stub
 ├── docs/stages/stage-0.md  # Layer 2 stage brief
 └── docs/stage-0-layered-debt.md  # D-1..D-9 disadvantages + R-1..R-8 remediations
 ```

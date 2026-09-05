@@ -61,26 +61,26 @@
   - [x] Verify fresh clone sequence: `make setup && make test` passes with ZERO manual steps. (OBSERVED 2026-09-05 via WSL: setup 6 passed + SMOKE OK; test ruff clean + mypy strict clean (3 files) + 6 passed.)
 
 ### Commit 2: Abstract Interfaces & Design Engine API Skeleton
-- [ ] **2.1 Core Abstract Interface Stubs**
-  - [ ] Define abstract `Simulator` interface (typed, SI docstrings, raising `NotImplementedError`).
-  - [ ] Define abstract `LayoutBackend` interface (typed, SI docstrings, raising `NotImplementedError`).
-  - [ ] Define abstract `PDKAdapter` interface (typed, SI docstrings, raising `NotImplementedError`).
-- [ ] **2.2 Design Engine API Skeleton (`DesignEngine v0.1`)**
-  - [ ] Define `create_project()` signature and types.
-  - [ ] Define `create_cell()` signature and types.
-  - [ ] Define `instantiate()` signature and types.
-  - [ ] Define `validate()` signature and types (schema + connectivity + units + models).
-  - [ ] Define `netlist()` signature and types.
-  - [ ] Define `simulate()` signature and types.
-  - [ ] Define `check_constraints()` signature and types.
-  - [ ] Define `optimize()` signature and types.
-  - [ ] Define `run_drc()` signature and types.
-  - [ ] Define `extract()` signature and types.
-  - [ ] Define `compare()` signature and types.
-- [ ] **2.3 Physical Units Module Skeleton**
-  - [ ] Create units module stub (strictly empty of domain logic in Stage 0).
-- [ ] **2.4 Commit 2 Automated Tests**
-  - [ ] Implement pytest suite asserting interface stubs raise `NotImplementedError` and have valid type annotations.
+- [x] **2.1 Core Abstract Interface Stubs** (OBSERVED 2026-09-05: gate green)
+  - [x] Define abstract `Simulator` interface (typed, SI docstrings, raising `NotImplementedError`).
+  - [x] Define abstract `LayoutBackend` interface (typed, SI docstrings, raising `NotImplementedError`).
+  - [x] Define abstract `PDKAdapter` interface (typed, SI docstrings, raising `NotImplementedError`).
+- [x] **2.2 Design Engine API Skeleton (`DesignEngine v0.1`)** (11 methods, keyword-only, version constant)
+  - [x] Define `create_project()` signature and types.
+  - [x] Define `create_cell()` signature and types.
+  - [x] Define `instantiate()` signature and types.
+  - [x] Define `validate()` signature and types (schema + connectivity + units + models).
+  - [x] Define `netlist()` signature and types.
+  - [x] Define `simulate()` signature and types.
+  - [x] Define `check_constraints()` signature and types.
+  - [x] Define `optimize()` signature and types.
+  - [x] Define `run_drc()` signature and types.
+  - [x] Define `extract()` signature and types.
+  - [x] Define `compare()` signature and types.
+- [x] **2.3 Physical Units Module Skeleton**
+  - [x] Create units module stub (strictly empty of domain logic in Stage 0).
+- [x] **2.4 Commit 2 Automated Tests**
+  - [x] Implement pytest suite asserting interface stubs raise `NotImplementedError` and have valid type annotations. (12 passed; ruff clean; mypy strict clean, 13 files.)
 - [ ] **2.5 Stage 0 Completion Verification**
   - [ ] Human verification of stranger-runs-this command sequence and committed API signatures.
 

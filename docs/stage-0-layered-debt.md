@@ -73,11 +73,13 @@ green; until then it is required reading before Stage 1G / Stage 2 planning.
   first digest. A future commit may promote the digest into the Dockerfile
   `FROM ...@sha256:...` form once churn settles.
 
-## D-6. Pinned-dependency duplication (MEDIUM)
+## D-6. Pinned-dependency duplication (MEDIUM) — CLOSED by Commit 2
 
-- What: the Dockerfile `pip install` list duplicates pyproject `dev` floors,
+- What: the Dockerfile `pip install` list duplicated pyproject `dev` floors,
   because `pip install -e .[dev]` needs a `src/` layout that Commit 1 must not
   create (Commit 2 scope). Two lists can drift.
+- Closure: Commit 2 created `src/analog_ic_design` and replaced the Dockerfile
+  pip line with `pip install -e ".[dev]"`. Single source of truth restored.
 - Blast radius: a version bump in one file but not the other.
 - Detection: `tests/test_smoke.py` does not cover this (static files differ
   legitimately); human review at Commit 2.

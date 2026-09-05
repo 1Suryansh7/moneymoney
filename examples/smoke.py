@@ -30,6 +30,15 @@ def main() -> int:
     if (version.major, version.minor) < (3, 11):
         failures.append(f"interpreter {version.major}.{version.minor} < required 3.11")
 
+    try:
+        from analog_ic_design import ENGINE_API_VERSION
+    except ImportError as exc:
+        failures.append(f"package analog_ic_design not importable: {exc}")
+    else:
+        print(f"engine_api={ENGINE_API_VERSION}")
+        if ENGINE_API_VERSION != "0.1":
+            failures.append(f"ENGINE_API_VERSION={ENGINE_API_VERSION} != 0.1")
+
     for alias, (value, source) in resolve_aliases().items():
         state = "CONFIGURED" if value != SENTINEL else "UNCONFIGURED (expected pre-Stage-5)"
         print(f"{alias} source={source} status={state}")

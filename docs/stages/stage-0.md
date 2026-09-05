@@ -91,3 +91,18 @@ OBSERVED 2026-09-05 in WSL2 Ubuntu (GNU Make 4.3, Docker 29.6.2), from repo root
   false-positived on Dockerfile comment prose — fixed by checking image
   references only; (2) `NameError` from a variable rename in test + smoke —
   fixed, and `make test` (ruff F821) would have caught the same class.
+
+### Commit 2 verification (OBSERVED 2026-09-05, same shell)
+
+- `wsl make setup` — PASS: `pip install -e ".[dev]"` builds
+  `analog-ic-design-0.0.0` editable wheel in-image, `12 passed`, `SMOKE OK`
+  with `engine_api=0.1`.
+- `wsl make test` — PASS: ruff clean, `mypy: Success: no issues found in
+  13 source files`, `12 passed`.
+- `wsl make run-example` — PASS: `SMOKE OK`.
+- Three self-authored bugs fixed before commit: (1) interface test forgot to
+  skip `self` in annotation check; (2) class docstrings missing the SI
+  contract line the test requires (contract strengthened, not test weakened);
+  (3) mypy `safe-super` on super-calls to abstract stubs — doubles now raise
+  directly, and tests invoke stub bodies via the base class so they prove the
+  STUBS raise.
