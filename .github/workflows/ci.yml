@@ -32,3 +32,6 @@ jobs:
 
       - name: Re-probe tool versions in the built image
         run: docker compose --profile eda run --rm app-eda bash -c "ngspice --version && klayout -b -v && test -f /usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice && cat /image-eda-versions.txt"
+
+      - name: Run full test suite in EDA image (zero skips expected)
+        run: docker compose --profile eda run --rm app-eda python3.11 -m pytest -q

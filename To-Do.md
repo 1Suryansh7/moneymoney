@@ -103,7 +103,7 @@
   - [ ] ChatGPT Plus adversarial test authoring pass. (Unavailable in-session; covered by self-authored semantic-swap test + §8 audit. A human may run final_prompt.md second-model prompt manually.)
 - [-] **Stage 2 — Simulation Kernel** — IN PROGRESS (2B→2H per decomposition; stop at first inverter waveform for human checkpoint)
   - [x] **2B**: SQLite migration v5 (`job`, `testbench`, `analysis` tables + FKs) + unit tests. (OBSERVED 2026-09-05: 148 passed, ruff+mypy-strict clean. Status vocabulary constrained; payload/result JSON text.)
-  - [ ] **2C**: `NgspiceBackend` ctypes wrapper over libngspice.so (SendChar/SendStat/ControlledExit callbacks).
+  - [x] **2C**: `NgspiceBackend` ctypes wrapper over libngspice.so (SendChar/SendStat/ControlledExit callbacks). (OBSERVED 2026-09-05: base 152 passed + 4 explicit skips; EDA 156 passed, 0 skipped. ruff+mypy-strict clean. RC transient real: bare `out` naming (not CLI `v(out)`), bitwise-deterministic re-runs.)
   - [ ] **2D**: Local `Job` runner, worker-PROCESS isolation from Day One (no threads).
   - [ ] **2E**: Canonical reproducibility identity (4 SHA-256 concepts per §14.1).
   - [ ] **2F**: Waveform parser into SI-typed structures (`Volt`, `Second`, `Ampere`).
