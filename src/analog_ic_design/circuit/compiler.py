@@ -8,9 +8,11 @@ byte-identical).
 
 Non-negotiable rules:
 - NOTHING is invented. Terminal order comes from the declared
-  `model_binding.pin_order` for the instance's symbol; parameter values come
-  from `parameter` rows; a missing binding, pin, connection, or non-numeric
-  value is a fail-closed `CompilerError`, never a guess.
+  `model_binding.pin_order` for the instance's symbol; the device prefix
+  (`M` mosfet vs `X` subckt) comes from the declared `model_binding.kind`;
+  parameter values come from `parameter` rows; a missing binding, pin,
+  connection, kind, or non-numeric value is a fail-closed `CompilerError`,
+  never a guess.
 - Pin ORDER is PDK truth: 1G hand-verifies each stored `pin_order` against
   the PDK docs. This module only consumes it. Generic fixtures here use
   obviously-non-PDK names (`TEST_*`) so no PDK syntax is implied.
@@ -40,9 +42,9 @@ def _cell_project(conn: sqlite3.Connection, cell_id: str) -> tuple[str, str]:
 
 def _binding(
     conn: sqlite3.Connection, technology_id: str, symbol: str
-) -> tuple[str, tuple[str, ...]]:
+) -> tuple[str, tuple[str, ...], str]:
     row = conn.execute(
-        "SELECT model_name, pin_order FROM model_binding"
+        "SELECT model_name, pin_order, kind FROM model_binding"
         " WHERE technology_id = ? AND device_symbol = ?",
         (technology_id, symbol),
     ).fetchone()
@@ -51,7 +53,10 @@ def _binding(
     pins = tuple(str(row[1]).split())
     if not pins:
         raise CompilerError(f"Netlist: empty pin_order for symbol {symbol!r}")
-    return str(row[0]), pins
+    prefix = {"mosfet": "M", "subckt": "X"}.get(str(row[2]) if row[2] is not None else "")
+    if prefix is None:
+        raise CompilerError(f"Netlist: undeclared model kind for symbol {symbol!r}")
+    return str(row[0]), pins, prefix
 
 
 def _si_float(value: object, instance: str, name: str) -> float:
@@ -100,7 +105,7 @@ def compile_netlist(conn: sqlite3.Connection, cell_id: str) -> str:
         )
     lines = [f"* cell {cell_name}"]
     for iid, iname, sname in instances:
-        model, pins = _binding(conn, technology_id, str(sname))
+        model, pins, prefix = _binding(conn, technology_id, str(sname))
         hooked = pins_of.get(str(iid), {})
         nodes: list[str] = []
         for pin in pins:
@@ -115,6 +120,6 @@ def compile_netlist(conn: sqlite3.Connection, cell_id: str) -> str:
             raise CompilerError(f"Netlist: {iname!r} terminals {extra} not in pin_order")
         params = params_of.get(str(iid), {})
         attrs = "".join(f" {k}={params[k]!r}" for k in sorted(params))
-        lines.append(f"M{iname} {' '.join(nodes)} {model}{attrs}")
+        lines.append(f"{prefix}{iname} {' '.join(nodes)} {model}{attrs}")
     lines.append(".end")
     return "\n".join(lines) + "\n"

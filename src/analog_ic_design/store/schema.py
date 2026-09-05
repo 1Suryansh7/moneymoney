@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-SCHEMA_VERSION: Final = 3
+SCHEMA_VERSION: Final = 4
 
 _MIGRATION_1 = """
 CREATE TABLE schema_version (
@@ -148,7 +148,11 @@ CREATE TABLE error_record (
 );
 """
 
-MIGRATIONS: Final = ((1, _MIGRATION_1), (2, _MIGRATION_2), (3, _MIGRATION_3))
+_MIGRATION_4 = """
+ALTER TABLE model_binding ADD COLUMN kind TEXT CHECK (kind IN ('mosfet', 'subckt'));
+"""
+
+MIGRATIONS: Final = ((1, _MIGRATION_1), (2, _MIGRATION_2), (3, _MIGRATION_3), (4, _MIGRATION_4))
 
 
 def new_id() -> str:

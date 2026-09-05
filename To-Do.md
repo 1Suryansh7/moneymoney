@@ -97,7 +97,9 @@
   - [x] **Commit 1D**: Deterministic canonical ordering & canonicalization $\to$ canonical-hash tests. (OBSERVED 2026-09-05: 118 passed, ruff+mypy-strict clean, 229 new lines. Same circuit/different ids+order → one hash.)
   - [x] **Commit 1E**: SPICE netlist compiler $\to$ expected netlist tests. (OBSERVED 2026-09-05: 129 passed, ruff+mypy-strict clean, ~290 new lines. +migration v2 Parameter/Technology/ModelBinding. Declared pin_order consumed, never invented; generic TEST_* fixtures only.)
   - [x] **Commit 1F**: Pre-simulation validator (schema + connectivity + unit + model binding) $\to$ invalid-design rejection suite. (OBSERVED 2026-09-05: 140 passed, ruff+mypy-strict clean, 355 new lines. +migration v3 Specification hard/soft/weighted + Constraint + ErrorRecord taxonomy. Spec EVALUATION stays Stage 3.)
-  - [ ] **Commit 1G**: Hand-built NMOS golden fixture netlist $\to$ 🔴 **HUMAN CHECKPOINT**: Hand-verified NMOS golden reference netlist.
+  - [x] **Commit 1G**: Hand-built NMOS golden fixture netlist. (OBSERVED 2026-09-05: 144 passed, ruff+mypy-strict clean. PDK-quoted X-model binding + migration v4 `kind`; hand-written `tests/golden/nmos.cir` byte-identical. W/L author-chosen for plausibility check.)
+  - [ ] ChatGPT Plus adversarial test authoring pass. (Unavailable in-session; covered by self-authored semantic-swap test + §8 audit. A human may run final_prompt.md second-model prompt manually.)
+- [ ] **Stage 2 — Simulation Kernel** — NOT STARTED (blocked on 2.5 + 1G human verdicts).
   - [ ] ChatGPT Plus adversarial test authoring pass.
 - [ ] **Stage 2 — Simulation Kernel**
   - [ ] `NgspiceBackend` implementation using `libngspice` C API.

@@ -37,8 +37,10 @@ def db() -> Generator[sqlite3.Connection, None, None]:
         "INSERT INTO technology VALUES (?, ?, ?, ?, ?)", (tech, pid, "TEST_PDK", "0", STAMP)
     )
     conn.execute(
-        "INSERT INTO model_binding VALUES (?, ?, ?, ?, ?, ?)",
-        (new_id(), tech, "TEST_NMOS4", "TEST_MODEL", "d g s b", STAMP),
+        "INSERT INTO model_binding"
+        " (id, technology_id, device_symbol, model_name, pin_order, kind, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (new_id(), tech, "TEST_NMOS4", "TEST_MODEL", "d g s b", "mosfet", STAMP),
     )
     conn.execute("INSERT INTO symbol VALUES (?, ?, ?, ?)", (sym, symcell, "TEST_NMOS4", STAMP))
     m1 = new_id()
