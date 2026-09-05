@@ -94,7 +94,7 @@
   - [x] **Commit 1A**: Typed SI unit system (`Quantity`, `Farad`, `Ohm`, `Volt`, etc.) + boundary converters $\to$ unit tests. (OBSERVED 2026-09-05: 99 passed, ruff+mypy-strict clean, 274 new lines. No parser per ADR-018.)
   - [x] **Commit 1B**: Minimal SQLite schema (Project, Library, Cell, Symbol, Instance, Port, Net + existence-only DesignRevision/Artifact) + migration tests. (OBSERVED 2026-09-05: 108 passed, ruff+mypy-strict clean, 308 new lines.)
   - [x] **Commit 1C**: Design connectivity graph & net representation $\to$ connectivity tests. (OBSERVED 2026-09-05: 113 passed, ruff+mypy-strict clean, 221 new lines. Facts only — 1F judges.)
-  - [ ] **Commit 1D**: Deterministic canonical ordering & canonicalization $\to$ canonical-hash tests.
+  - [x] **Commit 1D**: Deterministic canonical ordering & canonicalization $\to$ canonical-hash tests. (OBSERVED 2026-09-05: 118 passed, ruff+mypy-strict clean, 229 new lines. Same circuit/different ids+order → one hash.)
   - [ ] **Commit 1E**: SPICE netlist compiler $\to$ expected netlist tests.
   - [ ] **Commit 1F**: Pre-simulation validator (schema + connectivity + unit + model binding) $\to$ invalid-design rejection suite.
   - [ ] **Commit 1G**: Hand-built NMOS golden fixture netlist $\to$ 🔴 **HUMAN CHECKPOINT**: Hand-verified NMOS golden reference netlist.
