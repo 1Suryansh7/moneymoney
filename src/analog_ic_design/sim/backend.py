@@ -8,20 +8,19 @@ with `SimError`, never with an `OSError` leak.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import subprocess
 
 from analog_ic_design.interfaces.simulator import SimulateResult, Simulator
 from analog_ic_design.sim.ngspice import SimError, run_deck
+from analog_ic_design.sim.reproduce import design_identity_hash
 
 _DEFAULT_LIB = "libngspice.so"
 
 
 def _identity(netlist: str, seed: int) -> str:
-    """Provisional run identity (netlist + seed). Commit 2E extends this to
-    the full four-part reproducibility contract without changing callers."""
-    return hashlib.sha256(f"sim-v0|{seed}|{netlist}".encode()).hexdigest()
+    """Run identity via the 2E contract (design + seed as logical config)."""
+    return design_identity_hash(netlist=netlist, sim_config={"seed": seed})
 
 
 class NgspiceBackend(Simulator):
