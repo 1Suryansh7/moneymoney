@@ -13,6 +13,7 @@ from analog_ic_design.sim.reproduce import (
     sha256_hex,
     waveforms_close,
 )
+from analog_ic_design.sim.waveform import Trace, Waveform, parse_transient
 
 __all__ = [
     "COMPARISON_POLICY_ID",
@@ -21,11 +22,14 @@ __all__ = [
     "NgspiceBackend",
     "RawSim",
     "SimError",
+    "Trace",
+    "Waveform",
     "canonical_encode",
     "design_identity_hash",
     "execution_environment_hash",
     "libngspice_available",
     "normalize_netlist",
+    "parse_transient",
     "reproducibility_id",
     "run_deck",
     "sha256_hex",

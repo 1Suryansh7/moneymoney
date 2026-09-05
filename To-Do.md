@@ -106,7 +106,7 @@
   - [x] **2C**: `NgspiceBackend` ctypes wrapper over libngspice.so (SendChar/SendStat/ControlledExit callbacks). (OBSERVED 2026-09-05: base 152 passed + 4 explicit skips; EDA 156 passed, 0 skipped. ruff+mypy-strict clean. RC transient real: bare `out` naming (not CLI `v(out)`), bitwise-deterministic re-runs.)
   - [x] **2D**: Local `Job` runner, worker-PROCESS isolation from Day One (no threads). (OBSERVED 2026-09-05: base 154 passed + 7 explicit skips; EDA jobs+sim 13 passed. One spawn process per job; timeout/cancel/crash-safe; races designed out, strict asserts.)
   - [x] **2E**: Canonical reproducibility identity (4 SHA-256 concepts per §14.1). (OBSERVED 2026-09-05: base 160 passed + 7 skips; EDA 167 passed, 0 skipped. Pure functions; backend `_identity` repointed; tolerance is policy, not identity.)
-  - [ ] **2F**: Waveform parser into SI-typed structures (`Volt`, `Second`, `Ampere`).
+  - [x] **2F**: Waveform parser into SI-typed structures (`Volt`, `Second`, `Ampere`). (OBSERVED 2026-09-05: base 165 passed + 7 skips; EDA 172 passed, 0 skipped. Pure `parse_transient`; `#branch` → Ampere; non-finite → SimError.)
   - [ ] **2G**: Concurrency & isolation stress suite (1-, 2-, 4-job workloads).
   - [ ] **2H**: CMOS inverter fixture (PDK-quoted PMOS) + first transient + PNG.
   - [ ] 🔴 **HUMAN CHECKPOINT**: First inverter transient waveform verification.
