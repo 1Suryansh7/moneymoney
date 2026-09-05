@@ -82,13 +82,17 @@ Operational code and agent configuration NEVER hardcode model generation names (
 
 ## 5. Current Project Status & File Inventory
 
-### Active Status: STAGE 0 CODE COMPLETE — EDA GREEN, 2.5 VERDICT PENDING
-> `base` gate green (12 passed, ruff/mypy clean) + `eda` image green
-> (ngspice-47/libngspice, KLayout 0.30.12, Magic 8.3.683, Netgen 1.5.323,
-> sky130A @1689ac3f; all probed). Debt doc CLOSED (R-1..R-8 done).
-> Self-audit committed (F-1..F-3). Human 2.5 verdict still open; Stage 1
-> NOT started. WSL2 Ubuntu is the sanctioned `make` shell (GNU Make 4.3 +
-> Docker 29.6.2 verified); stock PowerShell has no `make`.
+### Active Status: CODE COMPLETE THROUGH STAGE 1G — 2.5 + 1G VERDICTS OPEN (BLOCKING)
+> `base` gate green (144 passed, ruff + mypy strict clean, 29 files) + `eda`
+> image green (ngspice-47/libngspice, KLayout 0.30.12, Magic 8.3.683,
+> Netgen 1.5.323, sky130A @1689ac3f; all probed). Stage 1 Commits 1A–1G
+> committed (units, schema v1–v4, graph, canonical hash, compiler, validator,
+> NMOS golden). Debt doc CLOSED (R-1..R-8 done). Self-audit committed
+> (F-1..F-3). 2.5 + 1G verdicts were prematurely closed on instruction alone
+> (Law 1 breach) and are RE-OPENED — only an evaluated
+> CONFIRMED/REJECTED/INSUFFICIENT closes them. No Stage 2 work until then.
+> WSL2 Ubuntu is the sanctioned `make` shell (GNU Make 4.3 + Docker 29.6.2
+> verified); stock PowerShell has no `make`.
 
 ### Repository File Map
 ```text
@@ -101,19 +105,30 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── To-Do.md                # Granular task tracker (updated before and after every step)
 ├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-019)
 ├── PREREQUISITES.md        # Complete Stage 0 prerequisite specifications & verification
-├── Dockerfile              # Layered build: base verified / eda declared (ADR-015)
+├── Dockerfile              # Layered build: base verified / eda GREEN (ADR-015/017)
 ├── docker-compose.yml      # app (base) + app-eda (eda profile) services
 ├── Makefile                # exactly [setup, test, run-example], container-authority
 ├── pyproject.toml          # packaging + strict pytest/ruff/mypy config
 ├── config/models.json      # GEMINI_* capability aliases (UNCONFIGURED pre-Stage-5)
 ├── scripts/check_models.py # no-network alias health check
 ├── examples/smoke.py       # packaging baseline verification
-├── tests/test_smoke.py     # packaging contract tests
+├── tests/test_smoke.py     # packaging contract tests (6)
 ├── tests/test_interfaces.py  # Law 4 backend contract tests (Commit 2)
 ├── tests/test_engine_api.py  # DesignEngine v0.1 freeze tests (Commit 2)
-├── src/analog_ic_design/     # ENGINE_API_VERSION=0.1, interfaces/, engine/, units/ stub
-├── docs/stages/stage-0.md  # Layer 2 stage brief
-└── docs/stage-0-layered-debt.md  # D-1..D-9 disadvantages + R-1..R-8 remediations
+├── tests/test_units.py       # SI unit contract tests (1A)
+├── tests/test_schema.py      # migration + schema tests (1B, v1–v4)
+├── tests/test_graph.py       # connectivity fact tests (1C)
+├── tests/test_canonical.py   # canonical identity tests (1D)
+├── tests/test_compiler.py    # netlist expectation tests (1E)
+├── tests/test_validate.py    # gate rejection suite (1F)
+├── tests/test_golden.py + tests/golden/nmos.cir  # golden fixture (1G, read-only)
+├── src/analog_ic_design/     # ENGINE_API_VERSION=0.1; interfaces/, engine/,
+│                             # units/ (quantity, display), store/ (schema v4),
+│                             # circuit/ (graph, canonical, compiler, validator)
+├── Tasks_Comp.md           # completed-tasks evidence ledger
+├── docs/stages/stage-0.md  # Layer 2 stage brief (§7–§9: verification, audit, EDA)
+├── docs/stages/stage-1.md  # Layer 2 stage brief (1A–1G + checkpoint)
+└── docs/stage-0-layered-debt.md  # CLOSED (R-1..R-8 checked off)
 ```
 
 ---

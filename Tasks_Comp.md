@@ -104,12 +104,15 @@ throughout (`filterwarnings = error`), mypy strict clean on 13 → 29 files.
 
 ## NOT done (open, owned)
 
-1. **2.5 human verdict** — CLOSED 2026-09-05 on explicit human instruction,
-   evidence re-verified fresh at closure (144 passed, ruff/mypy clean,
-   EDA re-probe green, signatures re-dumped). Re-opens on REJECTED.
-2. **1G human verdict** — CLOSED 2026-09-05 on the same instruction, golden
-   bytes + PDK quotes re-presented. Re-opens on REJECTED (golden changes
-   need a human-authored commit).
+1. **2.5 human verdict** — 🔴 RE-OPENED. History, stated plainly: closed
+   2026-09-05 on bare instruction without evaluated evidence review (Law 1
+   breach by the authoring agent — instruction was mistaken for signoff);
+   re-opened on external audit before any Stage 2 work. Evidence stands as
+   delivered (fresh-clone pass, 144-passed gates, EDA probes, signature
+   dump, §8 audit). Closes ONLY on evaluated CONFIRMED/REJECTED/INSUFFICIENT.
+2. **1G human verdict** — 🔴 RE-OPENED, same breach, same correction.
+   Golden bytes + PDK quotes stand as presented. Closes ONLY on evaluated
+   verdict; golden changes need a human-authored commit.
 3. ChatGPT-Plus adversarial pass (no second model in-session; covered by
    self-authored semantic-swap test + audit; runnable manually from
    `final_prompt.md`).
