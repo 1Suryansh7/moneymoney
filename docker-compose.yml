@@ -1,0 +1,29 @@
+# Stage 0 orchestration. `app` (base target) is the verified gate: every
+# `make` target runs here. `app-eda` is the declared-but-unverified full
+# toolchain; it activates only via `--profile eda` after the EDA follow-up
+# proves the build (see docs/stage-0-layered-debt.md).
+services:
+  app:
+    build:
+      context: .
+      target: base
+    working_dir: /workspace
+    environment:
+      - PYTHONPATH=/workspace/scripts
+    volumes:
+      - .:/workspace:cached
+    user: "${UID:-1000}:${GID:-1000}"
+
+  app-eda:
+    profiles: ["eda"]
+    build:
+      context: .
+      target: eda
+      args:
+        OPEN_PDKS_GIT_REF: "${OPEN_PDKS_GIT_REF:-UNPINNED}"
+    working_dir: /workspace
+    environment:
+      - PYTHONPATH=/workspace/scripts
+    volumes:
+      - .:/workspace:cached
+    user: "${UID:-1000}:${GID:-1000}"

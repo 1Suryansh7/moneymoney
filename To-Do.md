@@ -6,8 +6,8 @@
 ---
 
 ## Current Status Overview
-- **Active Phase**: Phase 0 — Repository Governance, State Continuity, & Stage 0 Prerequisites
-- **Stage 0 Code Status**: 🛑 **BLOCKED / NOT STARTED** (As instructed: zero code, Dockerfiles, or stubs built until governance and prerequisites are fully established).
+- **Active Phase**: Stage 0 — Architecture & Packaging (human-authorized 2026-09-05)
+- **Stage 0 Code Status**: 🟡 **IN PROGRESS — Commit 1** (packaging + CI; Commit 2 interfaces next; EDA follow-up before Stage 1G per ADR-015).
 
 ---
 
@@ -35,29 +35,30 @@
 
 ---
 
-## Stage 0: Architecture & Packaging (Pending Explicit Human Authorization)
+## Stage 0: Architecture & Packaging (Authorized 2026-09-05 — In Progress)
 
 > **Commit Granularity**: Must land as two separate, cleanly isolated commits per master plan §10 addendum.
+> **Predecessor rule (ADR-015)**: Stage-0 EDA follow-up must go green BEFORE Stage 1G; no Stage 2 prompt before that.
 
 ### Commit 1: System Packaging & CI Smoke Test
-- [ ] **1.1 Container Specification (`Dockerfile`)**
-  - [ ] Pin exact base image digest (Ubuntu 22.04 LTS).
-  - [ ] Pin exact Python version (Python 3.11-slim).
-  - [ ] Pin ngspice with shared library (`libngspice`) build.
-  - [ ] Pin SkyWater 130nm PDK primitive device models (`sky130A` commit hash).
-  - [ ] Pin KLayout (0.28.x / 0.29.x pinned package).
-  - [ ] Pin Magic (8.3.x pinned tag) and Netgen (1.5.x pinned tag).
-- [ ] **1.2 Container Orchestration (`docker-compose.yml`)**
-  - [ ] Configure local volume mounts, user UID/GID mapping, and isolated workspace network.
-- [ ] **1.3 Makefile Automation**
-  - [ ] Implement `make setup` (build container, install pinned virtual environment, configure hooks).
-  - [ ] Implement `make test` (run pytest test suite inside container).
-  - [ ] Implement `make run-example` (execute baseline smoke verification).
-- [ ] **1.4 CI Smoke Test Pipeline**
-  - [ ] Create GitHub Actions workflow (`.github/workflows/ci.yml`) to build container and run `make test`.
-  - [ ] Validate `act` configuration for local CI execution.
-- [ ] **1.5 Commit 1 Verification & Signoff**
-  - [ ] Verify fresh clone sequence: `make setup && make test` passes with ZERO manual steps.
+- [-] **1.1 Container Specification (`Dockerfile`)** — layered per ADR-015: `base` pinned `python:3.11-slim-bookworm` (verified); `eda` pins declared (`NGSPICE_VERSION=46`, `KLAYOUT_VERSION=0.30.12` per ADR-016; Magic/Netgen carry-over unverified; `OPEN_PDKS_GIT_REF` fail-closed UNPINNED).
+  - [x] Pin exact base image (Python 3.11-slim-bookworm tag; digest recorded at build).
+  - [x] Pin exact Python version (3.11 container authority; host 3.13 editing-only).
+  - [ ] Pin ngspice with shared library (`libngspice`) build — DECLARED, EDA follow-up builds.
+  - [ ] Pin SkyWater 130nm PDK primitive device models (`sky130A` commit hash) — UNPINNED, EDA follow-up freezes.
+  - [x] Pin KLayout (0.30.12 declared per ADR-016; build in EDA follow-up).
+  - [x] Pin Magic (8.3.456) and Netgen (1.5.270) as UNVERIFIED defaults (ADR-015 D-7).
+- [-] **1.2 Container Orchestration (`docker-compose.yml`)** — `app` (base, verified) + `app-eda` (`eda` profile, pending).
+  - [x] Configure local volume mounts, user UID/GID mapping.
+- [-] **1.3 Makefile Automation** — exactly `[setup, test, run-example]` (asserted in test).
+  - [x] Implement `make setup` (build container, run pytest + smoke inside container).
+  - [x] Implement `make test` (ruff + mypy strict + pytest, all inside container).
+  - [x] Implement `make run-example` (baseline smoke verification).
+- [-] **1.4 CI Smoke Test Pipeline**
+  - [x] Create GitHub Actions workflow (`.github/workflows/ci.yml`) to build container and run `make test`.
+  - [ ] Validate `act` configuration for local CI execution — DEFERRED (`act` not installed on host; CI runs on GitHub).
+- [x] **1.5 Commit 1 Verification & Signoff**
+  - [x] Verify fresh clone sequence: `make setup && make test` passes with ZERO manual steps. (OBSERVED 2026-09-05 via WSL: setup 6 passed + SMOKE OK; test ruff clean + mypy strict clean (3 files) + 6 passed.)
 
 ### Commit 2: Abstract Interfaces & Design Engine API Skeleton
 - [ ] **2.1 Core Abstract Interface Stubs**

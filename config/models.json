@@ -1,0 +1,5 @@
+{
+  "_note": "Capability aliases per AGENTS.md section 9.5. Never hard-code a provider model generation in prompts or code; resolve through these aliases. Stage 0 values are intentionally UNCONFIGURED sentinels: set via environment (GEMINI_STRONG_MODEL / GEMINI_FAST_MODEL) or edit here. scripts/check_models.py verifies resolution without any network call.",
+  "GEMINI_STRONG_MODEL": "UNCONFIGURED",
+  "GEMINI_FAST_MODEL": "UNCONFIGURED"
+}

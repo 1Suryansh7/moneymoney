@@ -20,6 +20,8 @@
 - [ADR-012: Multi-Agent Continuity & Governance File Architecture](#adr-012-multi-agent-continuity--governance-file-architecture)
 - [ADR-013: Granular Atomic Decomposition of Stage 1 (1A through 1G)](#adr-013-granular-atomic-decomposition-of-stage-1-1a-through-1g)
 - [ADR-014: WSL2 Native Linux Filesystem Architecture Policy](#adr-014-wsl2-native-linux-filesystem-architecture-policy)
+- [ADR-015: Layered Stage 0 Container Build (Base Verified Now, EDA Follow-Up Before Stage 1G)](#adr-015-layered-stage-0-container-build-base-verified-now-eda-follow-up-before-stage-1g)
+- [ADR-016: Toolchain Pin Refresh — ngspice-46 and KLayout 0.30.12](#adr-016-toolchain-pin-refresh--ngspice-46-and-klayout-03012)
 
 ---
 
@@ -194,3 +196,25 @@
 - **Rationale**: Eliminates filesystem bridge bottlenecks during compute-heavy optimization sweeps while preserving Windows-side IDE convenience.
 - **Alternatives Considered**: Mandating that developers never use Windows mounts (rejected: overly rigid for initial setup); ignoring WSL2 filesystem characteristics (rejected: leads to unexplained slowdowns during large optimization runs).
 - **Consequences**: Documentation and Docker volume mount configurations must support both native WSL paths and Windows paths gracefully.
+
+---
+
+### ADR-015: Layered Stage 0 Container Build (Base Verified Now, EDA Follow-Up Before Stage 1G)
+- **Date**: 2026-09-05
+- **Status**: Accepted (human-approved: layered with comprehensive debt record)
+- **Context**: The Stage 0 prompt demands one Dockerfile pinning Python, ngspice/libngspice, sky130A PDK, KLayout, Magic, and Netgen. Building all of that at once costs 3–10 GB and a 30–90 minute failure-prone build on the Windows/WSL2 host, delaying the verified packaging gate everything else stands on. But deferring EDA silently would create false confidence.
+- **Decision**: Layer the build. Commit 1 verifies the `base` target (pinned `python:3.11-slim-bookworm` + test toolchain) in CI; the `eda` target declares every pin but its recipe build is proven in a Stage-0 EDA follow-up that MUST go green before Stage 1G (golden reference needs PDK model cards per Law 2) and before any Stage 2 prompt. All disadvantages, blast radii, and remediations are recorded in `docs/stage-0-layered-debt.md` (D-1 through D-9, R-1 through R-8), which closes only on a green EDA run.
+- **Rationale**: A fast, truthful, verified packaging gate now beats a slow, half-verified monolith; the debt file keeps the deferral honest and scheduled instead of silent.
+- **Alternatives Considered**: Full monolithic EDA image in Commit 1 (rejected: big-bang debug surface, blocks all Stage 0 verification on the slowest step); silent deferral with no debt record (rejected: violates honesty rules).
+- **Consequences**: `docker-compose.yml` carries an `app-eda` (`eda` profile) service; CI gains an eda job in the follow-up; To-Do.md encodes the predecessor edge.
+
+---
+
+### ADR-016: Toolchain Pin Refresh — ngspice-46 and KLayout 0.30.12
+- **Date**: 2026-09-05
+- **Status**: Accepted (human-approved: pin new stable)
+- **Context**: PREREQUISITES.md pins ngspice-42/43 and KLayout 0.28.x/0.29.x. Live verification on 2026-09-05 showed ngspice-46 (stable, 29-Mar-2026) and KLayout 0.30.12 (hotfix, 26-Aug-2026) as current stable releases. Building on two-year-old EDA versions would start the platform with known-fixed bugs.
+- **Decision**: Pin `NGSPICE_VERSION=46` and `KLAYOUT_VERSION=0.30.12` in the Dockerfile contract. Magic 8.3.456 / Netgen 1.5.270 stay as explicitly UNVERIFIED carry-over defaults until the EDA follow-up runs `ls-remote` against upstream (ADR-015 D-7). PREREQUISITES.md itself is amended in the EDA follow-up, not rewritten from memory here.
+- **Rationale**: Pin what is current and verified; label what is carried over on trust.
+- **Alternatives Considered**: Keeping stale pins for doc compliance (rejected: knowingly building on outdated tools).
+- **Consequences**: Stage 2 libngspice work targets the ngspice-46 API; the EDA follow-up confirms Magic/Netgen tags.

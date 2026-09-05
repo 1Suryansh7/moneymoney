@@ -82,8 +82,11 @@ Operational code and agent configuration NEVER hardcode model generation names (
 
 ## 5. Current Project Status & File Inventory
 
-### Active Status: PRE-STAGE 0 PREPARATION COMPLETE
-> ⚠️ **CRITICAL DISCLAIMER**: As commanded by the user, **ZERO CODE, PACKAGING, OR DOCKER FILES HAVE BEEN BUILT YET**. The project is in the pristine prerequisite and governance phase.
+### Active Status: STAGE 0 COMMIT 1 IN PROGRESS (human-authorized 2026-09-05)
+> Layered build per ADR-015/ADR-016: `base` image (Python 3.11) verifying now;
+> `eda` pins declared (`NGSPICE_VERSION=46`, `KLAYOUT_VERSION=0.30.12`),
+> recipe proven in EDA follow-up before Stage 1G. WSL2 Ubuntu is the sanctioned
+> `make` shell (GNU Make 4.3 + Docker 29.6.2 verified); stock PowerShell has no `make`.
 
 ### Repository File Map
 ```text
@@ -94,8 +97,18 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── AGENTS.md               # Layer 1 Global Rules (The 4 laws, checkpoints, units, safety)
 ├── context.md              # [THIS FILE] System continuity handbook and state memory
 ├── To-Do.md                # Granular task tracker (updated before and after every step)
-├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-012)
-└── PREREQUISITES.md        # Complete Stage 0 prerequisite specifications & verification
+├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-016)
+├── PREREQUISITES.md        # Complete Stage 0 prerequisite specifications & verification
+├── Dockerfile              # Layered build: base verified / eda declared (ADR-015)
+├── docker-compose.yml      # app (base) + app-eda (eda profile) services
+├── Makefile                # exactly [setup, test, run-example], container-authority
+├── pyproject.toml          # packaging + strict pytest/ruff/mypy config
+├── config/models.json      # GEMINI_* capability aliases (UNCONFIGURED pre-Stage-5)
+├── scripts/check_models.py # no-network alias health check
+├── examples/smoke.py       # packaging baseline verification
+├── tests/test_smoke.py     # packaging contract tests
+├── docs/stages/stage-0.md  # Layer 2 stage brief
+└── docs/stage-0-layered-debt.md  # D-1..D-9 disadvantages + R-1..R-8 remediations
 ```
 
 ---

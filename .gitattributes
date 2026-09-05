@@ -1,0 +1,14 @@
+# Stage 0 — line-ending discipline.
+# Stage 1 compares netlists BYTE-IDENTICAL against golden references.
+# A single CRLF/LF flip would fail every future netlist test, so all
+# SPICE/netlist/golden text artifacts are forced to LF for all time.
+* text=auto
+*.cir text eol=lf
+*.sp text eol=lf
+*.net text eol=lf
+*.cdl text eol=lf
+*.golden text eol=lf
+*.pdf binary
+*.png binary
+*.gds binary
+*.oas binary

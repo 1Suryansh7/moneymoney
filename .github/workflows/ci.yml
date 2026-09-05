@@ -1,0 +1,19 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Build pinned base image and run packaging gate
+        run: make setup
+
+      - name: Run full Stage 0 gate (lint + types + tests)
+        run: make test

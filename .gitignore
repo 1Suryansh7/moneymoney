@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Test / type / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Secrets — NEVER commit a real key. See .env.example.
+.env
+
+# Simulation / layout artifacts (keep the directory via artifacts/.gitkeep)
+artifacts/*
+!artifacts/.gitkeep
+
+# PDK checkouts and container scratch (multi-GB; never in git)
+pdk/
+*.vhdx
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
