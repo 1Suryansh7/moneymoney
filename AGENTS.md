@@ -119,6 +119,7 @@ Status: BLOCKING — not proceeding until you confirm.
 | **Stage 6 — AI design proposals** | Any AI-proposed topology instantiation or sizing | Proposed vs current design diff, validation status, simulation status, constraint status. Accept / reject / compare decision. | **BLOCKING (Every time)** |
 | **Stage 8 — DRC/LVS/PCells** | First clean DRC + LVS pass on a benchmark circuit | Visual review in KLayout viewer before PCell generator is reused on any other cell. Screenshot saved to `artifacts/layout/<cell>.png`. | **BLOCKING** |
 | **Cross-cutting — PDK/model syntax** | Agent about to write Sky130 model binding or device syntax not previously verified | Confirm syntax against local PDK docs rather than model memory. Quote file and lines. | **BLOCKING** |
+| **Cross-cutting — Architecture / Language shift or native extension** | Agent proposing rewrite from Python or introducing compiled extensions (Rust/PyO3, C++/nanobind) | Profiler flamegraph/trace proving Python inner-loop bottleneck (>80% runtime in Python bytecode), isolated extension boundary strictly behind existing `DesignEngine` interface, container build overhead impact. | **BLOCKING** |
 
 ### Human Verdict Reply Standards
 - **Verified**: `CONFIRMED — <what checked and how>. Proceed.`
@@ -255,6 +256,16 @@ KLayout is primary viewer/geometry candidate, but single-device spike tests KLay
 
 ### 10.8 Product Wording & Marketing Claims (§14.7)
 Use **"spec-to-physical-verification"** or **"spec-to-verified-design"**. Do not claim "production signoff" or "Virtuoso replacement" without tapeout validation evidence.
+
+### 10.9 Language Stability & Compiled Extension Gate (Python vs. C++ / Rust)
+- **Permanent Orchestration Layer**: Python 3.11+ is the permanent orchestration and integration layer of this platform. Agents must **NEVER** propose, plan, or execute a rewrite of the platform or engine in C++, Rust, or another language.
+- **The Bottleneck Reality (Amdahl's Law in Analog EDA)**: 95% to 99% of CPU runtime in analog IC design is consumed by the numerical differential-algebraic solver (`ngspice` in C), polygon/geometry engines (`KLayout` in C++, `Magic` in C), and relational storage (`SQLite` in C). Python acts strictly as the orchestrator (netlisting, validation, graph checks, metric calculation, and optimization dispatch). Rewriting the orchestration layer yields negligible (<0.2%) speedup while forfeiting the Python ecosystem (`Optuna`, `SciPy`, `NumPy`, `klayout.db`, AI/LLM SDKs) and destroying developer velocity.
+- **Concurrency Invariant**: `libngspice` is non-reentrant with global C memory state. C++ or Rust multi-threading cannot bypass this fundamental constraint; worker-process isolation (§10.3) is required regardless of host language.
+- **When Compiled Extensions (Rust/PyO3 or C++/nanobind) Are Permitted**:
+  Compiled extensions are permitted **ONLY IF**:
+  1. An empirical profiler trace (`cProfile`, `py-spy`) on a real benchmark circuit demonstrates that a specific, isolated inner loop (e.g. processing $10^5$ Monte Carlo waveform points or custom netlist graph reduction) accounts for $>80\%$ of total job time in Python bytecode.
+  2. The extension is placed strictly *behind* the existing Python interface, preserving all `DesignEngine v0.1` signatures and contracts.
+- **Mandatory Human Input (BLOCKING CHECKPOINT)**: Introducing any compiled language dependency (Rust/Cargo, C++/CMake, PyO3, nanobind) or proposing any architectural language shift triggers a **BLOCKING HUMAN CHECKPOINT (§8)**. The agent must halt, present the profiling evidence and container overhead impact, and await explicit human confirmation before writing or introducing any foreign code.
 
 ---
 

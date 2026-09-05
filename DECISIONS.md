@@ -24,6 +24,7 @@
 - [ADR-016: Toolchain Pin Refresh — ngspice-46 and KLayout 0.30.12](#adr-016-toolchain-pin-refresh--ngspice-46-and-klayout-03012)
 - [ADR-017: ngspice 46 → 47 Correction (Top-Level Folder Does Not Exist)](#adr-017-ngspice-46--47-correction-top-level-folder-does-not-exist)
 - [ADR-018: Unit Kernel Ships Types + Display Formatting Only, No Parser](#adr-018-unit-kernel-ships-types--display-formatting-only-no-parser)
+- [ADR-019: Platform Language Stability & Native Compiled Extension Gate](#adr-019-platform-language-stability--native-compiled-extension-gate)
 
 ---
 
@@ -242,3 +243,16 @@
 - **Rationale**: A kernel parser would legitimize unit strings inside the system — the exact failure mode the law forbids. Converters shipped are exactly the ones with a live boundary today (float→Quantity at APIs, Quantity→string at reports).
 - **Alternatives Considered**: Shipping `parse_quantity` now (rejected: no legitimate caller exists yet; invites misuse).
 - **Consequences**: Stage 7 must build the input parser; until then any `"10MHz"`-shaped input fails closed at the typed boundary.
+
+---
+
+### ADR-019: Platform Language Stability & Native Compiled Extension Gate
+- **Date**: 2026-09-05
+- **Status**: Accepted
+- **Context**: Exploration was raised whether rewriting the platform from Python to C++ or Rust would improve system efficiency, given the intense computational demands of analog IC design.
+- **Decision**: Python 3.11+ remains the permanent orchestration language for the entire platform. Full rewrites into C++, Rust, or other languages are strictly prohibited. Native compiled extensions (e.g. Rust via PyO3 or C++ via nanobind) are permitted ONLY when backed by an empirical profiling trace proving that a specific inner loop spends >80% of job execution time in Python bytecode. Proposing language stack alterations or introducing compiled extensions triggers a mandatory BLOCKING HUMAN CHECKPOINT (§8) before any code is added.
+- **Rationale**: 95–99% of CPU runtime in analog IC design is already spent in native C/C++ engines (ngspice, KLayout, Magic, Netgen, SQLite). Rewriting the orchestration layer yields negligible (<0.2%) runtime benefit under Amdahl's Law, while forfeiting the entire Python EDA/AI/scientific ecosystem (Optuna, NumPy, SciPy, KLayout Python API, AI SDKs) and destroying developer velocity. In addition, ngspice's global C state mandates multi-process isolation regardless of host language.
+- **Alternatives Considered**: 
+  - Complete rewrite in Rust/C++ (rejected: premature optimization, massive velocity penalty, loss of EDA/AI Python ecosystem, zero impact on ngspice solver bottlenecks).
+  - Unrestricted use of native extensions (rejected: increases Docker container build complexity, cross-platform compilation friction, and maintenance burden without proven performance need).
+- **Consequences**: Platform remains maintainable and Python-centric; performance hot-paths can be accelerated surgically via PyO3/nanobind if empirically justified later under human signoff.

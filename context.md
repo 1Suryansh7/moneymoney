@@ -99,7 +99,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── AGENTS.md               # Layer 1 Global Rules (The 4 laws, checkpoints, units, safety)
 ├── context.md              # [THIS FILE] System continuity handbook and state memory
 ├── To-Do.md                # Granular task tracker (updated before and after every step)
-├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-016)
+├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-019)
 ├── PREREQUISITES.md        # Complete Stage 0 prerequisite specifications & verification
 ├── Dockerfile              # Layered build: base verified / eda declared (ADR-015)
 ├── docker-compose.yml      # app (base) + app-eda (eda profile) services
