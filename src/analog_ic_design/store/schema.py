@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-SCHEMA_VERSION: Final = 2
+SCHEMA_VERSION: Final = 3
 
 _MIGRATION_1 = """
 CREATE TABLE schema_version (
@@ -117,7 +117,38 @@ CREATE TABLE parameter (
 );
 """
 
-MIGRATIONS: Final = ((1, _MIGRATION_1), (2, _MIGRATION_2))
+_MIGRATION_3 = """
+CREATE TABLE specification (
+    id TEXT PRIMARY KEY,
+    cell_id TEXT NOT NULL REFERENCES cell(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE constraint_rule (
+    id TEXT PRIMARY KEY,
+    specification_id TEXT NOT NULL REFERENCES specification(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('hard', 'soft', 'weighted')),
+    metric TEXT NOT NULL,
+    operator TEXT NOT NULL CHECK (operator IN ('>=', '<=', '=')),
+    threshold REAL NOT NULL,
+    tolerance REAL NOT NULL,
+    priority INTEGER NOT NULL,
+    weight REAL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE error_record (
+    id TEXT PRIMARY KEY,
+    cell_id TEXT REFERENCES cell(id) ON DELETE CASCADE,
+    category TEXT NOT NULL CHECK (category IN (
+        'syntax', 'schema', 'netlist', 'spice_convergence', 'operating_point',
+        'constraint', 'pvt', 'monte_carlo', 'drc', 'lvs', 'pex', 'post_layout'
+    )),
+    message TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+"""
+
+MIGRATIONS: Final = ((1, _MIGRATION_1), (2, _MIGRATION_2), (3, _MIGRATION_3))
 
 
 def new_id() -> str:

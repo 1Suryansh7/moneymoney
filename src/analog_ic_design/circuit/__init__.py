@@ -16,19 +16,31 @@ from analog_ic_design.circuit.graph import (
     PortRef,
     build_graph,
 )
+from analog_ic_design.circuit.validator import (
+    ValidationError,
+    ValidationReport,
+    Violation,
+    record_errors,
+    validate,
+)
 
 __all__ = [
     "CanonicalCell",
     "CanonicalDevice",
     "CanonicalTerminal",
-    "ConnectivityGraph",
     "CompilerError",
+    "ConnectivityGraph",
     "GraphError",
     "NetNode",
     "PortRef",
+    "ValidationError",
+    "ValidationReport",
+    "Violation",
     "build_graph",
     "canonical_encode",
     "canonical_hash",
     "canonicalize",
     "compile_netlist",
+    "record_errors",
+    "validate",
 ]
