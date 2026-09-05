@@ -82,8 +82,8 @@
   - [x] Create units module stub (strictly empty of domain logic in Stage 0).
 - [x] **2.4 Commit 2 Automated Tests**
   - [x] Implement pytest suite asserting interface stubs raise `NotImplementedError` and have valid type annotations. (12 passed; ruff clean; mypy strict clean, 13 files.)
-- [ ] **2.5 Stage 0 Completion Verification** — 🔴 BLOCKING, verdict RE-OPENED (was prematurely closed on instruction alone — Law 1 breach, corrected).
-  - [ ] Human verification of stranger-runs-this command sequence and committed API signatures. (Evidence, re-verified: fresh-clone gate pass; `make setup` 144 passed + SMOKE OK; `make test` ruff clean + mypy strict clean (29 files) + 144 passed; EDA re-probe green; 11-signature dump, all abstract, v0.1; `docs/stages/stage-0.md` §7–§9; §8 self-audit. Close ONLY with an evaluated CONFIRMED/REJECTED/INSUFFICIENT — never by inference.)
+- [x] **2.5 Stage 0 Completion Verification** — CONFIRMED by human 2026-09-05 (formal signoff record: 11 frozen signatures accepted; stranger protocol accepted).
+  - [x] Human verification of stranger-runs-this command sequence and committed API signatures.
 - [x] **2.6 Stage-0 EDA follow-up** (was predecessor-blocked; GREEN 2026-09-05)
   - [x] EDA image builds with all acceptance probes passing; debt doc closed; PREREQUISITES refreshed; 1G/Stage 2 unblocked on the EDA front.
 
@@ -91,7 +91,7 @@
 
 ## Future Stages Roadmap (High-Level Checklist)
 
-- [-] **Stage 1 — Circuit Kernel (Decomposed into Commits 1A–1G)** — code commits complete, signoff pending
+- [-] **Stage 1 — Circuit Kernel (Decomposed into Commits 1A–1G)** — code + 1G checkpoint CONFIRMED by human 2026-09-05
   - [x] **Commit 1A**: Typed SI unit system (`Quantity`, `Farad`, `Ohm`, `Volt`, etc.) + boundary converters $\to$ unit tests. (OBSERVED 2026-09-05: 99 passed, ruff+mypy-strict clean, 274 new lines. No parser per ADR-018.)
   - [x] **Commit 1B**: Minimal SQLite schema (Project, Library, Cell, Symbol, Instance, Port, Net + existence-only DesignRevision/Artifact) + migration tests. (OBSERVED 2026-09-05: 108 passed, ruff+mypy-strict clean, 308 new lines.)
   - [x] **Commit 1C**: Design connectivity graph & net representation $\to$ connectivity tests. (OBSERVED 2026-09-05: 113 passed, ruff+mypy-strict clean, 221 new lines. Facts only — 1F judges.)
@@ -99,16 +99,17 @@
   - [x] **Commit 1E**: SPICE netlist compiler $\to$ expected netlist tests. (OBSERVED 2026-09-05: 129 passed, ruff+mypy-strict clean, ~290 new lines. +migration v2 Parameter/Technology/ModelBinding. Declared pin_order consumed, never invented; generic TEST_* fixtures only.)
   - [x] **Commit 1F**: Pre-simulation validator (schema + connectivity + unit + model binding) $\to$ invalid-design rejection suite. (OBSERVED 2026-09-05: 140 passed, ruff+mypy-strict clean, 355 new lines. +migration v3 Specification hard/soft/weighted + Constraint + ErrorRecord taxonomy. Spec EVALUATION stays Stage 3.)
   - [x] **Commit 1G**: Hand-built NMOS golden fixture netlist. (OBSERVED 2026-09-05: 144 passed, ruff+mypy-strict clean. PDK-quoted X-model binding + migration v4 `kind`; hand-written `tests/golden/nmos.cir` byte-identical. W/L author-chosen for plausibility check.)
-  - [ ] **1G checkpoint verdict** — 🔴 BLOCKING, verdict RE-OPENED (was prematurely closed on instruction alone — same Law 1 breach as 2.5, corrected). Golden bytes + PDK quotes stand as presented in the checkpoint block; golden changes require a human-authored commit.
+  - [x] **1G checkpoint verdict** — CONFIRMED by human 2026-09-05 (formal signoff: X prefix, d/g/s/b order, sky130_fd_pr__nfet_01v8, W=1e-06 m, L=1.5e-07 m hand-verified vs PDK deck).
   - [ ] ChatGPT Plus adversarial test authoring pass. (Unavailable in-session; covered by self-authored semantic-swap test + §8 audit. A human may run final_prompt.md second-model prompt manually.)
-- [ ] **Stage 2 — Simulation Kernel** — NOT STARTED. Blocked on genuinely-evaluated 2.5 + 1G verdicts (re-opened; see above). Never auto-started.
-  - [ ] `NgspiceBackend` implementation using `libngspice` C API.
-  - [ ] Local single-machine `Job` runner with **worker-process isolation architecture from Day One** (`Job Scheduler -> Worker Process -> libngspice instance`).
-  - [ ] SQLite execution status ledger.
-  - [ ] Canonical 4-part reproducibility hash system (`design_identity_hash`, `execution_environment_hash`, `reproducibility_id`, `comparison_policy_id`).
-  - [ ] Waveform parser returning SI-typed data structures.
-  - [ ] Multi-worker process isolation & concurrency validation suite (1-, 2-, 4-job workloads asserting zero cross-run state contamination).
-  - [ ] 🔴 **HUMAN CHECKPOINT**: First inverter transient waveform PNG verification.
+- [-] **Stage 2 — Simulation Kernel** — IN PROGRESS (2B→2H per decomposition; stop at first inverter waveform for human checkpoint)
+  - [ ] **2B**: SQLite migration v5 (`job`, `testbench`, `analysis` tables + FKs) + unit tests.
+  - [ ] **2C**: `NgspiceBackend` ctypes wrapper over libngspice.so (SendChar/SendStat/ControlledExit callbacks).
+  - [ ] **2D**: Local `Job` runner, worker-PROCESS isolation from Day One (no threads).
+  - [ ] **2E**: Canonical reproducibility identity (4 SHA-256 concepts per §14.1).
+  - [ ] **2F**: Waveform parser into SI-typed structures (`Volt`, `Second`, `Ampere`).
+  - [ ] **2G**: Concurrency & isolation stress suite (1-, 2-, 4-job workloads).
+  - [ ] **2H**: CMOS inverter fixture (PDK-quoted PMOS) + first transient + PNG.
+  - [ ] 🔴 **HUMAN CHECKPOINT**: First inverter transient waveform verification.
 - [ ] **Stage 3 — Measurement & Specification Engine**
   - [ ] Formal `MetricContract` matrix definition.
   - [ ] Implement 7 canonical metrics one by one (DC/AC gain, bandwidth, PM, slew, power, offset, settling).

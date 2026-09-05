@@ -82,17 +82,12 @@ Operational code and agent configuration NEVER hardcode model generation names (
 
 ## 5. Current Project Status & File Inventory
 
-### Active Status: CODE COMPLETE THROUGH STAGE 1G — 2.5 + 1G VERDICTS OPEN (BLOCKING)
-> `base` gate green (144 passed, ruff + mypy strict clean, 29 files) + `eda`
-> image green (ngspice-47/libngspice, KLayout 0.30.12, Magic 8.3.683,
-> Netgen 1.5.323, sky130A @1689ac3f; all probed). Stage 1 Commits 1A–1G
-> committed (units, schema v1–v4, graph, canonical hash, compiler, validator,
-> NMOS golden). Debt doc CLOSED (R-1..R-8 done). Self-audit committed
-> (F-1..F-3). 2.5 + 1G verdicts were prematurely closed on instruction alone
-> (Law 1 breach) and are RE-OPENED — only an evaluated
-> CONFIRMED/REJECTED/INSUFFICIENT closes them. No Stage 2 work until then.
-> WSL2 Ubuntu is the sanctioned `make` shell (GNU Make 4.3 + Docker 29.6.2
-> verified); stock PowerShell has no `make`.
+### Active Status: STAGE 0 + STAGE 1 COMMITTED & HUMAN-CONFIRMED — STAGE 2 IN PROGRESS
+> 2.5 + 1G CONFIRMED by formal human signoff 2026-09-05. Gate green
+> (144 passed, ruff + mypy strict clean, 29 files); eda image green.
+> Stage 2 decomposition 2B→2H active; STOP at first inverter waveform for
+> the Stage 2 human checkpoint. WSL2 Ubuntu is the sanctioned `make` shell
+> (GNU Make 4.3 + Docker 29.6.2 verified); stock PowerShell has no `make`.
 
 ### Repository File Map
 ```text
