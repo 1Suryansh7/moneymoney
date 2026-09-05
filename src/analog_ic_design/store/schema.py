@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-SCHEMA_VERSION: Final = 1
+SCHEMA_VERSION: Final = 2
 
 _MIGRATION_1 = """
 CREATE TABLE schema_version (
@@ -92,7 +92,32 @@ CREATE TABLE artifact (
 );
 """
 
-MIGRATIONS: Final = ((1, _MIGRATION_1),)
+_MIGRATION_2 = """
+CREATE TABLE technology (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL UNIQUE REFERENCES project(id) ON DELETE CASCADE,
+    pdk_id TEXT NOT NULL,
+    pdk_version TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE model_binding (
+    id TEXT PRIMARY KEY,
+    technology_id TEXT NOT NULL REFERENCES technology(id) ON DELETE CASCADE,
+    device_symbol TEXT NOT NULL,
+    model_name TEXT NOT NULL,
+    pin_order TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE parameter (
+    id TEXT PRIMARY KEY,
+    instance_id TEXT NOT NULL REFERENCES instance(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    value REAL NOT NULL,
+    created_at TEXT NOT NULL
+);
+"""
+
+MIGRATIONS: Final = ((1, _MIGRATION_1), (2, _MIGRATION_2))
 
 
 def new_id() -> str:

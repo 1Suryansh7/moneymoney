@@ -8,6 +8,7 @@ from analog_ic_design.circuit.canonical import (
     canonical_hash,
     canonicalize,
 )
+from analog_ic_design.circuit.compiler import CompilerError, compile_netlist
 from analog_ic_design.circuit.graph import (
     ConnectivityGraph,
     GraphError,
@@ -21,6 +22,7 @@ __all__ = [
     "CanonicalDevice",
     "CanonicalTerminal",
     "ConnectivityGraph",
+    "CompilerError",
     "GraphError",
     "NetNode",
     "PortRef",
@@ -28,4 +30,5 @@ __all__ = [
     "canonical_encode",
     "canonical_hash",
     "canonicalize",
+    "compile_netlist",
 ]

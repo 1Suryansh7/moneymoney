@@ -13,6 +13,7 @@ from collections.abc import Generator
 import pytest
 
 from analog_ic_design.store import (
+    MIGRATIONS,
     SCHEMA_VERSION,
     connect,
     get_schema_version,
@@ -24,9 +25,6 @@ STAMP = "2026-09-05T00:00:00+00:00"
 STRUCTURAL = ("project", "library", "cell", "symbol", "instance", "port", "net")
 EXISTENCE = ("design_revision", "artifact")
 DEFERRED = (
-    "parameter",
-    "technology",
-    "model_binding",
     "specification",
     "constraint",
     "error_record",
@@ -66,10 +64,23 @@ def _hierarchy(conn: sqlite3.Connection) -> dict[str, str]:
 
 
 def test_migrate_lands_current_version_and_is_idempotent(db: sqlite3.Connection) -> None:
-    assert SCHEMA_VERSION == 1
-    assert get_schema_version(db) == 1
-    assert migrate(db) == 1
-    assert get_schema_version(db) == 1
+    assert SCHEMA_VERSION == 2
+    assert get_schema_version(db) == SCHEMA_VERSION
+    assert migrate(db) == SCHEMA_VERSION
+    assert get_schema_version(db) == SCHEMA_VERSION
+
+
+def test_upgrade_preserves_v1_data() -> None:
+    conn = connect()
+    conn.executescript(MIGRATIONS[0][1])
+    conn.execute("INSERT INTO schema_version (version, applied_at) VALUES (1, ?)", (STAMP,))
+    conn.execute("INSERT INTO project VALUES (?, ?, ?)", ("p1", "demo", STAMP))
+    conn.commit()
+    assert get_schema_version(conn) == 1
+    assert migrate(conn) == SCHEMA_VERSION
+    row = conn.execute("SELECT name FROM project WHERE id = 'p1'").fetchone()
+    assert row[0] == "demo"
+    conn.close()
 
 
 def test_structural_and_existence_tables_present(db: sqlite3.Connection) -> None:
