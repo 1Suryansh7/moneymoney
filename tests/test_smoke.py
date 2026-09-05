@@ -49,7 +49,7 @@ def test_dockerfile_pin_policy() -> None:
         line for line in lines if not line.lstrip().startswith("#")
     )
     assert ":latest" not in code, "Schema: Dockerfile pins a ':latest' image tag"
-    for pin in ("python:3.11", "NGSPICE_VERSION=46", "KLAYOUT_VERSION=0.30.12"):
+    for pin in ("python:3.11", "NGSPICE_VERSION=47", "KLAYOUT_VERSION=0.30.12"):
         assert pin in code, f"Schema: Dockerfile missing declared pin {pin}"
 
 

@@ -50,24 +50,25 @@ would point at an interpreter that does not exist on the host. Equivalent
 enforcement lives in `make test` (same ruff + mypy checks, in-container) and
 in CI. Revisit only if a host Python toolchain becomes mandatory.
 
-## 5. Pinned toolchain contract (Commit 1)
+## 5. Pinned toolchain contract (Commit 1 + EDA follow-up, ALL VERIFIED 2026-09-05)
 
-| Component | Pin | State |
+| Component | Pin (observed) | State |
 |---|---|---|
-| Python (container authority) | `python:3.11-slim-bookworm` | BUILT + tested |
-| Ubuntu reference | `UBUNTU_IMAGE=ubuntu:22.04` | declared (EDA stage root, follow-up) |
-| ngspice | `NGSPICE_VERSION=46` (stable, Mar 2026) | DECLARED, build in EDA follow-up |
-| KLayout | `KLAYOUT_VERSION=0.30.12` (hotfix, Aug 2026) | DECLARED, build in EDA follow-up |
-| Magic | `MAGIC_VERSION=8.3.456` | DECLARED, UNVERIFIED (PREREQUISITES.md carry-over) |
-| Netgen | `NETGEN_VERSION=1.5.270` | DECLARED, UNVERIFIED (PREREQUISITES.md carry-over) |
-| open_pdks / sky130A | `OPEN_PDKS_GIT_REF=UNPINNED` (fail-closed) | MUST freeze to a commit SHA at EDA build |
-| PDK scope | primitive devices only, `sky130A` | policy (no stdcell libs) |
+| Python (container authority) | `python:3.11-slim-bookworm` → 3.11.16 | BUILT + tested |
+| Ubuntu reference | `ubuntu:22.04` @sha256:2edbbc5d… | EDA stage root, BUILT |
+| ngspice | `47` (latest stable; CLI + libngspice.so.0.0.16) | BUILT + probed |
+| KLayout | `0.30.12` (Ubuntu-22 deb, MD5-checked) | BUILT + probed |
+| Magic | `8.3.683` (source) | BUILT + banner-verified |
+| Netgen | `1.5.323` (source) | BUILT + present |
+| open_pdks / sky130A | `1689ac3f` (fd_pr `403964dc`), primitive-only | BUILT + models present |
+| EDA Python | 3.11.15 (deadsnakes; jammy archives carry RC only — rejected) | BUILT + tested |
+| PDK scope | primitive devices + klayout overlay, `sky130A` | policy (no stdcell libs) |
 | Host Python | 3.13.x stays (editing only) | container is the test authority |
 
-Supersession note: ngspice-46 / KLayout 0.30.12 replace the stale
-PREREQUISITES.md values (ngspice-42/43, KLayout 0.28.x) per live verification
-2026-09-05 (ADR-016). PREREQUISITES.md itself is updated in the EDA follow-up,
-not silently here.
+Supersession note: ngspice-47 / KLayout 0.30.12 / Magic 8.3.683 / Netgen 1.5.323
+replace the stale PREREQUISITES.md values (ngspice-42/43, KLayout 0.28.x, Magic
+8.3.456, Netgen 1.5.270) per live verification 2026-09-05 (ADR-016/017).
+PREREQUISITES.md section 3 is refreshed in the EDA follow-up commit.
 
 ## 6. Contracts frozen in Stage 0
 
@@ -145,3 +146,37 @@ evidence command). Findings:
 - Explicitly NOT Stage-0 defects (tracked separately): EDA layer unbuilt
   (V-4), local `act` run pending (V-6), `actions/checkout@v4` floating major
   (accepted for Stage 0; Dependabot later).
+
+## 9. EDA follow-up record (OBSERVED 2026-09-05 — closes debt doc D-1..D-4, R-1..R-4)
+
+Image: `codeeahhhhhhh-app-eda` manifest
+`sha256:51ab18061e5d6628506231bb03068a78482cb1830b817579198cd979f20d04ab`.
+Build-time acceptance probes (Dockerfile step 8, fail-closed) ALL green:
+
+- `ngspice --version` → ngspice-47 (KLU solver, built 2026-09-05); RC
+  low-pass transient via `ngspice -b` produces a non-empty `v(out)` trace.
+- `libngspice.so.0.0.16` present + `ctypes.CDLL` loads OK (Stage 2's artifact).
+- `klayout -b -v` → KLayout 0.30.12.
+- magic banner → Magic 8.3.683 rev 683; netgen present at /usr/local/bin.
+- `sky130.lib.spice` present; nodeinfo.json → open_pdks `1689ac3f`,
+  fd_pr `403964dc`; full provenance in `/pdk-record` + `/image-eda-versions.txt`.
+- EDA Python 3.11.15; package installed editable (same `[dev]` set as base).
+- CI `eda` job commands run verbatim locally — green (CIPROBE evidence).
+
+Build-issue log (each fixed at root cause, verified by rebuild):
+1. Missing `gnupg` broke `add-apt-repository` (gpg-agent absent) — added package.
+2. ngspice tarball path hallucinated (`ng-spice-rework/46/` 404s; only `47/`
+   exists) → ADR-017, pin 47, URL verified live.
+3. Duplicate global ARG block blanked `FROM ${UBUNTU_IMAGE}` — consolidated
+   all defaults before the first FROM (Docker ARG scoping rule).
+4. Compose `args: OPEN_PDKS_GIT_REF: ${...:-UNPINNED}` stomped the frozen
+   default — removed the mapping; Dockerfile default is single source of truth
+   (the guard caught it exactly as designed).
+5. open_pdks `make` staged nothing: `--enable-sky130-pdk` master switch was
+   missing (ENABLED_TECHS empty). `--help` omits the flag but
+   `scripts/configure` honors it — verified by reading the script; docs agree.
+6. ngshared build yields lib-only (no CLI linked, observed) — separate plain
+   CLI build added from the same source (debug tool + deck cross-check).
+- Non-blocking upstream noise, recorded not fixed: `git describe` fatal
+  (shallow clone, no tags) and `NODE elements not supported` spam during PDK
+  staging; build completes and installs correctly regardless.

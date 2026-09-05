@@ -57,19 +57,19 @@ Per official Microsoft guidance, cross-filesystem access from Linux containers t
 
 ---
 
-## 3. Pinned Toolchain & Image Bill of Materials (For Stage 0 Dockerfile)
+## 3. Pinned Toolchain & Image Bill of Materials (VERIFIED 2026-09-05 — EDA image green)
 
-When Stage 0 is authorized, the Dockerfile will build against exact, immutable version tags and commit hashes (never `:latest`):
+The Dockerfile builds against these exact tags/hashes (never `:latest`). All values below OBSERVED (built + probed), superseding the pre-Stage-0 drafts per ADR-016/017:
 
-| Component | Target Version / Pin | Purpose in Stack |
+| Component | Verified Pin | Purpose in Stack |
 |---|---|---|
-| **Base Image** | `ubuntu:22.04` (pinned digest) | Host container environment |
-| **Python** | `python:3.11-slim` (3.11.8+) | Core runtime for Design Engine and test harness |
-| **ngspice** | `ngspice-42` (or `ngspice-43`) built with `--with-ngshared` | Electrical simulation engine producing `libngspice.so` |
-| **SkyWater 130nm PDK** | `sky130A` primitive models (pinned `open_pdks` commit) | Transistor and passive model cards (excluding standard cell libraries) |
-| **KLayout** | `0.28.16` or `0.29.1` Debian package | GDS/OASIS layout viewer, DRC, and geometry engine |
-| **Magic** | `8.3.456` (pinned commit) | Secondary physical DRC / PEX extraction adapter |
-| **Netgen** | `1.5.270` (pinned commit) | LVS (Layout-vs-Schematic) comparison engine |
+| **Base Image** | `python:3.11-slim-bookworm` @sha256:528257d4… (→ 3.11.16); EDA root `ubuntu:22.04` @sha256:2edbbc5d… | Container environments |
+| **Python** | 3.11.16 (base); 3.11.15 deadsnakes (eda; jammy archives carry RC only — rejected) | Core runtime for Design Engine and test harness |
+| **ngspice** | `ngspice-47` (CLI + `libngspice.so.0.0.16`, `--with-ngshared`) | Electrical simulation engine producing `libngspice.so` |
+| **SkyWater 130nm PDK** | `sky130A` primitive-only @open_pdks `1689ac3f` (fd_pr `403964dc`) | Transistor and passive model cards (excluding standard cell libraries) |
+| **KLayout** | `0.30.12` Ubuntu-22 .deb (MD5 `6dfffa50…`) | GDS/OASIS layout viewer, DRC, and geometry engine |
+| **Magic** | `8.3.683` source build | Secondary physical DRC / PEX extraction adapter |
+| **Netgen** | `1.5.323` source build | LVS (Layout-vs-Schematic) comparison engine |
 
 ---
 

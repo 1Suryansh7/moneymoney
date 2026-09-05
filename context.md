@@ -82,11 +82,13 @@ Operational code and agent configuration NEVER hardcode model generation names (
 
 ## 5. Current Project Status & File Inventory
 
-### Active Status: STAGE 0 COMMIT 1 IN PROGRESS (human-authorized 2026-09-05)
-> Layered build per ADR-015/ADR-016: `base` image (Python 3.11) verifying now;
-> `eda` pins declared (`NGSPICE_VERSION=46`, `KLAYOUT_VERSION=0.30.12`),
-> recipe proven in EDA follow-up before Stage 1G. WSL2 Ubuntu is the sanctioned
-> `make` shell (GNU Make 4.3 + Docker 29.6.2 verified); stock PowerShell has no `make`.
+### Active Status: STAGE 0 CODE COMPLETE — EDA GREEN, 2.5 VERDICT PENDING
+> `base` gate green (12 passed, ruff/mypy clean) + `eda` image green
+> (ngspice-47/libngspice, KLayout 0.30.12, Magic 8.3.683, Netgen 1.5.323,
+> sky130A @1689ac3f; all probed). Debt doc CLOSED (R-1..R-8 done).
+> Self-audit committed (F-1..F-3). Human 2.5 verdict still open; Stage 1
+> NOT started. WSL2 Ubuntu is the sanctioned `make` shell (GNU Make 4.3 +
+> Docker 29.6.2 verified); stock PowerShell has no `make`.
 
 ### Repository File Map
 ```text

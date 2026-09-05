@@ -16,11 +16,15 @@ services:
 
   app-eda:
     profiles: ["eda"]
+    # No build.args here by design: the Dockerfile's frozen OPEN_PDKS_GIT_REF
+    # default is the single source of truth. Override explicitly when needed:
+    #   OPEN_PDKS_GIT_REF=<sha> docker compose --profile eda build app-eda
+    # (A previous revision passed ${OPEN_PDKS_GIT_REF:-UNPINNED} here, which
+    # stomped the frozen default with UNPINNED and tripped the guard — the
+    # fail-closed mechanism worked exactly as designed.)
     build:
       context: .
       target: eda
-      args:
-        OPEN_PDKS_GIT_REF: "${OPEN_PDKS_GIT_REF:-UNPINNED}"
     working_dir: /workspace
     environment:
       - PYTHONPATH=/workspace/scripts

@@ -22,6 +22,7 @@
 - [ADR-014: WSL2 Native Linux Filesystem Architecture Policy](#adr-014-wsl2-native-linux-filesystem-architecture-policy)
 - [ADR-015: Layered Stage 0 Container Build (Base Verified Now, EDA Follow-Up Before Stage 1G)](#adr-015-layered-stage-0-container-build-base-verified-now-eda-follow-up-before-stage-1g)
 - [ADR-016: Toolchain Pin Refresh — ngspice-46 and KLayout 0.30.12](#adr-016-toolchain-pin-refresh--ngspice-46-and-klayout-03012)
+- [ADR-017: ngspice 46 → 47 Correction (Top-Level Folder Does Not Exist)](#adr-017-ngspice-46--47-correction-top-level-folder-does-not-exist)
 
 ---
 
@@ -218,3 +219,14 @@
 - **Rationale**: Pin what is current and verified; label what is carried over on trust.
 - **Alternatives Considered**: Keeping stale pins for doc compliance (rejected: knowingly building on outdated tools).
 - **Consequences**: Stage 2 libngspice work targets the ngspice-46 API; the EDA follow-up confirms Magic/Netgen tags.
+
+---
+
+### ADR-017: ngspice 46 → 47 Correction (Top-Level Folder Does Not Exist)
+- **Date**: 2026-09-05
+- **Status**: Accepted (supersedes ADR-016's ngspice-46 pin; ADR-016's KLayout/Magic/Netgen reasoning stands)
+- **Context**: ADR-016 pinned ngspice-46 from March-2026 release notes seen via web search. During the EDA build, both candidate tarball URLs 404'd; a live listing of `ng-spice-rework/` showed only `47/` and `old-releases/` (46 lives under `old-releases/46/`), and the project's own download page names ngspice-47 "the latest stable release". The search snippets had mixed stale folder contents.
+- **Decision**: Pin `NGSPICE_VERSION=47` (`ng-spice-rework/47/ngspice-47.tar.gz`, listing observed live). Lesson recorded: release existence (NEWS file) is not release availability (file path) — verify the artifact URL, not just the version number.
+- **Rationale**: User directive "latest everything" + project-declared latest stable + verified artifact path.
+- **Alternatives Considered**: ngspice-46 from old-releases (rejected: older by one release against the explicit latest-everything directive).
+- **Consequences**: EDA recipe, smoke pins, and contract tests target 47; Stage 2 libngspice work targets the ngspice-47 API.

@@ -35,28 +35,28 @@
 
 ---
 
-## Stage 0: Architecture & Packaging (Authorized 2026-09-05 — In Progress)
+## Stage 0: Architecture & Packaging (Code complete 2026-09-05; 2.5 verdict pending)
 
 > **Commit Granularity**: Must land as two separate, cleanly isolated commits per master plan §10 addendum.
 > **Predecessor rule (ADR-015)**: Stage-0 EDA follow-up must go green BEFORE Stage 1G; no Stage 2 prompt before that.
 
 ### Commit 1: System Packaging & CI Smoke Test
-- [-] **1.1 Container Specification (`Dockerfile`)** — layered per ADR-015: `base` pinned `python:3.11-slim-bookworm` (verified); `eda` pins declared (`NGSPICE_VERSION=46`, `KLAYOUT_VERSION=0.30.12` per ADR-016; Magic/Netgen carry-over unverified; `OPEN_PDKS_GIT_REF` fail-closed UNPINNED).
+- [x] **1.1 Container Specification (`Dockerfile`)** — layered per ADR-015; EDA follow-up GREEN 2026-09-05 (ngspice-47 lib+CLI, KLayout 0.30.12, Magic 8.3.683, Netgen 1.5.323, sky130A @1689ac3f; ADR-017).
   - [x] Pin exact base image (Python 3.11-slim-bookworm tag; digest recorded at build).
-  - [x] Pin exact Python version (3.11 container authority; host 3.13 editing-only).
-  - [ ] Pin ngspice with shared library (`libngspice`) build — DECLARED, EDA follow-up builds.
-  - [ ] Pin SkyWater 130nm PDK primitive device models (`sky130A` commit hash) — UNPINNED, EDA follow-up freezes.
-  - [x] Pin KLayout (0.30.12 declared per ADR-016; build in EDA follow-up).
-  - [x] Pin Magic (8.3.456) and Netgen (1.5.270) as UNVERIFIED defaults (ADR-015 D-7).
-- [-] **1.2 Container Orchestration (`docker-compose.yml`)** — `app` (base, verified) + `app-eda` (`eda` profile, pending).
+  - [x] Pin exact Python version (3.11 container authority; host 3.13 editing-only; eda image: 3.11.15 deadsnakes).
+  - [x] Pin ngspice with shared library (`libngspice`) build — VERIFIED: libngspice.so.0.0.16 loads via ctypes; CLI 47 built separately (ngshared yields lib-only, observed).
+  - [x] Pin SkyWater 130nm PDK primitive device models — VERIFIED: sky130A primitive-only @1689ac3f (fd_pr 403964dc); nodeinfo.json in /pdk-record.
+  - [x] Pin KLayout (0.30.12 VERIFIED: Ubuntu-22 deb, MD5-checked, `klayout -b -v` green).
+  - [x] Pin Magic (8.3.683) and Netgen (1.5.323) — VERIFIED from source (live-latest per human directive; PREREQUISITES values superseded).
+- [x] **1.2 Container Orchestration (`docker-compose.yml`)** — `app` (base, verified) + `app-eda` (`eda` profile, VERIFIED green).
   - [x] Configure local volume mounts, user UID/GID mapping.
 - [-] **1.3 Makefile Automation** — exactly `[setup, test, run-example]` (asserted in test).
   - [x] Implement `make setup` (build container, run pytest + smoke inside container).
   - [x] Implement `make test` (ruff + mypy strict + pytest, all inside container).
   - [x] Implement `make run-example` (baseline smoke verification).
-- [-] **1.4 CI Smoke Test Pipeline**
+- [x] **1.4 CI Smoke Test Pipeline**
   - [x] Create GitHub Actions workflow (`.github/workflows/ci.yml`) to build container and run `make test`.
-  - [ ] Validate `act` configuration for local CI execution — DEFERRED (`act` not installed on host; CI runs on GitHub).
+  - [x] Validate `act` configuration for local CI execution — VERIFIED 2026-09-05: act 0.2.89 installed (WSL ~/.local/bin), full `act -j smoke` green locally.
 - [x] **1.5 Commit 1 Verification & Signoff**
   - [x] Verify fresh clone sequence: `make setup && make test` passes with ZERO manual steps. (OBSERVED 2026-09-05 via WSL: setup 6 passed + SMOKE OK; test ruff clean + mypy strict clean (3 files) + 6 passed.)
 
@@ -81,8 +81,10 @@
   - [x] Create units module stub (strictly empty of domain logic in Stage 0).
 - [x] **2.4 Commit 2 Automated Tests**
   - [x] Implement pytest suite asserting interface stubs raise `NotImplementedError` and have valid type annotations. (12 passed; ruff clean; mypy strict clean, 13 files.)
-- [ ] **2.5 Stage 0 Completion Verification**
-  - [ ] Human verification of stranger-runs-this command sequence and committed API signatures.
+- [ ] **2.5 Stage 0 Completion Verification** — BLOCKING, awaiting human verdict.
+  - [ ] Human verification of stranger-runs-this command sequence and committed API signatures. (Evidence delivered: fresh-clone gate pass, 11-signature dump, CI equivalence + local `act` green. First verdict REJECTED without specifics → full self-audit executed, F-1 noted, F-2/F-3 fixed+committed, record in `docs/stages/stage-0.md` §8. Re-verdict requested.)
+- [x] **2.6 Stage-0 EDA follow-up** (was predecessor-blocked; GREEN 2026-09-05)
+  - [x] EDA image builds with all acceptance probes passing; debt doc closed; PREREQUISITES refreshed; 1G/Stage 2 unblocked on the EDA front.
 
 ---
 

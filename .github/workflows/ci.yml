@@ -17,3 +17,18 @@ jobs:
 
       - name: Run full Stage 0 gate (lint + types + tests)
         run: make test
+
+  eda:
+    # Full EDA toolchain proof (ngspice/libngspice, KLayout, Magic, Netgen,
+    # sky130A primitives). Slow by nature (source builds + PDK); correctness
+    # over speed. Pins default to the frozen values in the Dockerfile.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Build pinned EDA image (acceptance probes run inside the build)
+        run: docker compose --profile eda build app-eda
+
+      - name: Re-probe tool versions in the built image
+        run: docker compose --profile eda run --rm app-eda bash -c "ngspice --version && klayout -b -v && test -f /usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice && cat /image-eda-versions.txt"

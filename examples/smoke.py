@@ -17,7 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_PINS: tuple[tuple[str, str], ...] = (
     ("python:3.11", "Python 3.11 container base"),
     ("UBUNTU_IMAGE=ubuntu:22.04", "Ubuntu 22.04 EDA stage root"),
-    ("NGSPICE_VERSION=46", "ngspice stable (Mar 2026)"),
+    ("NGSPICE_VERSION=47", "ngspice latest stable"),
     ("KLAYOUT_VERSION=0.30.12", "KLayout hotfix (Aug 2026)"),
 )
 
