@@ -25,9 +25,6 @@ STAMP = "2026-09-05T00:00:00+00:00"
 STRUCTURAL = ("project", "library", "cell", "symbol", "instance", "port", "net")
 EXISTENCE = ("design_revision", "artifact")
 DEFERRED = (
-    "job",
-    "testbench",
-    "analysis",
     "measurement",
     "experiment",
 )
@@ -61,7 +58,7 @@ def _hierarchy(conn: sqlite3.Connection) -> dict[str, str]:
 
 
 def test_migrate_lands_current_version_and_is_idempotent(db: sqlite3.Connection) -> None:
-    assert SCHEMA_VERSION == 4
+    assert SCHEMA_VERSION == 5
     assert get_schema_version(db) == SCHEMA_VERSION
     assert migrate(db) == SCHEMA_VERSION
     assert get_schema_version(db) == SCHEMA_VERSION
@@ -155,3 +152,67 @@ def test_revision_chain_and_artifact_link(db: sqlite3.Connection) -> None:
     assert row[0] == r1
     row = db.execute("SELECT design_revision_id FROM artifact WHERE id = ?", (a1,)).fetchone()
     assert row[0] == r2
+
+
+def _bench(db: sqlite3.Connection) -> tuple[str, str]:
+    ids = _hierarchy(db)
+    tb = new_id()
+    db.execute("INSERT INTO testbench VALUES (?, ?, ?, ?)", (tb, ids["c"], "tb_tran", STAMP))
+    db.commit()
+    return tb, ids["c"]
+
+
+def test_testbench_analysis_chain(db: sqlite3.Connection) -> None:
+    tb, _cell = _bench(db)
+    an = new_id()
+    db.execute(
+        "INSERT INTO analysis VALUES (?, ?, ?, ?, ?)",
+        (an, tb, "tran", '{"tstop": 30e-9}', STAMP),
+    )
+    db.commit()
+    row = db.execute(
+        "SELECT a.kind, t.cell_id FROM analysis a JOIN testbench t ON t.id = a.testbench_id"
+        " WHERE a.id = ?",
+        (an,),
+    ).fetchone()
+    assert (row[0], row[1]) == ("tran", _cell)
+
+
+def test_analysis_rejects_unknown_kind(db: sqlite3.Connection) -> None:
+    tb, _cell = _bench(db)
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute(
+            "INSERT INTO analysis VALUES (?, ?, ?, ?, ?)", (new_id(), tb, "rf", "{}", STAMP)
+        )
+
+
+def test_job_lifecycle_and_status_vocabulary(db: sqlite3.Connection) -> None:
+    jid = new_id()
+    db.execute(
+        "INSERT INTO job VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (jid, "simulate", "pending", '{"netlist": "x"}', None, None, STAMP, STAMP),
+    )
+    db.commit()
+    for status in ("running", "succeeded"):
+        db.execute("UPDATE job SET status = ?, updated_at = ? WHERE id = ?", (status, STAMP, jid))
+    db.execute("UPDATE job SET result = ? WHERE id = ?", ('{"reproducibility_id": "r"}', jid))
+    db.commit()
+    row = db.execute("SELECT status, result FROM job WHERE id = ?", (jid,)).fetchone()
+    assert row[0] == "succeeded"
+    assert "reproducibility_id" in str(row[1])
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute(
+            "INSERT INTO job VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (new_id(), "simulate", "vibing", "{}", None, None, STAMP, STAMP),
+        )
+
+
+def test_job_failure_records_error(db: sqlite3.Connection) -> None:
+    jid = new_id()
+    db.execute(
+        "INSERT INTO job VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (jid, "simulate", "failed", "{}", None, "Schema: bad cell", STAMP, STAMP),
+    )
+    db.commit()
+    row = db.execute("SELECT status, error FROM job WHERE id = ?", (jid,)).fetchone()
+    assert row == ("failed", "Schema: bad cell")

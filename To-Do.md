@@ -102,7 +102,7 @@
   - [x] **1G checkpoint verdict** — CONFIRMED by human 2026-09-05 (formal signoff: X prefix, d/g/s/b order, sky130_fd_pr__nfet_01v8, W=1e-06 m, L=1.5e-07 m hand-verified vs PDK deck).
   - [ ] ChatGPT Plus adversarial test authoring pass. (Unavailable in-session; covered by self-authored semantic-swap test + §8 audit. A human may run final_prompt.md second-model prompt manually.)
 - [-] **Stage 2 — Simulation Kernel** — IN PROGRESS (2B→2H per decomposition; stop at first inverter waveform for human checkpoint)
-  - [ ] **2B**: SQLite migration v5 (`job`, `testbench`, `analysis` tables + FKs) + unit tests.
+  - [x] **2B**: SQLite migration v5 (`job`, `testbench`, `analysis` tables + FKs) + unit tests. (OBSERVED 2026-09-05: 148 passed, ruff+mypy-strict clean. Status vocabulary constrained; payload/result JSON text.)
   - [ ] **2C**: `NgspiceBackend` ctypes wrapper over libngspice.so (SendChar/SendStat/ControlledExit callbacks).
   - [ ] **2D**: Local `Job` runner, worker-PROCESS isolation from Day One (no threads).
   - [ ] **2E**: Canonical reproducibility identity (4 SHA-256 concepts per §14.1).

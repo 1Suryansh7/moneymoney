@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-SCHEMA_VERSION: Final = 4
+SCHEMA_VERSION: Final = 5
 
 _MIGRATION_1 = """
 CREATE TABLE schema_version (
@@ -152,7 +152,41 @@ _MIGRATION_4 = """
 ALTER TABLE model_binding ADD COLUMN kind TEXT CHECK (kind IN ('mosfet', 'subckt'));
 """
 
-MIGRATIONS: Final = ((1, _MIGRATION_1), (2, _MIGRATION_2), (3, _MIGRATION_3), (4, _MIGRATION_4))
+_MIGRATION_5 = """
+CREATE TABLE testbench (
+    id TEXT PRIMARY KEY,
+    cell_id TEXT NOT NULL REFERENCES cell(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE analysis (
+    id TEXT PRIMARY KEY,
+    testbench_id TEXT NOT NULL REFERENCES testbench(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('tran', 'dc', 'ac', 'op')),
+    parameters TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE job (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN (
+        'pending', 'running', 'succeeded', 'failed', 'cancelled'
+    )),
+    payload TEXT NOT NULL,
+    result TEXT,
+    error TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+"""
+
+MIGRATIONS: Final = (
+    (1, _MIGRATION_1),
+    (2, _MIGRATION_2),
+    (3, _MIGRATION_3),
+    (4, _MIGRATION_4),
+    (5, _MIGRATION_5),
+)
 
 
 def new_id() -> str:
