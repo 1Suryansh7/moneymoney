@@ -45,8 +45,9 @@ def _simulate_worker(db_path: str, job_id: str, netlist: str, seed: int, lib_pat
         )
         conn.commit()
         out = NgspiceBackend(lib_path=lib_path).simulate(netlist=netlist, seed=seed)
+        raw = json.loads(out.raw_output.decode())
         payload = json.dumps(
-            {"reproducibility_id": out.reproducibility_id, "raw": out.raw_output.decode()}
+            {"reproducibility_id": out.reproducibility_id, "vectors": raw["vectors"]}
         )
         conn.execute(
             "UPDATE job SET status = 'succeeded', result = ?, updated_at = ? WHERE id = ?",
@@ -117,7 +118,7 @@ class JobRunner:
         if proc.is_alive():
             raise TimeoutError(f"job {job_id!r} still running after {timeout}s")
         verdict = self._read(job_id)
-        if verdict.status == "running":
+        if verdict.status in ("pending", "running"):
             self._conn.execute(
                 "UPDATE job SET status = 'failed', error = ?, updated_at = ? WHERE id = ?",
                 (f"worker exited code {proc.exitcode} without a verdict", utcnow_iso(), job_id),

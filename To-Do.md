@@ -107,7 +107,7 @@
   - [x] **2D**: Local `Job` runner, worker-PROCESS isolation from Day One (no threads). (OBSERVED 2026-09-05: base 154 passed + 7 explicit skips; EDA jobs+sim 13 passed. One spawn process per job; timeout/cancel/crash-safe; races designed out, strict asserts.)
   - [x] **2E**: Canonical reproducibility identity (4 SHA-256 concepts per §14.1). (OBSERVED 2026-09-05: base 160 passed + 7 skips; EDA 167 passed, 0 skipped. Pure functions; backend `_identity` repointed; tolerance is policy, not identity.)
   - [x] **2F**: Waveform parser into SI-typed structures (`Volt`, `Second`, `Ampere`). (OBSERVED 2026-09-05: base 165 passed + 7 skips; EDA 172 passed, 0 skipped. Pure `parse_transient`; `#branch` → Ampere; non-finite → SimError.)
-  - [ ] **2G**: Concurrency & isolation stress suite (1-, 2-, 4-job workloads).
+  - [x] **2G**: Concurrency & isolation stress suite (1-, 2-, 4-job workloads). (OBSERVED 2026-09-05: base 165 passed + 12 skips; EDA 177 passed, 0 skipped. Simultaneous diverse decks/seeds/sizes; exact attribution; SIGKILL containment. Fixed en route: double-encoded result JSON; crash-marking for pre-running deaths.)
   - [ ] **2H**: CMOS inverter fixture (PDK-quoted PMOS) + first transient + PNG.
   - [ ] 🔴 **HUMAN CHECKPOINT**: First inverter transient waveform verification.
 - [ ] **Stage 3 — Measurement & Specification Engine**
