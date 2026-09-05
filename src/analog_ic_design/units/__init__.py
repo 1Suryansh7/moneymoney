@@ -1,10 +1,33 @@
-"""Strict SI-base physical units system — INTENTIONALLY EMPTY in Stage 0.
+"""Strict SI-base physical units system (Stage 1 Commit 1A — live).
 
-Per the Stage 0 prompt: the module may exist but must hold zero domain logic.
-Stage 1 Commit 1A builds the typed quantities (`Quantity`, `Farad`, `Ohm`,
-`Volt`, ...) and boundary converters here, with the test proving unit strings
-such as "10MHz" never reach storage. Nothing may import names from this
-module until then.
+`quantity` holds the validated types; `display` holds the display-layer-only
+formatter (never import it from engine/schema/simulator code).
 """
 
-__all__: list[str] = []
+from analog_ic_design.units.display import format_quantity
+from analog_ic_design.units.quantity import (
+    Ampere,
+    Farad,
+    Hertz,
+    Kelvin,
+    Meter,
+    Ohm,
+    Quantity,
+    Second,
+    UnitError,
+    Volt,
+)
+
+__all__ = [
+    "Ampere",
+    "Farad",
+    "Hertz",
+    "Kelvin",
+    "Meter",
+    "Ohm",
+    "Quantity",
+    "Second",
+    "UnitError",
+    "Volt",
+    "format_quantity",
+]

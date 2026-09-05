@@ -90,8 +90,8 @@
 
 ## Future Stages Roadmap (High-Level Checklist)
 
-- [ ] **Stage 1 — Circuit Kernel (Decomposed into Commits 1A–1G)**
-  - [ ] **Commit 1A**: Typed SI unit system (`Quantity`, `Farad`, `Ohm`, `Volt`, etc.) + boundary converters $\to$ unit tests.
+- [-] **Stage 1 — Circuit Kernel (Decomposed into Commits 1A–1G)** — IN PROGRESS
+  - [x] **Commit 1A**: Typed SI unit system (`Quantity`, `Farad`, `Ohm`, `Volt`, etc.) + boundary converters $\to$ unit tests. (OBSERVED 2026-09-05: 99 passed, ruff+mypy-strict clean, 274 new lines. No parser per ADR-018.)
   - [ ] **Commit 1B**: Minimal SQLite schema/entities (Project, Library, Cell, Symbol, Instance, Port, Net) $\to$ schema migration tests.
   - [ ] **Commit 1C**: Design connectivity graph & net representation $\to$ connectivity tests.
   - [ ] **Commit 1D**: Deterministic canonical ordering & canonicalization $\to$ canonical-hash tests.

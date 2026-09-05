@@ -23,6 +23,7 @@
 - [ADR-015: Layered Stage 0 Container Build (Base Verified Now, EDA Follow-Up Before Stage 1G)](#adr-015-layered-stage-0-container-build-base-verified-now-eda-follow-up-before-stage-1g)
 - [ADR-016: Toolchain Pin Refresh — ngspice-46 and KLayout 0.30.12](#adr-016-toolchain-pin-refresh--ngspice-46-and-klayout-03012)
 - [ADR-017: ngspice 46 → 47 Correction (Top-Level Folder Does Not Exist)](#adr-017-ngspice-46--47-correction-top-level-folder-does-not-exist)
+- [ADR-018: Unit Kernel Ships Types + Display Formatting Only, No Parser](#adr-018-unit-kernel-ships-types--display-formatting-only-no-parser)
 
 ---
 
@@ -230,3 +231,14 @@
 - **Rationale**: User directive "latest everything" + project-declared latest stable + verified artifact path.
 - **Alternatives Considered**: ngspice-46 from old-releases (rejected: older by one release against the explicit latest-everything directive).
 - **Consequences**: EDA recipe, smoke pins, and contract tests target 47; Stage 2 libngspice work targets the ngspice-47 API.
+
+---
+
+### ADR-018: Unit Kernel Ships Types + Display Formatting Only, No Parser
+- **Date**: 2026-09-05
+- **Status**: Accepted
+- **Context**: The playbook asks for "explicit converters at the boundary" in Commit 1A, but AGENTS.md Law warns that parsing SI prefixes outside the UI layer is a fundamental architectural mistake — and no UI/input boundary exists until Stage 7.
+- **Decision**: Commit 1A ships validated quantity types (`Quantity` + 8 SI units, finite-only validation) and one display formatter (`format_quantity`, display-layer-only, documented non-import for engine code). NO string→quantity parser ships; strings are rejected at construction with `UnitError`, proven by test. Parsing arrives with the Stage 7 UI input boundary that actually needs it.
+- **Rationale**: A kernel parser would legitimize unit strings inside the system — the exact failure mode the law forbids. Converters shipped are exactly the ones with a live boundary today (float→Quantity at APIs, Quantity→string at reports).
+- **Alternatives Considered**: Shipping `parse_quantity` now (rejected: no legitimate caller exists yet; invites misuse).
+- **Consequences**: Stage 7 must build the input parser; until then any `"10MHz"`-shaped input fails closed at the typed boundary.
