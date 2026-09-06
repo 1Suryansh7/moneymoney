@@ -15,6 +15,11 @@ from analog_ic_design.metrics.contract import (
     SLEW_RATE,
     MetricContract,
 )
+from analog_ic_design.metrics.gain import (
+    extract_ac_gain,
+    extract_ac_gain_db,
+    extract_dc_gain,
+)
 
 __all__ = [
     "AC_GAIN",
@@ -28,4 +33,7 @@ __all__ = [
     "POWER",
     "SETTLING_TIME",
     "SLEW_RATE",
+    "extract_ac_gain",
+    "extract_ac_gain_db",
+    "extract_dc_gain",
 ]

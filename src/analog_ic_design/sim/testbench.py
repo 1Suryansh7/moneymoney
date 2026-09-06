@@ -81,3 +81,77 @@ def assemble_transient(
     lines.append(f".tran 0.1n {tstop_s}")
     lines.append(".end")
     return "\n".join(lines) + "\n"
+
+
+def assemble_dc_sweep(
+    fragment: str,
+    *,
+    vdd_net: str = "vdd",
+    vdd_volts: float = 1.8,
+    vss_net: str = "vss",
+    sweep_net: str = "in",
+    v_start: float = 0.0,
+    v_stop: float = 1.8,
+    v_step: float = 0.01,
+    extra_lines: Sequence[str] = (),
+    includes: Sequence[str] = (),
+    libs: Sequence[tuple[str, str]] = (),
+) -> str:
+    """Assemble a DC transfer sweep deck around a cell `fragment`."""
+    body = fragment.splitlines()
+    while body and not body[-1].strip():
+        body.pop()
+    if body and body[-1].strip().lower() == ".end":
+        body.pop()
+    title, rest = (body[0], body[1:]) if body else ("* testbench", [])
+    lines = [title]
+    lines += [f".include {path}" for path in includes]
+    lines += [f".lib '{path}' {section}" for path, section in libs]
+    lines.append(".param mc_mm_switch=0")
+    lines.append(".option scale=1e-6")
+    lines += [_to_microns(line) for line in rest]
+    lines.append(f"VDD {vdd_net} 0 DC {vdd_volts}")
+    lines.append(f"VSS {vss_net} 0 DC 0")
+    lines.append(f"Vin {sweep_net} 0 DC {v_start}")
+    lines += list(extra_lines)
+    lines.append(f".dc Vin {v_start} {v_stop} {v_step}")
+    lines.append(".end")
+    return "\n".join(lines) + "\n"
+
+
+def assemble_ac(
+    fragment: str,
+    *,
+    vdd_net: str = "vdd",
+    vdd_volts: float = 1.8,
+    vss_net: str = "vss",
+    in_net: str = "in",
+    v_bias: float = 0.65,
+    ac_mag: float = 1.0,
+    f_start: float = 1.0,
+    f_stop: float = 10e9,
+    points_per_decade: int = 10,
+    extra_lines: Sequence[str] = (),
+    includes: Sequence[str] = (),
+    libs: Sequence[tuple[str, str]] = (),
+) -> str:
+    """Assemble an AC small-signal frequency response deck around a cell `fragment`."""
+    body = fragment.splitlines()
+    while body and not body[-1].strip():
+        body.pop()
+    if body and body[-1].strip().lower() == ".end":
+        body.pop()
+    title, rest = (body[0], body[1:]) if body else ("* testbench", [])
+    lines = [title]
+    lines += [f".include {path}" for path in includes]
+    lines += [f".lib '{path}' {section}" for path, section in libs]
+    lines.append(".param mc_mm_switch=0")
+    lines.append(".option scale=1e-6")
+    lines += [_to_microns(line) for line in rest]
+    lines.append(f"VDD {vdd_net} 0 DC {vdd_volts}")
+    lines.append(f"VSS {vss_net} 0 DC 0")
+    lines.append(f"Vin {in_net} 0 DC {v_bias} AC {ac_mag}")
+    lines += list(extra_lines)
+    lines.append(f".ac dec {points_per_decade} {f_start} {f_stop}")
+    lines.append(".end")
+    return "\n".join(lines) + "\n"

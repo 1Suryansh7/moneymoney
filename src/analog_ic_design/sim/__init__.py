@@ -1,6 +1,7 @@
 """Simulation kernel: libngspice binding (2C), runner (2D), identity (2E)."""
 
 from analog_ic_design.sim.backend import NgspiceBackend
+from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.jobs import JobResult, JobRunner
 from analog_ic_design.sim.ngspice import RawSim, SimError, libngspice_available, run_deck
@@ -14,7 +15,11 @@ from analog_ic_design.sim.reproduce import (
     sha256_hex,
     waveforms_close,
 )
-from analog_ic_design.sim.testbench import assemble_transient
+from analog_ic_design.sim.testbench import (
+    assemble_ac,
+    assemble_dc_sweep,
+    assemble_transient,
+)
 from analog_ic_design.sim.waveform import (
     ACTrace,
     ACWaveform,
@@ -35,7 +40,10 @@ __all__ = [
     "SimError",
     "Trace",
     "Waveform",
+    "assemble_ac",
+    "assemble_dc_sweep",
     "assemble_transient",
+    "build_cs_amplifier",
     "build_inverter",
     "canonical_encode",
     "design_identity_hash",
