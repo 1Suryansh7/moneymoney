@@ -128,6 +128,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── docs/stages/stage-0.md  # Layer 2 stage brief (§7–§9: verification, audit, EDA)
 ├── docs/stages/stage-1.md  # Layer 2 stage brief (1A–1G + checkpoint)
 ├── docs/stages/stage-2.md  # Layer 2 stage brief (Simulation Kernel)
+├── docs/stages/stage-3.md  # Layer 2 stage brief (Measurement & Specification Engine)
 └── docs/stage-0-layered-debt.md  # CLOSED (R-1..R-8 checked off)
 ```
 

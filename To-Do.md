@@ -110,11 +110,24 @@
   - [x] **2G**: Concurrency & isolation stress suite (1-, 2-, 4-job workloads). (OBSERVED 2026-09-05: base 165 passed + 12 skips; EDA 177 passed, 0 skipped. Simultaneous diverse decks/seeds/sizes; exact attribution; SIGKILL containment. Fixed en route: double-encoded result JSON; crash-marking for pre-running deaths.)
   - [x] **2H**: CMOS inverter fixture (PDK-quoted PMOS) + first transient + PNG. (COMMITTED 2026-09-06: `sim/testbench.py` assembler + `sim/inverter.py` prototype builder; EDA 182 passed; plot reproduced deterministically.)
   - [x] 🔴 **HUMAN CHECKPOINT**: First inverter transient waveform verification. — CONFIRMED by human 2026-09-06 (rails 0–1.8V, correct inversion, 326 pts, EDA 182 passed).
-- [ ] **Stage 3 — Measurement & Specification Engine**
-  - [ ] Formal `MetricContract` matrix definition.
-  - [ ] Implement 7 canonical metrics one by one (DC/AC gain, bandwidth, PM, slew, power, offset, settling).
-  - [ ] 🔴 **HUMAN CHECKPOINT**: Hand-calculation verification once per metric contract.
-  - [ ] Specification pass/fail, soft objective, and weighted objective evaluation.
+- [-] **Stage 3 — Measurement & Specification Engine** — IN PROGRESS (one metric contract at a time per §14.2)
+  - [ ] **3A**: Canonical `MetricContract` dataclass + 7-metric matrix + SQLite Migration v6 (`measurement` table) + tests.
+  - [ ] **3B**: AC small-signal & complex vector support in `NgspiceBackend` + `waveform.py` + tests.
+  - [ ] **3C**: Metric 1 — DC/AC Gain contract + Common-Source benchmark + tests.
+  - [ ] 🔴 **HUMAN CHECKPOINT**: DC/AC Gain hand-calculation verification.
+  - [ ] **3D**: Metric 2 — Bandwidth contract + -3dB crossing extraction + tests.
+  - [ ] 🔴 **HUMAN CHECKPOINT**: Bandwidth hand-calculation verification.
+  - [ ] **3E**: Metric 3 — Phase Margin contract + return-ratio / loop-gain benchmark + tests.
+  - [ ] 🔴 **HUMAN CHECKPOINT**: Phase Margin hand-calculation verification.
+  - [ ] **3F**: Metric 4 — Slew Rate contract + step transient extraction + tests.
+  - [ ] 🔴 **HUMAN CHECKPOINT**: Slew Rate hand-calculation verification.
+  - [ ] **3G**: Metric 5 — Power contract + supply current averaging + tests.
+  - [ ] 🔴 **HUMAN CHECKPOINT**: Power hand-calculation verification.
+  - [ ] **3H**: Metric 6 — Offset contract + differential DC balance + tests.
+  - [ ] 🔴 **HUMAN CHECKPOINT**: Offset hand-calculation verification.
+  - [ ] **3I**: Metric 7 — Settling Time contract + error-band staying extraction + tests.
+  - [ ] 🔴 **HUMAN CHECKPOINT**: Settling Time hand-calculation verification.
+  - [ ] **3J**: Specification evaluation (hard pass/fail, soft scoring, weighted Figure-of-Merit).
 - [ ] **Stage 4 — Optimization Layer**
   - [ ] `Optimizer` interface & `OptunaOptimizer` implementation.
   - [ ] Experiment Ledger recording every trial (success and failure).

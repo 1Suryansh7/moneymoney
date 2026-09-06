@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-SCHEMA_VERSION: Final = 5
+SCHEMA_VERSION: Final = 6
 
 _MIGRATION_1 = """
 CREATE TABLE schema_version (
@@ -180,12 +180,24 @@ CREATE TABLE job (
 );
 """
 
+_MIGRATION_6 = """
+CREATE TABLE measurement (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL REFERENCES job(id) ON DELETE CASCADE,
+    metric_id TEXT NOT NULL,
+    value REAL NOT NULL,
+    units TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+"""
+
 MIGRATIONS: Final = (
     (1, _MIGRATION_1),
     (2, _MIGRATION_2),
     (3, _MIGRATION_3),
     (4, _MIGRATION_4),
     (5, _MIGRATION_5),
+    (6, _MIGRATION_6),
 )
 
 

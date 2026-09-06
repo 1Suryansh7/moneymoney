@@ -25,7 +25,6 @@ STAMP = "2026-09-05T00:00:00+00:00"
 STRUCTURAL = ("project", "library", "cell", "symbol", "instance", "port", "net")
 EXISTENCE = ("design_revision", "artifact")
 DEFERRED = (
-    "measurement",
     "experiment",
 )
 
@@ -58,7 +57,7 @@ def _hierarchy(conn: sqlite3.Connection) -> dict[str, str]:
 
 
 def test_migrate_lands_current_version_and_is_idempotent(db: sqlite3.Connection) -> None:
-    assert SCHEMA_VERSION == 5
+    assert SCHEMA_VERSION == 6
     assert get_schema_version(db) == SCHEMA_VERSION
     assert migrate(db) == SCHEMA_VERSION
     assert get_schema_version(db) == SCHEMA_VERSION
