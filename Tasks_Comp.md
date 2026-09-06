@@ -92,8 +92,12 @@ plausibility check, not PDK-quoted.
 
 ## Test-suite growth (observed)
 
-6 → 12 → 99 → 108 → 113 → 118 → 129 → 140 → 144 passed, zero warnings
-throughout (`filterwarnings = error`), mypy strict clean on 13 → 29 files.
+Base (`make test`): 6 → 12 → 99 → 108 → 113 → 118 → 129 → 140 → 144 passed
+(Stages 0–1, zero warnings throughout via `filterwarnings = error`),
+then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
+196+19 (3A–3C) → 200+20 (3D). mypy strict clean throughout (13 → 29 →
+52 files). EDA full suite: 182 (2H) → 186 (hardening) → 215 (3A–3C) →
+220 passed, 0 failed (3D).
 
 ## Final pinned toolchain (all observed)
 
@@ -102,18 +106,28 @@ throughout (`filterwarnings = error`), mypy strict clean on 13 → 29 files.
 8.3.683; Netgen 1.5.323; sky130A primitive-only @`1689ac3f`
 (fd_pr `403964dc`); pytest 9.1.1, mypy 2.3.1, ruff 0.16.6.
 
-## Stage 2 — Simulation Kernel (Commits 2B–2H implemented in 6ddf868)
+## Stage 2 — Simulation Kernel (2A–2H + hardening, all committed)
 
-| Commit | Scope | Status & Evidence |
-|---|---|---|
-| 2A docs | Stage 2 brief + continuity sync | `docs/stages/stage-2.md` created; `context.md` and `To-Do.md` synchronized |
-| 2B schema | Migration v5 (`job`, `testbench`, `analysis`) | Implemented in `schema.py`; tests in `test_schema.py` |
-| 2C backend | `NgspiceBackend` ctypes wrapper | Implemented in `sim/ngspice.py`, `sim/backend.py`; tests in `test_sim.py` |
-| 2D runner | Worker-process isolation `JobRunner` | Implemented in `sim/jobs.py` (spawn process per job); tests in `test_jobs.py` |
-| 2E reproduce | 4-part SHA-256 identity system | Implemented in `sim/reproduce.py`; tests in `test_reproduce.py` |
-| 2F waveform | Typed SI waveform parser | Implemented in `sim/waveform.py`; tests in `test_waveform.py` |
-| 2G stress | 1-, 2-, 4-job concurrency suite | Implemented in `tests/test_stress.py`; isolates crashes and state leaks |
-| 2H inverter | CMOS Inverter prototype & testbench | COMMITTED 2026-09-06: `sim/inverter.py`, `sim/testbench.py`, `examples/plot_inverter.py`; tests in `test_inverter.py`. Two root-caused fixes en route (taxonomy Netlist): (1) SI-meter W/L fail PDK binned-model lookup — geometry emits ×1e6 microns + `.option scale=1e-6` + `.param mc_mm_switch=0` (ADR-020, 2x2 scale experiment); (2) floating `vss` return coupled output above rail — explicit `VSS vss 0 DC 0`. Evidence: EDA 182 passed; `artifacts/inverter_transient.png` 326 pts vin 0–1.8 / vout −0.019–1.808; Stage 2 checkpoint CONFIRMED by human 2026-09-06 |
+| Commit | Hash | Scope | Status & Evidence |
+|---|---|---|---|
+| 2A docs | `67f0a73` | Stage 2 brief + continuity sync | `docs/stages/stage-2.md` created; `context.md` and `To-Do.md` synchronized |
+| 2B schema | `83c53a0` | Migration v5 (`job`, `testbench`, `analysis`) | Implemented in `schema.py`; tests in `test_schema.py` |
+| 2C backend | `7466709` | `NgspiceBackend` ctypes wrapper | Implemented in `sim/ngspice.py`, `sim/backend.py`; tests in `test_sim.py` |
+| 2D runner | `0b5fcd4` | Worker-process isolation `JobRunner` | Implemented in `sim/jobs.py` (spawn process per job); tests in `test_jobs.py` |
+| 2E reproduce | `72a6a96` | 4-part SHA-256 identity system | Implemented in `sim/reproduce.py`; tests in `test_reproduce.py` |
+| 2F waveform | `8cc102b` | Typed SI waveform parser | Implemented in `sim/waveform.py`; tests in `test_waveform.py` |
+| 2G stress | `a42285f` | 1-, 2-, 4-job concurrency suite | Implemented in `tests/test_stress.py`; isolates crashes and state leaks |
+| 2H inverter | `f6aee05` | CMOS Inverter prototype & testbench | `sim/inverter.py`, `sim/testbench.py`, `examples/plot_inverter.py`; tests in `test_inverter.py`. Two root-caused fixes en route (taxonomy Netlist): (1) SI-meter W/L fail PDK binned-model lookup — geometry emits ×1e6 microns + `.option scale=1e-6` + `.param mc_mm_switch=0` (ADR-020, 2x2 scale experiment); (2) floating `vss` return coupled output above rail — explicit `VSS vss 0 DC 0`. Evidence: EDA 182 passed; `artifacts/inverter_transient.png` 326 pts vin 0–1.8 / vout −0.019–1.808; Stage 2 checkpoint CONFIRMED by human 2026-09-06 |
+| post-2H hardening | `eecaef0` | ngspice log tail on all run-phase `SimError`s; pure-Python no-analysis guard | Failing decks execute only in workers (ADR-021: in-process error-path C calls segfault later runs — observed full-suite crash, deselect-proven). Evidence: base 170+16, EDA 186, no crash |
+
+## Stage 3 — Measurement & Specification Engine (3A–3D committed; 3E+ open)
+
+| Commit | Hash | Scope | Status & Evidence |
+|---|---|---|---|
+| 3A contracts | `d61c674` | `MetricContract` matrix (8 contracts) + Migration v6 (`measurement`) | `metrics/contract.py`, `metrics/__init__.py`; tests in `test_metrics.py` (frozen/unique/invariants, v6 FK + cascade) |
+| 3B AC support | `cc8ab90` | Complex-vector capture + `ACWaveform`/`parse_ac` | `sim/ngspice.py` (`complex_vectors`), `sim/backend.py` + `sim/jobs.py` payload plumbing, `sim/waveform.py`; tests in `test_sim.py` + `test_waveform.py` |
+| 3C gain | `9884494` | `extract_dc_gain` / `extract_ac_gain` + `cs_amp_nmos` fixture + DC-sweep/AC assemblers | `metrics/gain.py`, `sim/cs_amp.py`, `sim/testbench.py` (`assemble_dc_sweep`, `assemble_ac`, both honor ADR-020); tests in `test_gain.py`. Gain checkpoint CONFIRMED by human 2026-09-06 (DC 9.1061 == AC 9.1059 V/V, rel 0.0000 < 0.05; base 196+19, EDA 215/215) |
+| 3D bandwidth | `43aaed6` | `extract_bandwidth` (unity-gain crossing, linear interp) | `metrics/bandwidth.py`; tests in `test_bandwidth.py` (exact crossings, first-crossing semantics, 7 rejections, live UGB). Bandwidth checkpoint CONFIRMED by human 2026-09-06 (UGB 2.07e7 Hz @ declared 1 pF load, 0dB-absolute reading; base 200+20, EDA 220/220). Load note: unloaded fixture pole sits beyond the 10 GHz sweep (gain 2.45 @10 GHz observed), so bandwidth is declared loaded — fixture untouched |
 
 ## NOT done (open, owned)
 

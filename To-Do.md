@@ -6,9 +6,9 @@
 ---
 
 ## Current Status Overview
-- **Active Phase**: Pre-Stage-2 verification — code complete through Stage 1G, human verdicts open
-- **Code Status**: ✅ Stage 0 (Commits 1–2 + EDA follow-up) and Stage 1 (Commits 1A–1G) committed, gate green (144 passed, ruff + mypy strict clean)
-- **Blocking**: 🔴 2.5 (Stage 0 signoff) and 🔴 1G (golden reference) verdicts RE-OPENED — premature closure on instruction alone was a Law 1 breach (see Tasks_Comp.md history); only an evaluated CONFIRMED/REJECTED/INSUFFICIENT closes them. No Stage 2 work until then.
+- **Active Phase**: Stage 3 — Measurement & Specification Engine (one metric at a time; 3A–3D done, gain + bandwidth checkpoints CONFIRMED, next 3E Phase Margin)
+- **Code Status**: ✅ Stages 0–2 committed & human-confirmed; Stage 3 commits 3A–3D landed. Gate green (base 200 passed + 20 skips, ruff + mypy strict clean on 52 files; EDA 220 passed, 0 failed).
+- **Blocking**: 🔴 Per-metric hand-calculation checkpoints (3E–3I) + 3J spec evaluator still ahead. No open verdicts behind us.
 
 ---
 
@@ -28,7 +28,7 @@
 - [x] **0.4 Master Task Tracker**
   - [x] Create [`To-Do.md`](file:///c:/MONEY/Cad/codeeahhhhhhh/To-Do.md) with hierarchical task checklists and strict pre-task update policy.
 - [x] **0.5 Architecture Decision Records (ADR)**
-  - [x] Create [`DECISIONS.md`](file:///c:/MONEY/Cad/codeeahhhhhhh/DECISIONS.md) documenting ADR-001 through ADR-014.
+  - [x] Create [`DECISIONS.md`](file:///c:/MONEY/Cad/codeeahhhhhhh/DECISIONS.md) documenting ADR-001 through ADR-021.
 - [x] **0.6 Stage 0 Prerequisite Specifications**
   - [x] Create [`PREREQUISITES.md`](file:///c:/MONEY/Cad/codeeahhhhhhh/PREREQUISITES.md) detailing exact pinned toolchain versions, WSL2 tuning, strict typing, MCP servers, and validation commands.
 - [ ] **0.7 Human Signoff of Phase 0**
@@ -36,7 +36,7 @@
 
 ---
 
-## Stage 0: Architecture & Packaging (Code complete 2026-09-05; 2.5 verdict pending)
+## Stage 0: Architecture & Packaging (Code complete + 2.5 CONFIRMED 2026-09-05; EDA follow-up GREEN)
 
 > **Commit Granularity**: Must land as two separate, cleanly isolated commits per master plan §10 addendum.
 > **Predecessor rule (ADR-015)**: Stage-0 EDA follow-up must go green BEFORE Stage 1G; no Stage 2 prompt before that.
@@ -91,7 +91,7 @@
 
 ## Future Stages Roadmap (High-Level Checklist)
 
-- [-] **Stage 1 — Circuit Kernel (Decomposed into Commits 1A–1G)** — code + 1G checkpoint CONFIRMED by human 2026-09-05
+- [x] **Stage 1 — Circuit Kernel (Decomposed into Commits 1A–1G)** — code + 1G checkpoint CONFIRMED by human 2026-09-05
   - [x] **Commit 1A**: Typed SI unit system (`Quantity`, `Farad`, `Ohm`, `Volt`, etc.) + boundary converters $\to$ unit tests. (OBSERVED 2026-09-05: 99 passed, ruff+mypy-strict clean, 274 new lines. No parser per ADR-018.)
   - [x] **Commit 1B**: Minimal SQLite schema (Project, Library, Cell, Symbol, Instance, Port, Net + existence-only DesignRevision/Artifact) + migration tests. (OBSERVED 2026-09-05: 108 passed, ruff+mypy-strict clean, 308 new lines.)
   - [x] **Commit 1C**: Design connectivity graph & net representation $\to$ connectivity tests. (OBSERVED 2026-09-05: 113 passed, ruff+mypy-strict clean, 221 new lines. Facts only — 1F judges.)
@@ -101,7 +101,7 @@
   - [x] **Commit 1G**: Hand-built NMOS golden fixture netlist. (OBSERVED 2026-09-05: 144 passed, ruff+mypy-strict clean. PDK-quoted X-model binding + migration v4 `kind`; hand-written `tests/golden/nmos.cir` byte-identical. W/L author-chosen for plausibility check.)
   - [x] **1G checkpoint verdict** — CONFIRMED by human 2026-09-05 (formal signoff: X prefix, d/g/s/b order, sky130_fd_pr__nfet_01v8, W=1e-06 m, L=1.5e-07 m hand-verified vs PDK deck).
   - [ ] ChatGPT Plus adversarial test authoring pass. (Unavailable in-session; covered by self-authored semantic-swap test + §8 audit. A human may run final_prompt.md second-model prompt manually.)
-- [-] **Stage 2 — Simulation Kernel** — IN PROGRESS (2B→2H per decomposition; stop at first inverter waveform for human checkpoint)
+- [x] **Stage 2 — Simulation Kernel** — COMPLETE 2026-09-06 (2B→2H + error-log hardening; first-waveform checkpoint CONFIRMED)
   - [x] **2B**: SQLite migration v5 (`job`, `testbench`, `analysis` tables + FKs) + unit tests. (OBSERVED 2026-09-05: 148 passed, ruff+mypy-strict clean. Status vocabulary constrained; payload/result JSON text.)
   - [x] **2C**: `NgspiceBackend` ctypes wrapper over libngspice.so (SendChar/SendStat/ControlledExit callbacks). (OBSERVED 2026-09-05: base 152 passed + 4 explicit skips; EDA 156 passed, 0 skipped. ruff+mypy-strict clean. RC transient real: bare `out` naming (not CLI `v(out)`), bitwise-deterministic re-runs.)
   - [x] **2D**: Local `Job` runner, worker-PROCESS isolation from Day One (no threads). (OBSERVED 2026-09-05: base 154 passed + 7 explicit skips; EDA jobs+sim 13 passed. One spawn process per job; timeout/cancel/crash-safe; races designed out, strict asserts.)
@@ -116,7 +116,6 @@
   - [x] **3C**: Metric 1 — DC/AC Gain contract + Common-Source benchmark + tests.
   - [x] 🔴 **HUMAN CHECKPOINT**: DC/AC Gain hand-calculation verification. — CONFIRMED by human 2026-09-06 (DC 9.1061 == AC 9.1059 V/V, rel_diff 0.0000 < 0.05; base 196+19, EDA 215/215).
   - [x] **3D**: Metric 2 — Bandwidth contract + -3dB crossing extraction + tests. (COMMITTED 2026-09-06: `metrics/bandwidth.py` UGB interp + `tests/test_bandwidth.py`; EDA UGB 2.07e7 Hz @1pF; base 200+20, EDA 220/220.)
-  - [x] 🔴 **HUMAN CHECKPOINT**: Bandwidth hand-calculation verification. — CONFIRMED by human 2026-09-06 (0dB-absolute reading, declared 1pF load).
   - [x] 🔴 **HUMAN CHECKPOINT**: Bandwidth hand-calculation verification. — CONFIRMED by human 2026-09-06 (0dB-absolute reading, declared 1pF load).
   - [ ] **3E**: Metric 3 — Phase Margin contract + return-ratio / loop-gain benchmark + tests.
   - [ ] 🔴 **HUMAN CHECKPOINT**: Phase Margin hand-calculation verification.

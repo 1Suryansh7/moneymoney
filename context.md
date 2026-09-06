@@ -82,12 +82,17 @@ Operational code and agent configuration NEVER hardcode model generation names (
 
 ## 5. Current Project Status & File Inventory
 
-### Active Status: STAGE 0 + STAGE 1 COMMITTED & HUMAN-CONFIRMED — STAGE 2 COMPLETE 2026-09-06
-> 2.5 + 1G CONFIRMED by formal human signoff 2026-09-05. Stage 2 decomposition
-> 2B→2H committed; first-inverter checkpoint CONFIRMED by human 2026-09-06
-> (rails, inversion, EDA 182 passed). PDK deck boundary: micron geometry +
-> scale=1e-6, explicit VSS ground (ADR-020). Next: Stage 3 MetricContracts,
-> one metric at a time. WSL2 Ubuntu is the sanctioned `make` shell
+### Active Status: STAGES 0–2 COMMITTED & HUMAN-CONFIRMED — STAGE 3 IN PROGRESS (3A–3D DONE)
+> 2.5 + 1G CONFIRMED 2026-09-05; Stage 2 (2B→2H + error-log hardening)
+> committed with first-waveform checkpoint CONFIRMED 2026-09-06 (rails,
+> inversion, EDA 182). Stage 3: 3A contract matrix + v6, 3B AC/complex,
+> 3C gain, 3D bandwidth committed; gain checkpoint CONFIRMED (DC 9.1061 ==
+> AC 9.1059 V/V) and bandwidth checkpoint CONFIRMED (UGB 2.07e7 Hz @1pF,
+> 0dB-absolute) 2026-09-06. Gate green: base 200+20, EDA 220/220, ruff +
+> mypy strict clean (52 files). Next: 3E Phase Margin (return-ratio
+> benchmark; current-mirror shortcut forbidden). PDK deck boundary: micron
+> geometry + scale=1e-6, explicit VSS ground (ADR-020); failing decks run
+> in workers only (ADR-021). WSL2 Ubuntu is the sanctioned `make` shell
 > (GNU Make 4.3 + Docker 29.6.2 verified); stock PowerShell has no `make`.
 
 ### Repository File Map
@@ -99,7 +104,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── AGENTS.md               # Layer 1 Global Rules (The 4 laws, checkpoints, units, safety)
 ├── context.md              # [THIS FILE] System continuity handbook and state memory
 ├── To-Do.md                # Granular task tracker (updated before and after every step)
-├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-019)
+├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-021)
 ├── PREREQUISITES.md        # Complete Stage 0 prerequisite specifications & verification
 ├── Dockerfile              # Layered build: base verified / eda GREEN (ADR-015/017)
 ├── docker-compose.yml      # app (base) + app-eda (eda profile) services
@@ -112,18 +117,20 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── tests/test_interfaces.py  # Law 4 backend contract tests (Commit 2)
 ├── tests/test_engine_api.py  # DesignEngine v0.1 freeze tests (Commit 2)
 ├── tests/test_units.py       # SI unit contract tests (1A)
-├── tests/test_schema.py      # migration + schema tests (1B, v1–v5)
+├── tests/test_schema.py      # migration + schema tests (1B, v1–v6)
 ├── tests/test_graph.py       # connectivity fact tests (1C)
 ├── tests/test_canonical.py   # canonical identity tests (1D)
 ├── tests/test_compiler.py    # netlist expectation tests (1E)
 ├── tests/test_validate.py    # gate rejection suite (1F)
 ├── tests/test_golden.py + tests/golden/nmos.cir  # golden fixture (1G, read-only)
 ├── tests/test_sim.py, test_jobs.py, test_reproduce.py, test_waveform.py, test_stress.py, test_inverter.py # Stage 2 tests
+├── tests/test_metrics.py, test_gain.py, test_bandwidth.py  # Stage 3 tests (contracts, gain, bandwidth)
 ├── examples/plot_inverter.py # Stage 2H waveform generation demo
 ├── src/analog_ic_design/     # ENGINE_API_VERSION=0.1; interfaces/, engine/,
-│                             # units/ (quantity, display), store/ (schema v5),
+│                             # units/ (quantity, display), store/ (schema v6),
 │                             # circuit/ (graph, canonical, compiler, validator),
-│                             # sim/ (backend, ngspice, jobs, reproduce, waveform, testbench, inverter)
+│                             # sim/ (backend, ngspice, jobs, reproduce, waveform, testbench, inverter, cs_amp),
+│                             # metrics/ (contract matrix, gain, bandwidth)
 ├── Tasks_Comp.md           # completed-tasks evidence ledger
 ├── docs/stages/stage-0.md  # Layer 2 stage brief (§7–§9: verification, audit, EDA)
 ├── docs/stages/stage-1.md  # Layer 2 stage brief (1A–1G + checkpoint)
