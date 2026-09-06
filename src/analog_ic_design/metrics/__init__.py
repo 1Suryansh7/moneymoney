@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from analog_ic_design.metrics.bandwidth import extract_bandwidth
 from analog_ic_design.metrics.contract import (
     AC_GAIN,
     BANDWIDTH,
@@ -35,5 +36,6 @@ __all__ = [
     "SLEW_RATE",
     "extract_ac_gain",
     "extract_ac_gain_db",
+    "extract_bandwidth",
     "extract_dc_gain",
 ]
