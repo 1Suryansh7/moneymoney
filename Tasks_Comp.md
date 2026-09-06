@@ -129,6 +129,26 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 | 3C gain | `9884494` | `extract_dc_gain` / `extract_ac_gain` + `cs_amp_nmos` fixture + DC-sweep/AC assemblers | `metrics/gain.py`, `sim/cs_amp.py`, `sim/testbench.py` (`assemble_dc_sweep`, `assemble_ac`, both honor ADR-020); tests in `test_gain.py`. Gain checkpoint CONFIRMED by human 2026-09-06 (DC 9.1061 == AC 9.1059 V/V, rel 0.0000 < 0.05; base 196+19, EDA 215/215) |
 | 3D bandwidth | `43aaed6` | `extract_bandwidth` (unity-gain crossing, linear interp) | `metrics/bandwidth.py`; tests in `test_bandwidth.py` (exact crossings, first-crossing semantics, 7 rejections, live UGB). Bandwidth checkpoint CONFIRMED by human 2026-09-06 (UGB 2.07e7 Hz @ declared 1 pF load, 0dB-absolute reading; base 200+20, EDA 220/220). Load note: unloaded fixture pole sits beyond the 10 GHz sweep (gain 2.45 @10 GHz observed), so bandwidth is declared loaded — fixture untouched |
 
+## CI post-mortem 2026-09-06 (first-ever GitHub run, both jobs red)
+
+- Symptom: `smoke` failed in 44 s, `eda` in 14 m 07 s — both at pytest
+  cache-write teardown with `PermissionError: Errno 13` on
+  `/workspace/pytest-cache-files-*`, AFTER all tests passed (98%+ dots, zero
+  failures; EDA image build + acceptance probes fully green).
+- Root cause: `docker-compose.yml` runs the container as UID 1000, but
+  GitHub checks out files owned by the runner UID (1001) — /workspace is
+  read-only for the test user. Locally the developer UID is 1000, so the
+  skew never manifests; CI had only ever run locally via `act`.
+- Fix (product-level, runner-agnostic): hermetic caches — pytest
+  `-p no:cacheprovider`, ruff `cache-dir` + mypy `cache_dir` → /tmp
+  (`pyproject.toml`); exact dev pins (`==`) so fresh builds resolve
+  identically. Proven by read-only-workspace replica (`docker run :ro`:
+  reproduced pre-fix, green post-fix for pytest+ruff+mypy) and a fresh
+  `--no-cache` base build (205+20, ruff+mypy clean).
+- Never-again: gates must never depend on workspace writability (replica
+  recipe above); fresh builds must resolve hermetically; first GitHub run
+  of any workflow change gets watched, not assumed.
+
 ## NOT done (open, owned)
 
 1. **Stage 3 — Measurement & Specification Engine** — 3E Phase Margin next (return-ratio benchmark; current-mirror shortcut forbidden), then 3F–3I (checkpoint each) + 3J evaluator.

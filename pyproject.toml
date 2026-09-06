@@ -11,17 +11,20 @@ license = { text = "Apache-2.0" }
 dependencies = []
 
 [project.optional-dependencies]
-# Floors per PREREQUISITES.md sections 4.1-4.4. Exact resolved versions are
-# recorded with `pip freeze` at image build time, never hand-guessed here.
+# Hermetic pins (2026-09-06): exact versions observed green in the pinned
+# images (base 3.11.16 + EDA 3.11.15). Floors (`>=`) let fresh builds
+# (notably first-ever cloud CI) silently resolve newer majors than the ones
+# proven locally — a whole failure class this removes. Bump deliberately
+# with a green local `--no-cache` build as evidence, never by floating.
 dev = [
-  "pytest>=8.0.0",
-  "pytest-cov>=5.0.0",
-  "mypy>=1.9.0",
-  "ruff>=0.3.0",
-  "pre-commit>=3.6.0",
+  "pytest==9.1.1",
+  "pytest-cov==7.1.0",
+  "mypy==2.3.1",
+  "ruff==0.16.6",
+  "pre-commit==4.6.2",
   # Waveform plotting for simulation artifacts (Stage 2H checkpoint PNG).
   # Human-approved 2026-09-05; playbook §3.2 prescribes matplotlib for Stage 2.
-  "matplotlib>=3.8.0",
+  "matplotlib==3.11.1",
 ]
 
 [tool.setuptools.packages.find]
@@ -29,7 +32,13 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--strict-markers --strict-config"
+# Hermetic gate (2026-09-06): `-p no:cacheprovider` disables the
+# `.pytest_cache` write entirely. CI checks out files owned by the runner
+# UID while the container runs as another UID, leaving /workspace read-only
+# for the test user — the first-ever GitHub run died at cache-write teardown
+# (exit 2, all tests green) on both jobs for exactly this reason. A test gate
+# must never depend on workspace writability.
+addopts = "--strict-markers --strict-config -p no:cacheprovider"
 filterwarnings = ["error"]
 
 [tool.coverage.run]
@@ -39,6 +48,9 @@ branch = true
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Hermetic gate (2026-09-06): lint cache lives in /tmp, never in the
+# workspace — same read-only-checkout reasoning as pytest above.
+cache-dir = "/tmp/ruff-cache"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
@@ -48,6 +60,9 @@ strict = true
 python_version = "3.11"
 show_error_codes = true
 warn_unused_ignores = true
+# Hermetic gate (2026-09-06): type cache lives in /tmp, never in the
+# workspace — same read-only-checkout reasoning as pytest above.
+cache_dir = "/tmp/mypy-cache"
 
 # Third-party stub tolerance (narrow): matplotlib ships varying stub
 # coverage across versions; missing stubs must not fail our gate.

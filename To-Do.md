@@ -95,6 +95,7 @@
 - [x] **H2**: `actions/checkout@v4` pinned to immutable SHA `11d5960a…` (PGP-verified v4); act dry-run plans clean.
 - [x] **H3**: Automated PDK W/L-minima checks — `circuit/pdk_limits.py` (nfet 3.6e-07/1.5e-07, pfet 4.2e-07/1.5e-07 m, extracted from pinned PDK bins); validator enforces as `schema`; unknown symbols unchecked. Evidence: base 205+20, EDA 225/225.
 - [x] **H4**: Adversarial self-review per §14.5 (same-family, not independent): clean — no SI leaks, side doors, gate bypasses, byte-equality on sim output, fabricated numbers, or taxonomy violations. Nits recorded: cs_amp docstring lacks bin citation; 3A/3C over 400-line cap; dead `state["complex"]` flag; `.fft` in no-analysis guard list (not a real card; harmless).
+- [x] **H5**: First GitHub CI run failed BOTH jobs at pytest cache-write teardown (all tests green) — container UID 1000 vs runner-owned files (Errno 13). Fix: hermetic caches (`-p no:cacheprovider`, ruff/mypy cache-dir → /tmp) + exact dep pins; proven via read-only-workspace replica + fresh `--no-cache` build. Evidence: base 205+20, EDA 225/225, ro-replica green.
 
 ---
 
