@@ -74,6 +74,11 @@ class JobRunner:
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._live: dict[str, mp.process.BaseProcess] = {}
 
+    @property
+    def db_path(self) -> str:
+        """Ledger path (fixture setup opens its own connection to it)."""
+        return self._db_path
+
     def submit_simulation(self, *, netlist: str, seed: int) -> str:
         """Record a pending job and start its worker process."""
         job_id = new_id()

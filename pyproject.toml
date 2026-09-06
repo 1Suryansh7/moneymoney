@@ -19,6 +19,9 @@ dev = [
   "mypy>=1.9.0",
   "ruff>=0.3.0",
   "pre-commit>=3.6.0",
+  # Waveform plotting for simulation artifacts (Stage 2H checkpoint PNG).
+  # Human-approved 2026-09-05; playbook §3.2 prescribes matplotlib for Stage 2.
+  "matplotlib>=3.8.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -45,3 +48,9 @@ strict = true
 python_version = "3.11"
 show_error_codes = true
 warn_unused_ignores = true
+
+# Third-party stub tolerance (narrow): matplotlib ships varying stub
+# coverage across versions; missing stubs must not fail our gate.
+[[tool.mypy.overrides]]
+module = "matplotlib.*"
+ignore_missing_imports = true

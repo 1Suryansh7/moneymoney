@@ -256,3 +256,14 @@
   - Complete rewrite in Rust/C++ (rejected: premature optimization, massive velocity penalty, loss of EDA/AI Python ecosystem, zero impact on ngspice solver bottlenecks).
   - Unrestricted use of native extensions (rejected: increases Docker container build complexity, cross-platform compilation friction, and maintenance burden without proven performance need).
 - **Consequences**: Platform remains maintainable and Python-centric; performance hot-paths can be accelerated surgically via PyO3/nanobind if empirically justified later under human signoff.
+
+---
+
+### ADR-020: PDK Deck Emission Uses Micron Geometry + scale=1e-6 (SI Stays Canonical)
+- **Date**: 2026-09-06
+- **Status**: Accepted
+- **Context**: Stage 2H inverter decks failed binned-model lookup (`could not find a valid modelname`) with SI-meter `W=`/`L=`. A 2x2 experiment in the pinned EDA image proved raw instance numbers must be microns (the Sky130 bin tables match unscaled numbers); SI meters fail at every `scale` setting, microns + `.option scale=1e-6` run clean with correct rail-to-rail physics. A second defect in the same path: the `vss` return net floated (no source), coupling the output above the rail.
+- **Decision**: Canonical values stay SI base units everywhere (DB, compiler, golden references incl. 1G). The ngspice deck emitter (`sim/testbench.py`, Stage 3 Testbench engine later) converts geometry (`W`, `L`) meters→microns (×1e6), emits `.param mc_mm_switch=0` + `.option scale=1e-6` per the ngspice-maintainer Sky130 recipe, and grounds every fixture return net explicitly (`VSS vss 0 DC 0`) since the compiler emits net names verbatim. Volts/seconds are never scaled.
+- **Rationale**: The deck is a tool-boundary artifact like the display layer — conversion at this single documented boundary preserves the SI law everywhere it matters, instead of leaking PDK micron convention into storage or the compiler.
+- **Alternatives Considered**: Emitting SI meters with `scale=1` (rejected: empirically fails model lookup); converting in the compiler (rejected: breaks 1G SI golden byte-identity).
+- **Consequences**: Every future testbench/deck path must route geometry through this boundary conversion; Stage 3's Testbench engine inherits the requirement.

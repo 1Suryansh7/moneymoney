@@ -1,34 +1,38 @@
 # Stage 2 — Simulation Kernel (Stage Brief, Layer 2)
 
-Source of truth: `final_build.md` Stage 2 + `final_prompt.md` Stage 2 prompt.
-Global rules: `AGENTS.md`. Architecture: ADR-006 (worker-process isolation
-from Day One), ADR-007 (four-part reproducibility identity), AGENTS.md §10.3.
+Source of truth: `final_build.md` Stage 2 + `final_prompt.md` Stage 2.
+Global rules: `AGENTS.md`.
 
-## 1. Scope (atomic commits, one testable claim each)
+## 1. Scope (Atomic Commits, ~100–250 lines each)
 
-| Commit | Content | Done-when |
+| Commit | Content | Done-When |
 |---|---|---|
-| 2B | Migration v5: `job`, `testbench`, `analysis` tables + FKs | ledger round-trips, statuses constrained |
-| 2C | `NgspiceBackend` ctypes wrapper over libngspice.so (SendChar / SendStat / ControlledExit callbacks per `sharedspice.h`) | library loads, backend implements `Simulator`, RC deck runs |
-| 2D | Local `Job` runner: one worker **process** per job (spawn; timeout/cancel/crash-safe). Zero in-process threading — libngspice global state forbids it | submit/wait/cancel semantics proven |
-| 2E | Canonical reproducibility identity: `design_identity_hash`, `execution_environment_hash`, `reproducibility_id`, `comparison_policy_id` (SHA-256, §14.1) | same inputs → same hashes; env change → different env hash |
-| 2F | Waveform parser into SI-typed structures (`Second`, `Volt`, `Ampere`) | typed waveform from raw vectors |
-| 2G | Concurrency & isolation stress suite: simultaneous 1-, 2-, 4-job workloads | zero cross-run contamination, no callback mixups, contained cancel/crash, deterministic re-runs |
-| 2H | CMOS inverter fixture (PDK-quoted PMOS binding read from on-disk PDK) + first transient via a Job + PNG to `artifacts/` | 🔴 HUMAN CHECKPOINT (see §3) |
+| 2A | Documentation & continuity sync | `context.md`, `To-Do.md`, `stage-2.md` in sync |
+| 2B | Packaging extras + SQLite Migration v5 | `matplotlib>=3.8.0` in dev; `job`, `testbench`, `analysis` tables live & tested |
+| 2C | `NgspiceBackend` via `libngspice` C API | Loads `libngspice.so.0.0.16` via ctypes, implements Simulator interface |
+| 2D | Local `Job` runner with worker-process isolation | Dispatches simulation jobs to child OS processes with zero cross-run state |
+| 2E | Canonical reproducibility identity | 4 SHA-256 hashes implemented: design, execution env, reproducibility ID, policy |
+| 2F | Typed SI waveform parser | Raw vectors parsed into typed `WaveformTrace` with `Quantity` base units |
+| 2G | Concurrency & isolation validation suite | Repeated 1-, 2-, 4-worker stress tests proving zero state leakage or corruption |
+| 2H | CMOS Inverter fixture, transient sim, PNG | First transient waveform returned & plotted $\to$ 🔴 BLOCKING HUMAN CHECKPOINT |
 
-No new dependencies — ctypes, multiprocessing, hashlib, sqlite3 are stdlib.
-Plotting for the checkpoint PNG is decided at 2H (dependency rules apply).
+## 2. Non-Goals (Out of Scope)
 
-## 2. Non-goals
+- No spec evaluation or metric calculation formulas (Stage 3).
+- No optimizer loops or parameter sweeps (Stage 4).
+- No GUI integration (Stage 7).
+- No physical layout or DRC/LVS decks (Stage 8).
+- No in-process multi-threading with `libngspice` (prohibited by §10.3 and ADR-010).
 
-No thread-based execution; no pool-reuse optimization (per-job processes
-until profiling demands otherwise); no measurement semantics (Stage 3); no
-optimizer (Stage 4); no spec evaluation.
+## 3. Mandatory Stop Condition & Blocking Checkpoint
 
-## 3. Stop condition (AGENTS.md §8)
+The moment the first transient waveform is generated for the CMOS inverter in Commit 2H:
+1. Plot the waveform and save to `artifacts/inverter_transient.png`.
+2. HALT execution immediately and emit:
 
-The moment the first inverter transient returns from libngspice: plot it,
-save PNG to `artifacts/`, verify rail-to-rail swing, correct inversion,
-plausible rise/fall for sky130, no convergence artifacts — then STOP and
-raise `[ HUMAN CHECKPOINT — Stage 2 / First simulation ]`. This run becomes
-the template every other testbench copies. No Stage 3 code before verdict.
+```text
+[ HUMAN CHECKPOINT — Stage 2 / First simulation ]
+Trigger: First transient waveform returned from libngspice for the inverter.
+Check: Waveform shape, rail-to-rail swing (0 to 1.8V), correct logic inversion, plausible rise/fall times for Sky130, no convergence artifacts.
+Status: BLOCKING — not proceeding until you confirm.
+```

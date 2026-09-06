@@ -108,8 +108,8 @@
   - [x] **2E**: Canonical reproducibility identity (4 SHA-256 concepts per §14.1). (OBSERVED 2026-09-05: base 160 passed + 7 skips; EDA 167 passed, 0 skipped. Pure functions; backend `_identity` repointed; tolerance is policy, not identity.)
   - [x] **2F**: Waveform parser into SI-typed structures (`Volt`, `Second`, `Ampere`). (OBSERVED 2026-09-05: base 165 passed + 7 skips; EDA 172 passed, 0 skipped. Pure `parse_transient`; `#branch` → Ampere; non-finite → SimError.)
   - [x] **2G**: Concurrency & isolation stress suite (1-, 2-, 4-job workloads). (OBSERVED 2026-09-05: base 165 passed + 12 skips; EDA 177 passed, 0 skipped. Simultaneous diverse decks/seeds/sizes; exact attribution; SIGKILL containment. Fixed en route: double-encoded result JSON; crash-marking for pre-running deaths.)
-  - [ ] **2H**: CMOS inverter fixture (PDK-quoted PMOS) + first transient + PNG.
-  - [ ] 🔴 **HUMAN CHECKPOINT**: First inverter transient waveform verification.
+  - [x] **2H**: CMOS inverter fixture (PDK-quoted PMOS) + first transient + PNG. (COMMITTED 2026-09-06: `sim/testbench.py` assembler + `sim/inverter.py` prototype builder; EDA 182 passed; plot reproduced deterministically.)
+  - [x] 🔴 **HUMAN CHECKPOINT**: First inverter transient waveform verification. — CONFIRMED by human 2026-09-06 (rails 0–1.8V, correct inversion, 326 pts, EDA 182 passed).
 - [ ] **Stage 3 — Measurement & Specification Engine**
   - [ ] Formal `MetricContract` matrix definition.
   - [ ] Implement 7 canonical metrics one by one (DC/AC gain, bandwidth, PM, slew, power, offset, settling).
