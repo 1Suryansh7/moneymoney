@@ -31,8 +31,8 @@
   - [x] Create [`DECISIONS.md`](file:///c:/MONEY/Cad/codeeahhhhhhh/DECISIONS.md) documenting ADR-001 through ADR-021.
 - [x] **0.6 Stage 0 Prerequisite Specifications**
   - [x] Create [`PREREQUISITES.md`](file:///c:/MONEY/Cad/codeeahhhhhhh/PREREQUISITES.md) detailing exact pinned toolchain versions, WSL2 tuning, strict typing, MCP servers, and validation commands.
-- [ ] **0.7 Human Signoff of Phase 0**
-  - [ ] Present completed governance and prerequisite set to human for review.
+- [x] **0.7 Human Signoff of Phase 0** — CONFIRMED by human 2026-09-06.
+  - [x] Present completed governance and prerequisite set to human for review.
 
 ---
 
@@ -86,6 +86,15 @@
   - [x] Human verification of stranger-runs-this command sequence and committed API signatures.
 - [x] **2.6 Stage-0 EDA follow-up** (was predecessor-blocked; GREEN 2026-09-05)
   - [x] EDA image builds with all acceptance probes passing; debt doc closed; PREREQUISITES refreshed; 1G/Stage 2 unblocked on the EDA front.
+
+---
+
+## Housekeeping (completed 2026-09-06, no stage scope)
+
+- [x] **H1**: GitHub connection — `origin` → `RobinBroG/moneymoney`, branch `main`, all commits pushed (remote HEAD verified equal). Human to confirm Actions green + default branch.
+- [x] **H2**: `actions/checkout@v4` pinned to immutable SHA `11d5960a…` (PGP-verified v4); act dry-run plans clean.
+- [x] **H3**: Automated PDK W/L-minima checks — `circuit/pdk_limits.py` (nfet 3.6e-07/1.5e-07, pfet 4.2e-07/1.5e-07 m, extracted from pinned PDK bins); validator enforces as `schema`; unknown symbols unchecked. Evidence: base 205+20, EDA 225/225.
+- [x] **H4**: Adversarial self-review per §14.5 (same-family, not independent): clean — no SI leaks, side doors, gate bypasses, byte-equality on sim output, fabricated numbers, or taxonomy violations. Nits recorded: cs_amp docstring lacks bin citation; 3A/3C over 400-line cap; dead `state["complex"]` flag; `.fft` in no-analysis guard list (not a real card; harmless).
 
 ---
 

@@ -131,8 +131,10 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **Stage 3 — Measurement & Specification Engine** — 3A (contract matrix + v6) / 3B (AC + complex) / 3C (DC-AC gain + cs_amp) COMMITTED 2026-09-06 by parallel session; gain checkpoint CONFIRMED by human 2026-09-06 (DC 9.1061 == AC 9.1059 V/V, rel 0.0000; base 196+19, EDA 215/215). 3D (bandwidth UGB interp + tests) COMMITTED 2026-09-06; bandwidth checkpoint CONFIRMED by human 2026-09-06 (UGB 2.07e7 Hz @ declared 1pF, 0dB-absolute reading; base 200+20, EDA 220/220). Next: 3E Phase Margin.
-2. **Push + GitHub Actions run** — no remote configured; CI has only proven itself locally via `act`. Needs: `git remote add` + push + green run observation.
+1. **Stage 3 — Measurement & Specification Engine** — 3E Phase Margin next (return-ratio benchmark; current-mirror shortcut forbidden), then 3F–3I (checkpoint each) + 3J evaluator.
+2. **Push + GitHub Actions run** — CONNECTED 2026-09-06: `origin` → `RobinBroG/moneymoney`, branch `main`, all commits pushed (remote HEAD == local `0859745`, verified). CI pin hardened (`actions/checkout@11d5960a…`, PGP-verified v4). Remote Actions UI not observable from here (private repo) — human to confirm green run + default branch `main`.
+4. `actions/checkout@v4` floating major — CLOSED 2026-09-06 (pinned to immutable SHA `11d5960a326750d5838078e36cf38b85af677262`; act dry-run plans clean).
+5. Automated W/L-minima checks — CLOSED 2026-09-06 (`circuit/pdk_limits.py` ingested from pinned PDK bins; validator enforces as `schema`; base 205+20, EDA 225/225).
 4. `actions/checkout@v4` floating major (accepted for now; Dependabot later).
 5. Automated W/L-minima checks (needs PDK minima ingestion; human eyes cover it at checkpoints).
 6. Everything Stage 3E+ (phase margin next, one metric at a time).

@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        # Pinned to immutable SHA (v4, 2026-07-16, PGP-verified); never float majors.
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Build pinned base image and run packaging gate
         run: make setup
@@ -25,7 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        # Pinned to immutable SHA (v4, 2026-07-16, PGP-verified); never float majors.
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Build pinned EDA image (acceptance probes run inside the build)
         run: docker compose --profile eda build app-eda

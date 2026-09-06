@@ -14,6 +14,7 @@ from collections.abc import Generator
 import pytest
 
 from analog_ic_design.circuit import (
+    DEVICE_MINIMA,
     ValidationError,
     record_errors,
     validate,
@@ -196,3 +197,82 @@ def test_specification_models_three_objective_kinds(db: sqlite3.Connection) -> N
 
 def test_validation_error_is_value_error() -> None:
     assert issubclass(ValidationError, ValueError)
+
+
+def test_pdk_minima_table_sanity() -> None:
+    assert set(DEVICE_MINIMA) == {"nfet_01v8", "pfet_01v8"}
+    for device, (w_min, l_min) in DEVICE_MINIMA.items():
+        assert w_min > 0.0 and l_min > 0.0, device
+
+
+def _sky_cell(db: sqlite3.Connection, device: str, width: float, length: float) -> str:
+    """Minimal Sky130-bound cell: one instance with W/L geometry."""
+    pid, lib, cell, tech = (new_id() for _ in range(4))
+    symcell, sym = new_id(), new_id()
+    db.execute("INSERT INTO project VALUES (?, ?, ?)", (pid, "sky", STAMP))
+    db.execute("INSERT INTO library VALUES (?, ?, ?, ?)", (lib, pid, "l", STAMP))
+    db.execute("INSERT INTO cell VALUES (?, ?, ?, ?)", (cell, lib, "skyamp", STAMP))
+    db.execute("INSERT INTO cell VALUES (?, ?, ?, ?)", (symcell, lib, "dev", STAMP))
+    db.execute(
+        "INSERT INTO technology VALUES (?, ?, ?, ?, ?)",
+        (tech, pid, "sky130A", "fd_pr@403964dc", STAMP),
+    )
+    db.execute(
+        "INSERT INTO model_binding"
+        " (id, technology_id, device_symbol, model_name, pin_order, kind, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (new_id(), tech, device, "sky130_model", "d g s b", "subckt", STAMP),
+    )
+    db.execute("INSERT INTO symbol VALUES (?, ?, ?, ?)", (sym, symcell, device, STAMP))
+    inst = new_id()
+    db.execute("INSERT INTO instance VALUES (?, ?, ?, ?, ?)", (inst, cell, sym, "m1", STAMP))
+    rail = "vss" if device == "nfet_01v8" else "vdd"
+    nets: dict[str, str] = {}
+    for name in ("in", "out", rail):
+        nid = new_id()
+        nets[name] = nid
+        db.execute("INSERT INTO net VALUES (?, ?, ?, ?)", (nid, cell, name, STAMP))
+    for term, net in (("d", "out"), ("g", "in"), ("s", rail), ("b", rail)):
+        db.execute(
+            "INSERT INTO port VALUES (?, NULL, ?, ?, ?, ?)",
+            (new_id(), inst, nets[net], term, STAMP),
+        )
+    db.execute("INSERT INTO parameter VALUES (?, ?, ?, ?, ?)", (new_id(), inst, "W", width, STAMP))
+    db.execute("INSERT INTO parameter VALUES (?, ?, ?, ?, ?)", (new_id(), inst, "L", length, STAMP))
+    db.commit()
+    return cell
+
+
+def test_below_minimum_geometry_rejected(db: sqlite3.Connection) -> None:
+    cell = _sky_cell(db, "nfet_01v8", 3.0e-07, 160e-09)
+    report = validate(db, cell)
+    assert not report.valid
+    schema_msgs = [v.message for v in report.violations if v.category == "schema"]
+    assert any("minimum" in m and "'W'" in m for m in schema_msgs)
+
+    cell = _sky_cell(db, "nfet_01v8", 1e-06, 100e-09)
+    report = validate(db, cell)
+    assert not report.valid
+    schema_msgs = [v.message for v in report.violations if v.category == "schema"]
+    assert any("minimum" in m and "'L'" in m for m in schema_msgs)
+
+
+def test_minima_are_per_device(db: sqlite3.Connection) -> None:
+    # W=4.0e-07 clears the nfet floor (3.6e-07) but breaches pfet (4.2e-07).
+    assert validate(db, _sky_cell(db, "nfet_01v8", 4.0e-07, 160e-09)).valid
+    report = validate(db, _sky_cell(db, "pfet_01v8", 4.0e-07, 160e-09))
+    assert not report.valid
+    assert any("minimum" in v.message for v in report.violations)
+
+
+def test_minimum_boundary_accepted(db: sqlite3.Connection) -> None:
+    assert validate(db, _sky_cell(db, "nfet_01v8", 3.6e-07, 1.5e-07)).valid
+    assert validate(db, _sky_cell(db, "pfet_01v8", 4.2e-07, 1.5e-07)).valid
+
+
+def test_unknown_symbol_geometry_unchecked(db: sqlite3.Connection) -> None:
+    # Generic TEST devices have no PDK minima: no invented limits apply.
+    m1 = db.execute("SELECT id FROM instance WHERE name = 'm1'").fetchone()[0]
+    db.execute("UPDATE parameter SET value = ? WHERE instance_id = ?", (1e-09, m1))
+    db.commit()
+    assert validate(db, _cell(db)).valid

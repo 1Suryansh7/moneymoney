@@ -88,8 +88,11 @@ Operational code and agent configuration NEVER hardcode model generation names (
 > inversion, EDA 182). Stage 3: 3A contract matrix + v6, 3B AC/complex,
 > 3C gain, 3D bandwidth committed; gain checkpoint CONFIRMED (DC 9.1061 ==
 > AC 9.1059 V/V) and bandwidth checkpoint CONFIRMED (UGB 2.07e7 Hz @1pF,
-> 0dB-absolute) 2026-09-06. Gate green: base 200+20, EDA 220/220, ruff +
-> mypy strict clean (52 files). Next: 3E Phase Margin (return-ratio
+> 0dB-absolute) 2026-09-06. Gate green: base 205+20, EDA 225/225, ruff +
+> mypy strict clean (53 files). Housekeeping 2026-09-06: GitHub `origin`
+> connected, `main` pushed (HEAD verified equal); checkout pinned to SHA;
+> PDK W/L minima enforced by validator (nfet 3.6e-07/1.5e-07, pfet
+> 4.2e-07/1.5e-07 m). Next: 3E Phase Margin (return-ratio
 > benchmark; current-mirror shortcut forbidden). PDK deck boundary: micron
 > geometry + scale=1e-6, explicit VSS ground (ADR-020); failing decks run
 > in workers only (ADR-021). WSL2 Ubuntu is the sanctioned `make` shell
@@ -128,7 +131,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── examples/plot_inverter.py # Stage 2H waveform generation demo
 ├── src/analog_ic_design/     # ENGINE_API_VERSION=0.1; interfaces/, engine/,
 │                             # units/ (quantity, display), store/ (schema v6),
-│                             # circuit/ (graph, canonical, compiler, validator),
+│                             # circuit/ (graph, canonical, compiler, validator, pdk_limits),
 │                             # sim/ (backend, ngspice, jobs, reproduce, waveform, testbench, inverter, cs_amp),
 │                             # metrics/ (contract matrix, gain, bandwidth)
 ├── Tasks_Comp.md           # completed-tasks evidence ledger

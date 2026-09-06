@@ -16,6 +16,7 @@ from analog_ic_design.circuit.graph import (
     PortRef,
     build_graph,
 )
+from analog_ic_design.circuit.pdk_limits import DEVICE_MINIMA, GEOMETRY_PARAMS
 from analog_ic_design.circuit.validator import (
     ValidationError,
     ValidationReport,
@@ -30,6 +31,8 @@ __all__ = [
     "CanonicalTerminal",
     "CompilerError",
     "ConnectivityGraph",
+    "DEVICE_MINIMA",
+    "GEOMETRY_PARAMS",
     "GraphError",
     "NetNode",
     "PortRef",

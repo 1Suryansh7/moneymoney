@@ -6,8 +6,11 @@ report. Category mapping (the taxonomy has no connectivity/model-binding
 entries of their own): structural/model problems -> `schema`; hookup and
 compilability problems -> `netlist`. Degree-1 nets are NOT violations:
 supplies legitimately fan in off-cell (proven in 1C test data); degree-0
-nets and NULL-hooked ports are. Sign/domain rules beyond finiteness are
-not unit business (see 1A limits).
+nets and NULL-hooked ports are. Geometry domain rules (W/L at or above the
+PDK bin minima in `pdk_limits`, Law-2-grounded ingestion) are enforced here
+as `schema` violations; unknown device symbols are unchecked (no invented
+limits). Anything else beyond finiteness stays out of the unit layer
+(see 1A limits).
 
 `record_errors()` persists a failing report as `error_record` rows —
 explicitly, never as a side effect of `validate()` (pure check). Spec
@@ -22,6 +25,7 @@ import sqlite3
 from dataclasses import dataclass
 
 from analog_ic_design.circuit.graph import build_graph
+from analog_ic_design.circuit.pdk_limits import DEVICE_MINIMA, GEOMETRY_PARAMS
 from analog_ic_design.store.schema import new_id, utcnow_iso
 
 
@@ -139,6 +143,38 @@ def validate(conn: sqlite3.Connection, cell_id: str) -> ValidationReport:
             found.append(
                 _v("schema", f"parameter {pname!r} of {iname!r} is not a finite SI number")
             )
+    if technology_id:
+        # Convention shared with the compiler: an instance's symbol name
+        # resolves to `model_binding.device_symbol` for its technology.
+        # Symbols absent from DEVICE_MINIMA are unchecked (no invented limits).
+        rows = conn.execute(
+            "SELECT i.name, s.name, p.name, p.value FROM parameter p"
+            " JOIN instance i ON i.id = p.instance_id"
+            " JOIN symbol s ON s.id = i.symbol_id WHERE i.cell_id = ?",
+            (cell_id,),
+        ).fetchall()
+        for iname, sname, pname, pvalue in rows:
+            limits = DEVICE_MINIMA.get(str(sname))
+            if limits is None:
+                continue
+            key = str(pname).upper()
+            if key not in GEOMETRY_PARAMS:
+                continue
+            if (
+                isinstance(pvalue, bool)
+                or not isinstance(pvalue, (int, float))
+                or not math.isfinite(float(pvalue))
+            ):
+                continue  # already reported as non-finite above
+            minimum = limits[0] if key == "W" else limits[1]
+            if float(pvalue) < minimum:
+                found.append(
+                    _v(
+                        "schema",
+                        f"parameter {pname!r} of {iname!r} ({sname}) is"
+                        f" {float(pvalue)!r} m below PDK minimum {minimum!r} m",
+                    )
+                )
     return ValidationReport(cell_id=cell_id, valid=not found, violations=tuple(found))
 
 
