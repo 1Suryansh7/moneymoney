@@ -133,6 +133,7 @@ class RawSim:
     """Raw run outcome: vector name -> samples, plus the ngspice log."""
 
     vectors: dict[str, list[float]] = field(default_factory=dict)
+    complex_vectors: dict[str, list[complex]] = field(default_factory=dict)
     log: str = ""
 
 
@@ -163,15 +164,21 @@ def run_deck(*, lib_path: str = _DEFAULT_LIB, lines: list[str]) -> RawSim:
             "(.tran/.dc/.ac/.op/.pz/.tf/.noise/.sens/.disto/.four/.fft) "
             "— nothing for ngspice to run"
         )
-    lib = _load(lib_path)
     lib.ngSpice_Init.restype = c_int
     lib.ngSpice_Command.restype = c_int
     lib.ngSpice_Command.argtypes = [c_char_p]
     lib.ngSpice_Circ.restype = c_int
 
-    state: dict[str, object] = {"log": [], "data": {}, "complex": False, "aborted": ""}
+    state: dict[str, object] = {
+        "log": [],
+        "data": {},
+        "complex_data": {},
+        "complex": False,
+        "aborted": "",
+    }
     log: list[str] = state["log"]  # type: ignore[assignment]
     data: dict[str, list[float]] = state["data"]  # type: ignore[assignment]
+    complex_data: dict[str, list[complex]] = state["complex_data"]  # type: ignore[assignment]
 
     def on_char(msg: bytes | None, _id: int, _ud: object) -> int:
         log.append((msg or b"").decode("utf-8", "replace"))
@@ -195,6 +202,9 @@ def run_deck(*, lib_path: str = _DEFAULT_LIB, lines: list[str]) -> RawSim:
             name = (vec.name or b"").decode("utf-8", "replace")
             if vec.is_complex:
                 state["complex"] = True
+                complex_data.setdefault(name, []).append(
+                    complex(float(vec.creal), float(vec.cimag))
+                )
             data.setdefault(name, []).append(float(vec.creal))
         return 0
 
@@ -219,8 +229,6 @@ def run_deck(*, lib_path: str = _DEFAULT_LIB, lines: list[str]) -> RawSim:
     _ = cbs
     if state["aborted"]:
         raise _fail(f"SPICE convergence: {state['aborted']}", log)
-    if state["complex"]:
-        raise _fail("SPICE convergence: complex data unsupported in transient path", log)
-    if not data:
+    if not data and not complex_data:
         raise _fail("SPICE convergence: run produced no vectors", log)
-    return RawSim(vectors=data, log="".join(log))
+    return RawSim(vectors=data, complex_vectors=complex_data, log="".join(log))

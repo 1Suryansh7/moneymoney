@@ -47,7 +47,11 @@ def _simulate_worker(db_path: str, job_id: str, netlist: str, seed: int, lib_pat
         out = NgspiceBackend(lib_path=lib_path).simulate(netlist=netlist, seed=seed)
         raw = json.loads(out.raw_output.decode())
         payload = json.dumps(
-            {"reproducibility_id": out.reproducibility_id, "vectors": raw["vectors"]}
+            {
+                "reproducibility_id": out.reproducibility_id,
+                "vectors": raw["vectors"],
+                "complex_vectors": raw.get("complex_vectors", {}),
+            }
         )
         conn.execute(
             "UPDATE job SET status = 'succeeded', result = ?, updated_at = ? WHERE id = ?",

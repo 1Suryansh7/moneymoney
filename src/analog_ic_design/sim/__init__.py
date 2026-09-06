@@ -15,24 +15,34 @@ from analog_ic_design.sim.reproduce import (
     waveforms_close,
 )
 from analog_ic_design.sim.testbench import assemble_transient
-from analog_ic_design.sim.waveform import Trace, Waveform, parse_transient
+from analog_ic_design.sim.waveform import (
+    ACTrace,
+    ACWaveform,
+    Trace,
+    Waveform,
+    parse_ac,
+    parse_transient,
+)
 
 __all__ = [
+    "ACTrace",
+    "ACWaveform",
     "COMPARISON_POLICY_ID",
     "JobResult",
     "JobRunner",
     "NgspiceBackend",
     "RawSim",
     "SimError",
-    "assemble_transient",
     "Trace",
     "Waveform",
+    "assemble_transient",
     "build_inverter",
     "canonical_encode",
     "design_identity_hash",
     "execution_environment_hash",
     "libngspice_available",
     "normalize_netlist",
+    "parse_ac",
     "parse_transient",
     "reproducibility_id",
     "run_deck",

@@ -37,7 +37,14 @@ class NgspiceBackend(Simulator):
             raise SimError("Schema: seed must be an int")
         raw = run_deck(lib_path=self._lib_path, lines=netlist.splitlines())
         payload = json.dumps(
-            {"vectors": {k: list(v) for k, v in raw.vectors.items()}, "log": raw.log},
+            {
+                "vectors": {k: list(v) for k, v in raw.vectors.items()},
+                "complex_vectors": {
+                    k: [[v.real, v.imag] for v in vecs]
+                    for k, vecs in raw.complex_vectors.items()
+                },
+                "log": raw.log,
+            },
             sort_keys=True,
         ).encode("utf-8")
         return SimulateResult(reproducibility_id=_identity(netlist, seed), raw_output=payload)

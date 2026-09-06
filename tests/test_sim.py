@@ -8,6 +8,7 @@ identity tests run everywhere.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -33,6 +34,15 @@ RC_DECK = [
     "R1 in out 1k",
     "C1 out 0 1p",
     ".tran 0.1n 30n",
+    ".end",
+]
+
+RC_AC_DECK = [
+    "* rc lowpass ac test",
+    "V1 in 0 DC 0 AC 1.0",
+    "R1 in out 1k",
+    "C1 out 0 1p",
+    ".ac dec 10 1 100meg",
     ".end",
 ]
 
@@ -76,6 +86,36 @@ def test_rc_transient_through_lib() -> None:
     # constants toward the 1.8 V rail. Solver tolerance, not bitwise
     # (bitwise determinism has its own test below).
     assert abs(values[-1] - 1.8) < 1e-3
+
+
+@NEEDS_LIB
+def test_rc_ac_small_signal_through_lib() -> None:
+    from analog_ic_design.sim.waveform import parse_ac
+
+    raw = run_deck(lines=RC_AC_DECK)
+    assert "frequency" in raw.vectors
+    assert "out" in raw.complex_vectors
+    ac = parse_ac(raw)
+    assert len(ac.frequency) > 10
+    out = ac.trace("out")
+    # Low frequency: gain ~ 1.0 (0 dB), phase ~ 0 deg
+    assert abs(out.magnitude()[0] - 1.0) < 1e-3
+    assert abs(out.phase_deg()[0]) < 0.1
+    # At f=100MHz, fc = 1 / (2*pi*R*C) ~ 159.15MHz
+    # H = 1 / sqrt(1 + (f/fc)^2) ~ 0.8467
+    fc = 1.0 / (2.0 * 3.141592653589793 * 1000.0 * 1e-12)
+    expected_mag = 1.0 / (1.0 + (100e6 / fc) ** 2) ** 0.5
+    assert abs(out.magnitude()[-1] - expected_mag) < 1e-3
+
+
+@NEEDS_LIB
+def test_backend_ac_simulate_carries_complex_vectors() -> None:
+    backend = NgspiceBackend()
+    res = backend.simulate(netlist="\n".join(RC_AC_DECK) + "\n", seed=3)
+    data = json.loads(res.raw_output.decode())
+    assert "complex_vectors" in data
+    assert "out" in data["complex_vectors"]
+    assert len(data["complex_vectors"]["out"]) > 10
 
 
 @NEEDS_LIB
