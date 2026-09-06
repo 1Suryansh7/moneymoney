@@ -8,11 +8,19 @@ identity tests run everywhere.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from analog_ic_design.interfaces.simulator import Simulator
 from analog_ic_design.sim.backend import NgspiceBackend, _identity
-from analog_ic_design.sim.ngspice import SimError, libngspice_available, run_deck
+from analog_ic_design.sim.ngspice import (
+    SimError,
+    _fail,
+    _has_analysis,
+    libngspice_available,
+    run_deck,
+)
 
 NEEDS_LIB = pytest.mark.skipif(
     not libngspice_available(),
@@ -87,3 +95,59 @@ def test_backend_simulate_end_to_end() -> None:
 @NEEDS_LIB
 def test_simulator_version_names_ngspice() -> None:
     assert "ngspice" in NgspiceBackend().simulator_version().lower()
+
+
+def test_fail_attaches_log_tail() -> None:
+    err = _fail("SPICE convergence: boom", ["ab", "cd"])
+    assert "SPICE convergence: boom" in str(err)
+    assert "ngspice log (tail)" in str(err)
+    assert "abcd" in str(err)
+    assert "(empty log)" in str(_fail("Schema: x", []))
+
+
+@NEEDS_LIB
+def test_worker_error_carries_ngspice_log(tmp_path: Path) -> None:
+    # Error-path C calls corrupt libngspice process-global state (observed
+    # 2026-09-06: full-suite segfault in the test after an in-process
+    # Circ/run failure), so failing decks execute ONLY in workers here —
+    # crash containment is the worker architecture's job (Stage 2D).
+    from analog_ic_design.sim.jobs import JobRunner
+    from analog_ic_design.store import connect, migrate
+
+    db = str(tmp_path / "simerr.sqlite")
+    conn = connect(db)
+    migrate(conn)
+    conn.close()
+    jobs = JobRunner(db_path=db)
+    try:
+        deck = "\n".join(
+            [
+                "* bad include",
+                ".include /nonexistent/x.spice",
+                ".tran 0.1n 30n",
+                ".end",
+                ""
+            ]
+        )
+        result = jobs.wait(jobs.submit_simulation(netlist=deck, seed=0), timeout=120)
+    finally:
+        jobs.shutdown()
+    assert result.status == "failed", result.status
+    assert result.error is not None
+    assert "ngspice log (tail)" in result.error
+
+
+def test_deck_without_analysis_rejected_before_simulator() -> None:
+    # Pure-Python guard (no library needed): a no-analysis `run` corrupts
+    # libngspice process-global state, so it must never reach the C API.
+    assert _has_analysis(["* c", "V1 a 0 DC 1", ".tran 0.1n 30n", ".end"])
+    assert _has_analysis([".control", "run", ".endc", ".op", ".end"])
+    assert not _has_analysis(["* no analysis", "V1 a 0 DC 1", "R1 a 0 1k", ".end"])
+    assert not _has_analysis([".control", "run", ".endc", ".end"])
+    assert not _has_analysis([])
+
+
+@NEEDS_LIB
+def test_run_deck_without_analysis_raises_netlist() -> None:
+    with pytest.raises(SimError, match="no analysis"):
+        run_deck(lines=["* no analysis", "V1 a 0 DC 1", "R1 a 0 1k", ".end"])

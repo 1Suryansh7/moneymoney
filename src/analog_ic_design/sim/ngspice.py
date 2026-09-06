@@ -12,11 +12,19 @@ Design: one `run_deck` call = Init-once-per-process + Circ + foreground
 ngspice's internal dvec layout). CDLL handles are cached per process and
 never unloaded (matches the 2D worker model: one sim per process).
 Complex data is fail-closed (AC support is Stage 3+ scope).
+
+Hardening rule (ADR-021): ERROR-path C calls (rejected Circ, failed `run`)
+corrupt libngspice process-global state and segfault LATER in-process runs
+in the same process (observed 2026-09-06). Production and EDA-test
+execution of failing decks therefore belongs in worker processes (2D),
+never in a long-lived process; `run_deck` fail-closes in pure Python
+wherever it can (empty/dead decks, no-analysis decks) before touching C.
 """
 
 from __future__ import annotations
 
 import ctypes
+import re
 from ctypes import (
     CFUNCTYPE,
     POINTER,
@@ -33,7 +41,45 @@ from typing import Any
 class SimError(ValueError):
     """Simulation cannot run or produced no data. Taxonomy: load/init and
     environment problems -> `schema`; deck problems -> `netlist`; run/data
-    problems -> `spice_convergence`. The message always states the trigger."""
+    problems -> `spice_convergence`. The message always states the trigger.
+    Run-phase errors additionally carry the ngspice log tail, so a failure
+    never discards the only diagnostic the simulator produced."""
+
+
+#: Cap on log text attached to an error (full log stays on `RawSim.log`).
+_LOG_TAIL_CHARS = 2000
+
+#: SPICE analysis cards. A deck without one makes `run` a no-op that leaves
+#: libngspice's process-global state corrupt enough to segfault a LATER
+#: in-process `run` (observed 2026-09-06: full-suite segfault in the test
+#: after a no-analysis deck ran). Fail closed before touching the C API.
+_ANALYSIS_RE = re.compile(r"\.(tran|dc|ac|op|pz|tf|noise|sens|disto|four|fft)\b", re.IGNORECASE)
+
+
+def _has_analysis(lines: list[str]) -> bool:
+    """True iff the deck defines at least one analysis card outside comments
+    and `.control` blocks (whose dotless commands are not analyses)."""
+    in_control = False
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith(("*", "#", "$")):
+            continue
+        low = line.lower()
+        if low == ".control":
+            in_control = True
+            continue
+        if low == ".endc":
+            in_control = False
+            continue
+        if not in_control and _ANALYSIS_RE.search(line):
+            return True
+    return False
+
+
+def _fail(message: str, log: list[str]) -> SimError:
+    """Build a run-phase `SimError` with the ngspice log tail attached."""
+    tail = "".join(log)[-_LOG_TAIL_CHARS:]
+    return SimError(f"{message}\n--- ngspice log (tail) ---\n{tail or '(empty log)'}")
 
 
 class _VecValues(ctypes.Structure):
@@ -111,6 +157,13 @@ def _load(lib_path: str) -> ctypes.CDLL:
 def run_deck(*, lib_path: str = _DEFAULT_LIB, lines: list[str]) -> RawSim:
     """Load `lines` into libngspice and run them synchronously."""
     lib = _load(lib_path)
+    if not _has_analysis(lines):
+        raise SimError(
+            "Netlist: deck defines no analysis "
+            "(.tran/.dc/.ac/.op/.pz/.tf/.noise/.sens/.disto/.four/.fft) "
+            "— nothing for ngspice to run"
+        )
+    lib = _load(lib_path)
     lib.ngSpice_Init.restype = c_int
     lib.ngSpice_Command.restype = c_int
     lib.ngSpice_Command.argtypes = [c_char_p]
@@ -160,14 +213,14 @@ def run_deck(*, lib_path: str = _DEFAULT_LIB, lines: list[str]) -> RawSim:
     int(lib.ngSpice_Command(b"removecirc"))  # best-effort reset; ignored if absent
     arr = (c_char_p * (len(lines) + 1))(*[ln.encode("utf-8") for ln in lines], None)
     if int(lib.ngSpice_Circ(arr)) != 0:
-        raise SimError("Netlist: ngspice rejected the deck (ngSpice_Circ nonzero)")
+        raise _fail("Netlist: ngspice rejected the deck (ngSpice_Circ nonzero)", log)
     if int(lib.ngSpice_Command(b"run")) != 0:
-        raise SimError("SPICE convergence: ngspice 'run' command failed")
+        raise _fail("SPICE convergence: ngspice 'run' command failed", log)
     _ = cbs
     if state["aborted"]:
-        raise SimError(f"SPICE convergence: {state['aborted']}")
+        raise _fail(f"SPICE convergence: {state['aborted']}", log)
     if state["complex"]:
-        raise SimError("SPICE convergence: complex data unsupported in transient path")
+        raise _fail("SPICE convergence: complex data unsupported in transient path", log)
     if not data:
-        raise SimError("SPICE convergence: run produced no vectors")
+        raise _fail("SPICE convergence: run produced no vectors", log)
     return RawSim(vectors=data, log="".join(log))

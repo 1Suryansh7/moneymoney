@@ -267,3 +267,14 @@
 - **Rationale**: The deck is a tool-boundary artifact like the display layer — conversion at this single documented boundary preserves the SI law everywhere it matters, instead of leaking PDK micron convention into storage or the compiler.
 - **Alternatives Considered**: Emitting SI meters with `scale=1` (rejected: empirically fails model lookup); converting in the compiler (rejected: breaks 1G SI golden byte-identity).
 - **Consequences**: Every future testbench/deck path must route geometry through this boundary conversion; Stage 3's Testbench engine inherits the requirement.
+
+---
+
+### ADR-021: Failing-Decks Execute Only in Workers (In-Process Error Paths Segfault)
+- **Date**: 2026-09-06
+- **Status**: Accepted
+- **Context**: While wiring the ngspice log tail into `SimError`, EDA tests executing failing decks in-process (a no-analysis `run`, then a rejected `Circ`) deterministically segfaulted a LATER in-process `run` in `test_stress.py` (full suite only; deselecting the error-path test restores green). Success-path in-process runs are stable; the corruption comes specifically from error-path C calls against libngspice's process-global state.
+- **Decision**: (1) `run_deck` fail-closes in pure Python before any C call wherever possible (no-analysis guard; existing empty-deck/load guards). (2) All execution of decks expected to fail at the C level happens in worker processes (2D containment), in production and in tests — never in the parent/long-lived process. (3) This strengthens, not replaces, ADR-006/§10.3: worker isolation exists for error containment as much as for concurrency.
+- **Rationale**: The alternative (allowing in-process error-path calls) makes the suite order-dependent and one bad deck away from a segfault with no Python traceback at the true culprit.
+- **Alternatives Considered**: Reinitializing/unloading libngspice after failures (rejected: handle caching is load-bearing; re-init semantics of a corrupted global state are unknowable from our side).
+- **Consequences**: EDA tests must not call `run_deck` in-process with decks that fail inside C; use `JobRunner` and assert on the ledger error text.
