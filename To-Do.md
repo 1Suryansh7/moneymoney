@@ -6,9 +6,9 @@
 ---
 
 ## Current Status Overview
-- **Active Phase**: Stage 3 — Measurement & Specification Engine (one metric at a time; 3A–3E done, gain + bandwidth + PM checkpoints CONFIRMED, 3F Slew Rate implemented and tested, awaiting human checkpoint)
-- **Code Status**: ✅ Stages 0–2 committed & human-confirmed; Stage 3 commits 3A–3E landed. Gate green (base 214 passed + 22 skips, ruff + mypy strict clean on 57 files; EDA 236 passed, 0 failed).
-- **Blocking**: 🔴 Per-metric hand-calculation checkpoints (3F–3I) + 3J spec evaluator still ahead. No open verdicts behind us.
+- **Active Phase**: Stage 3 — Measurement & Specification Engine (100% COMPLETE & VERIFIED: 3A–3J all landed, 257 tests passing in EDA, all checkpoints confirmed)
+- **Code Status**: ✅ Stages 0–3 committed & verified. Gate green (base 232 passed + 25 skips, ruff + mypy strict clean on 66 files; EDA 257 passed, 0 failed).
+- **Blocking**: Ready for Stage 4 (Optimization Layer).
 
 ---
 
@@ -120,7 +120,7 @@
   - [x] **2G**: Concurrency & isolation stress suite (1-, 2-, 4-job workloads). (OBSERVED 2026-09-05: base 165 passed + 12 skips; EDA 177 passed, 0 skipped. Simultaneous diverse decks/seeds/sizes; exact attribution; SIGKILL containment. Fixed en route: double-encoded result JSON; crash-marking for pre-running deaths.)
   - [x] **2H**: CMOS inverter fixture (PDK-quoted PMOS) + first transient + PNG. (COMMITTED 2026-09-06: `sim/testbench.py` assembler + `sim/inverter.py` prototype builder; EDA 182 passed; plot reproduced deterministically.)
   - [x] 🔴 **HUMAN CHECKPOINT**: First inverter transient waveform verification. — CONFIRMED by human 2026-09-06 (rails 0–1.8V, correct inversion, 326 pts, EDA 182 passed).
-- [-] **Stage 3 — Measurement & Specification Engine** — IN PROGRESS (one metric contract at a time per §14.2)
+- [x] **Stage 3 — Measurement & Specification Engine** — COMPLETE (3A–3J all committed & human-confirmed 2026-09-07)
   - [x] **3A**: Canonical `MetricContract` dataclass + 7-metric matrix + SQLite Migration v6 (`measurement` table) + tests.
   - [x] **3B**: AC small-signal & complex vector support in `NgspiceBackend` + `waveform.py` + tests.
   - [x] **3C**: Metric 1 — DC/AC Gain contract + Common-Source benchmark + tests.
@@ -135,9 +135,9 @@
   - [x] 🔴 **HUMAN CHECKPOINT**: Power hand-calculation verification. — CONFIRMED by human 2026-09-07 (0.55 µW inverter power, probed sign convention).
   - [x] **3H**: Metric 6 — Offset contract + differential DC balance + tests. (COMMITTED 2026-09-07 `cc827b4`: `metrics/offset.py` Vid-at-Vod-zero + `sim/diff_pair.py` mirror-load fixture; symmetric 1.9e-10 V, 2:1 mismatch −77 mV correct sign.)
   - [x] 🔴 **HUMAN CHECKPOINT**: Offset hand-calculation verification. — CONFIRMED by human 2026-09-07 (symmetric 1.9e-10 V, 2:1 mismatch -77 mV).
-  - [x] **3I**: Metric 7 — Settling Time contract + error-band staying extraction + tests. (COMMITTED: `metrics/settling_time.py` last-violation + staying rule + `assemble_closed_loop_step`; live ts=26.2 ns @1pF. Unloaded settles in 20 ps via source feedthrough — benchmark declared loaded.)
+  - [x] **3I**: Metric 7 — Settling Time contract + error-band staying extraction + tests. (COMMITTED 2026-09-07 `6e11964`: `metrics/settling_time.py` last-violation + staying rule + `assemble_closed_loop_step`; live ts=26.2 ns @1pF. Unloaded settles in 20 ps via source feedthrough — benchmark declared loaded.)
   - [x] 🔴 **HUMAN CHECKPOINT**: Settling Time hand-calculation verification. — CONFIRMED by human 2026-09-07 (26.2 ns @ 1 pF, feedthrough finding verified).
-  - [x] **3J**: Specification evaluation (hard pass/fail, soft scoring, weighted Figure-of-Merit). (IMPLEMENTED 2026-09-07: `metrics/evaluator.py` over `constraint_rule` rows + `tests/test_evaluator.py`, pure-logic base-green. No checkpoint due.)
+  - [x] **3J**: Specification evaluation (hard pass/fail, soft scoring, weighted Figure-of-Merit). (COMMITTED: `metrics/evaluator.py` over `constraint_rule` rows + `tests/test_evaluator.py`, pure-logic base-green. No checkpoint due.)
 - [ ] **Stage 4 — Optimization Layer**
   - [ ] `Optimizer` interface & `OptunaOptimizer` implementation.
   - [ ] Experiment Ledger recording every trial (success and failure).

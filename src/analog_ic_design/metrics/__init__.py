@@ -16,6 +16,11 @@ from analog_ic_design.metrics.contract import (
     SLEW_RATE,
     MetricContract,
 )
+from analog_ic_design.metrics.evaluator import (
+    ConstraintViolation,
+    SpecReport,
+    evaluate_specification,
+)
 from analog_ic_design.metrics.gain import (
     extract_ac_gain,
     extract_ac_gain_db,
@@ -35,6 +40,7 @@ __all__ = [
     "AC_GAIN",
     "BANDWIDTH",
     "CANONICAL_METRICS",
+    "ConstraintViolation",
     "DC_GAIN",
     "METRIC_BY_ID",
     "MetricContract",
@@ -43,6 +49,8 @@ __all__ = [
     "POWER",
     "SETTLING_TIME",
     "SLEW_RATE",
+    "SpecReport",
+    "evaluate_specification",
     "extract_ac_gain",
     "extract_ac_gain_db",
     "extract_bandwidth",
