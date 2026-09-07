@@ -2,6 +2,7 @@
 
 from analog_ic_design.sim.backend import NgspiceBackend
 from analog_ic_design.sim.cs_amp import build_cs_amplifier
+from analog_ic_design.sim.diff_pair import build_diff_pair
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.jobs import JobResult, JobRunner
 from analog_ic_design.sim.ngspice import RawSim, SimError, libngspice_available, run_deck
@@ -48,6 +49,7 @@ __all__ = [
     "assemble_step_response",
     "assemble_transient",
     "build_cs_amplifier",
+    "build_diff_pair",
     "build_inverter",
     "canonical_encode",
     "design_identity_hash",
