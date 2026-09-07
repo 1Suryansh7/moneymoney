@@ -85,8 +85,8 @@ Operational code and agent configuration NEVER hardcode model generation names (
 ### Active Status: STAGES 0–4 COMMITTED & HUMAN-CONFIRMED — STAGE 4.5 IMPLEMENTED (4.5C PENDING FULL EDA)
 > Stage 4.5: 4.5A corner axis + live 5-corner matrix committed; 4.5B sampler
 > committed (ngspice-native MC proven unseedable); 4.5C protocol + live N=8
-> MC report implemented, uncommitted. Gate: base 256+28 green; full EDA rerun
-> pending. Next: commit 4.5C, full EDA, yield checkpoint verdict, push.
+> MC report (8/8, CI 0.676–1.000) with yield checkpoint CONFIRMED 2026-09-07.
+> Gate green: base 256+28, EDA 284/284. Next: commit, push, then Stage 5.
 > PDK deck boundary: micron geometry + scale=1e-6, explicit VSS ground (ADR-020); failing decks run
 > in workers only (ADR-021). WSL2 Ubuntu is the sanctioned `make` shell
 > (GNU Make 4.3 + Docker 29.6.2 verified); stock PowerShell has no `make`.

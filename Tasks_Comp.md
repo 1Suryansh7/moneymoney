@@ -136,13 +136,13 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 | 3J evaluator | `2443152` | hard/soft/weighted evaluation over `constraint_rule` rows | `metrics/evaluator.py`; tests in `test_evaluator.py` (tolerance edges, soft fractions, FOM, fail-closed). Pure logic, base-green. No checkpoint due |
 
 
-## Stage 4.5 — Robustness (4.5A–4.5C committed; yield checkpoint OPEN below)
+## Stage 4.5 — Robustness (4.5A–4.5C committed; yield checkpoint CONFIRMED 2026-09-07)
 
 | Commit | Scope | Status & Evidence |
 |---|---|---|
 | 4.5A corners | Corner axis + deck plumbing + live 5-corner matrix | `docs/stages/stage-4.5.md`, `robust/corner.py` (SI K/V, 5-envelope + 45-matrix defined-only), `sim/testbench.py` corner params (`.temp`/`.lib`/VDD; corner without libs fails closed); `tests/test_corner.py` + `tests/test_pvt_sim.py`. Live TT 9.106/20.7M (reproduces nominal exactly), FF 63.1M > SS 12.0M monotonic, per-corner ledger rows |
 | 4.5B sampler | Seeded geometric MC sampler (ngspice-native proven unseedable) | `robust/mc_sampler.py` (per-(seed,sample) streams, declared relative sigmas — protocol parameters, not foundry data); spike table in `tests/test_mc_spike.py` (mc=1 varies ~6%, setseed repeats fail). Verified green standalone at its commit via isolated worktree |
-| 4.5C protocol | StatisticalProtocol + Wilson CI + report builder | `robust/protocol.py` (N/seeds/corners/supplies/temps/mechanisms/method/thresholds/CI; stdlib NormalDist, no SciPy); `tests/test_protocol.py` (validation, Wilson goldens, synthetic reports). Live N=8 DC-gain MC report (see checkpoint) |
+| 4.5C protocol | StatisticalProtocol + Wilson CI + report builder | `robust/protocol.py` (N/seeds/corners/supplies/temps/mechanisms/method/thresholds/CI; stdlib NormalDist, no SciPy); `tests/test_protocol.py` (validation, Wilson goldens, synthetic reports). Live N=8 DC-gain MC report: 8/8 pass, CI [0.676, 1.000] @95%. Yield checkpoint CONFIRMED by human 2026-09-07 (thin-N caveat noted) |
 
 
 ## Stage 4 — Optimization Layer (4A–4D committed, demo green)

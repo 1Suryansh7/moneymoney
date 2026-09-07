@@ -143,11 +143,11 @@
   - [x] Experiment Ledger recording every trial (success and failure). (4A migration v7 `experiment` table; 4B ledger writer/reader; failed trials recorded with failure class.)
   - [x] Common-source amplifier reproducible sizing against specification. (4D: 8-trial study seed 7, winner trial 5 w_n=2.198µm w_p=5.019µm, gain 9.139, UGB 13.44 MHz, spec passed; winner re-simulated within 1e-6; base 243+26, EDA 269/269.)
   - [x] 🟡 **HUMAN CHECKPOINT (Advisory)**: Search-space boundary or rapid convergence audit. — NOT TRIGGERED (winner interior on both axes; 8-trial seeded-TPE startup, no order-of-magnitude jump claimed).
-- [x] **Stage 4.5 — Robustness** — COMPLETE (4.5A–4.5C; envelope + MC report green, yield checkpoint below)
+- [x] **Stage 4.5 — Robustness** — COMPLETE (4.5A–4.5C; envelope + MC report green, yield checkpoint CONFIRMED 2026-09-07)
   - [x] PVT corner definitions bound to PDKAdapter. (4.5A: `Corner` SI dataclass + 5-envelope + 45-matrix (defined only) + deck plumbing; live TT/FF/SS/FS/SF matrix, UGB_FF 63M > UGB_SS 12M, per-corner ledger rows.)
   - [x] Monte Carlo sampling using authentic PDK variation models. (4.5B: ngspice-native MC proven unseedable across workers → seeded geometric perturbation with declared sigmas; PDK corner files + bins retained for PVT.)
   - [x] Versioned `StatisticalProtocol` definition. (4.5C: frozen dataclass N/seeds/corners/supplies/temps/mechanisms/method/thresholds/CI + pure Wilson CI + report builder. Live N=8 DC-gain MC report.)
-  - [ ] 🔴 **HUMAN CHECKPOINT**: Mandatory signoff on any statistical percentage headline. (OPEN — numbers below.)
+  - [x] 🔴 **HUMAN CHECKPOINT**: Mandatory signoff on any statistical percentage headline. — CONFIRMED by human 2026-09-07 (N=8, 8/8, CI 0.676–1.000 @95%; thin-N caveat noted).
 - [ ] **Stage 5 — AI Diagnostics & Copilot**
   - [ ] Deterministic failure classifier based on 12-category taxonomy.
   - [ ] Grounded explainer with strict citation check (returns refusal if uncited).
