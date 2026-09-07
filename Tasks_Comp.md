@@ -159,7 +159,7 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 ## NOT done (open, owned)
 
 1. **Stage 3 — Measurement & Specification Engine** — COMPLETE (3A–3J all committed & verified, base 232+25, EDA 257/257). Checkpoints 3E–3I all CONFIRMED. Next: Stage 4 Optimization Layer.
-2. **Push + GitHub Actions run** — CONNECTED 2026-09-06: `origin` → `RobinBroG/moneymoney`, branch `main`, all commits pushed through `2443152` (remote HEAD verified equal). CI fix (`4d2447d`) pushed; remote re-run not yet observed green from here (private repo) — human to confirm Actions green.
+2. **Push + GitHub Actions run** — CONNECTED 2026-09-06: `origin` → `RobinBroG/moneymoney`, branch `main`, all commits pushed. CI history observed 2026-09-07: #1 red (pre-fix cache teardown, post-mortem above), **#2 GREEN (hermetic fix verified remotely)**, #3/#4/#5 GREEN. Latest (#6, docs) was in progress at last sighting.
 4. `actions/checkout@v4` floating major — CLOSED 2026-09-06 (pinned to immutable SHA `11d5960a326750d5838078e36cf38b85af677262`; act dry-run plans clean).
 5. Automated W/L-minima checks — CLOSED 2026-09-06 (`circuit/pdk_limits.py` ingested from pinned PDK bins; validator enforces as `schema`; base 205+20, EDA 225/225).
 6. **Stage 4 — Optimization Layer** (Optuna Bayesian optimizer + Experiment Ledger + boundary checks).
