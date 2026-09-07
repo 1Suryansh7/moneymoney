@@ -82,16 +82,19 @@ Operational code and agent configuration NEVER hardcode model generation names (
 
 ## 5. Current Project Status & File Inventory
 
-### Active Status: STAGES 0–3 COMMITTED & HUMAN-CONFIRMED — STAGE 4 READY
+### Active Status: STAGES 0–3 COMMITTED & HUMAN-CONFIRMED — STAGE 4 IMPLEMENTED, UNCOMMITTED
 > Stages 0–2 committed and human-confirmed 2026-09-05/06. Stage 3 (3A–3J)
 > 100% complete and human-confirmed 2026-09-07: 3A contracts + v6, 3B AC/complex,
 > 3C gain (9.1 V/V), 3D bandwidth (20.7 MHz @1pF), 3E phase margin (83.37°),
 > 3F slew rate (unloaded 4.96e11, loaded 8.32e9 V/s @50fF), 3G power (0.55 µW),
 > 3H offset (1.9e-10 V sym, -77 mV mismatch on diff_pair), 3I settling (26.2 ns @1pF),
-> 3J specification evaluator (hard/soft/weighted FOM). Gate green: base 232+25,
-> EDA 257/257, ruff + mypy strict clean (66 files). Next: Stage 4 Optimization Layer.
-> PDK deck boundary: micron
-> geometry + scale=1e-6, explicit VSS ground (ADR-020); failing decks run
+> 3J specification evaluator (hard/soft/weighted FOM). Stage 4 (4A brief+v7 ledger,
+> 4B ask/tell interface, 4C seeded Optuna TPE, 4D live cs_amp sizing: 8 trials
+> seed 7, winner trial 5 w_n=2.198µm w_p=5.019µm, gain 9.139, UGB 13.44 MHz,
+> spec passed, interior — advisory NOT triggered; winner re-simulated within
+> 1e-6). Gate green: base 243+26, EDA 269/269, ruff + mypy strict clean
+> (72 files). Next: commit 4A–4D, push, watch CI, then Stage 4.5.
+> PDK deck boundary: micron geometry + scale=1e-6, explicit VSS ground (ADR-020); failing decks run
 > in workers only (ADR-021). WSL2 Ubuntu is the sanctioned `make` shell
 > (GNU Make 4.3 + Docker 29.6.2 verified); stock PowerShell has no `make`.
 
@@ -104,7 +107,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── AGENTS.md               # Layer 1 Global Rules (The 4 laws, checkpoints, units, safety)
 ├── context.md              # [THIS FILE] System continuity handbook and state memory
 ├── To-Do.md                # Granular task tracker (updated before and after every step)
-├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-021)
+├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-022)
 ├── PREREQUISITES.md        # Complete Stage 0 prerequisite specifications & verification
 ├── Dockerfile              # Layered build: base verified / eda GREEN (ADR-015/017)
 ├── docker-compose.yml      # app (base) + app-eda (eda profile) services
@@ -117,7 +120,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── tests/test_interfaces.py  # Law 4 backend contract tests (Commit 2)
 ├── tests/test_engine_api.py  # DesignEngine v0.1 freeze tests (Commit 2)
 ├── tests/test_units.py       # SI unit contract tests (1A)
-├── tests/test_schema.py      # migration + schema tests (1B, v1–v6)
+├── tests/test_schema.py      # migration + schema tests (1B, v1–v7)
 ├── tests/test_graph.py       # connectivity fact tests (1C)
 ├── tests/test_canonical.py   # canonical identity tests (1D)
 ├── tests/test_compiler.py    # netlist expectation tests (1E)
@@ -126,17 +129,20 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── tests/test_sim.py, test_jobs.py, test_reproduce.py, test_waveform.py, test_stress.py, test_inverter.py # Stage 2 tests
 ├── tests/test_metrics.py, test_gain.py, test_bandwidth.py, test_phase_margin.py, test_slew_rate.py  # Stage 3 tests (contracts→slew)
 ├── tests/test_power.py, test_offset.py, test_settling_time.py, test_evaluator.py  # Stage 3 tests (power→evaluator)
+├── tests/test_schema.py (v7 experiment), test_optimize.py, test_optimize_demo.py  # Stage 4 tests (ledger, optimizer, demo)
 ├── examples/plot_inverter.py # Stage 2H waveform generation demo
 ├── src/analog_ic_design/     # ENGINE_API_VERSION=0.1; interfaces/, engine/,
-│                             # units/ (quantity, display), store/ (schema v6),
+│                             # units/ (quantity, display), store/ (schema v7),
 │                             # circuit/ (graph, canonical, compiler, validator, pdk_limits),
 │                             # sim/ (backend, ngspice, jobs, reproduce, waveform, testbench, inverter, cs_amp, diff_pair),
-│                             # metrics/ (contract matrix, gain, bandwidth, phase_margin, slew_rate, power, offset, settling_time, evaluator)
+│                             # metrics/ (contract matrix, gain, bandwidth, phase_margin, slew_rate, power, offset, settling_time, evaluator),
+│                             # optimize/ (optimizer interface, ledger, optuna TPE)
 ├── Tasks_Comp.md           # completed-tasks evidence ledger
 ├── docs/stages/stage-0.md  # Layer 2 stage brief (§7–§9: verification, audit, EDA)
 ├── docs/stages/stage-1.md  # Layer 2 stage brief (1A–1G + checkpoint)
 ├── docs/stages/stage-2.md  # Layer 2 stage brief (Simulation Kernel)
 ├── docs/stages/stage-3.md  # Layer 2 stage brief (Measurement & Specification Engine)
+├── docs/stages/stage-4.md  # Layer 2 stage brief (Optimization Layer)
 └── docs/stage-0-layered-debt.md  # CLOSED (R-1..R-8 checked off)
 ```
 

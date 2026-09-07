@@ -95,9 +95,9 @@ plausibility check, not PDK-quoted.
 Base (`make test`): 6 → 12 → 99 → 108 → 113 → 118 → 129 → 140 → 144 passed
 (Stages 0–1, zero warnings throughout via `filterwarnings = error`),
 then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
-196+19 (3A–3C) → 200+20 (3D) → 209+21 (3E) → 214+22 (3F) → 232+25 (3G–3J). mypy strict clean throughout (13 → 29 →
-52 → 57 → 66 files). EDA full suite: 182 (2H) → 186 (hardening) → 215 (3A–3C) →
-220 (3D) → 230 (3E) → 236 (3F) → 257 passed, 0 failed (3G–3J).
+196+19 (3A–3C) → 200+20 (3D) → 209+21 (3E) → 214+22 (3F) → 232+25 (3G–3J) → 243+26 (4A–4D). mypy strict clean throughout (13 → 29 →
+52 → 57 → 66 → 72 files). EDA full suite: 182 (2H) → 186 (hardening) → 215 (3A–3C) →
+220 (3D) → 230 (3E) → 236 (3F) → 257 (3G–3J) → 269 passed, 0 failed (4A–4D).
 
 ## Final pinned toolchain (all observed)
 
@@ -136,6 +136,16 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 | 3J evaluator | `2443152` | hard/soft/weighted evaluation over `constraint_rule` rows | `metrics/evaluator.py`; tests in `test_evaluator.py` (tolerance edges, soft fractions, FOM, fail-closed). Pure logic, base-green. No checkpoint due |
 
 
+## Stage 4 — Optimization Layer (4A–4D implemented, verified, uncommitted)
+
+| Commit | Scope | Status & Evidence |
+|---|---|---|
+| 4A brief+schema | Stage brief + Migration v7 (`experiment` ledger) | `docs/stages/stage-4.md`; `store/schema.py` v7; `test_schema.py` (round-trip, vocab CHECKs, job-delete SET NULL) |
+| 4B interface | Ask/tell `Optimizer` ABC + SI `SearchSpace` + ledger writer | `optimize/optimizer.py`, `optimize/ledger.py`; `tests/test_optimize.py` (fake-optimizer determinism, ledger failures recorded) |
+| 4C optuna | Seeded TPE `OptunaOptimizer` (+ plan-mandated `optuna==5.0.0` dep) | `optimize/optuna_optimizer.py` (strict FIFO ask/tell pairing); determinism proven without sims |
+| 4D demo | Live cs_amp sizing: 8-trial study seed 7 vs hard spec (gain≥8, UGB≥10MHz) | `tests/test_optimize_demo.py` (worker sims with timeouts; every trial a `job`+`experiment` row). Winner trial 5: w_n=2.198µm, w_p=5.019µm, gain 9.139, UGB 13.44 MHz, spec passed; interior on both axes (advisory NOT triggered); winner re-simulated within 1e-6. Base 243+26, EDA 269/269 |
+
+
 ## CI post-mortem 2026-09-06 (first-ever GitHub run, both jobs red)
 
 - Symptom: `smoke` failed in 44 s, `eda` in 14 m 07 s — both at pytest
@@ -158,7 +168,7 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **Stage 3 — Measurement & Specification Engine** — COMPLETE (3A–3J all committed & verified, base 232+25, EDA 257/257). Checkpoints 3E–3I all CONFIRMED. Next: Stage 4 Optimization Layer.
+1. **Stage 4 — Optimization Layer** — COMPLETE (4A–4D committed coherently below; demo green, advisory not triggered). Next: Stage 4.5 Robustness.
 2. **Push + GitHub Actions run** — CONNECTED 2026-09-06: `origin` → `RobinBroG/moneymoney`, branch `main`, all commits pushed. CI history observed 2026-09-07: #1 red (pre-fix cache teardown, post-mortem above), **#2 GREEN (hermetic fix verified remotely)**, #3/#4/#5 GREEN. Latest (#6, docs) was in progress at last sighting.
 4. `actions/checkout@v4` floating major — CLOSED 2026-09-06 (pinned to immutable SHA `11d5960a326750d5838078e36cf38b85af677262`; act dry-run plans clean).
 5. Automated W/L-minima checks — CLOSED 2026-09-06 (`circuit/pdk_limits.py` ingested from pinned PDK bins; validator enforces as `schema`; base 205+20, EDA 225/225).

@@ -22,9 +22,20 @@ PMOS_MODEL = "sky130_fd_pr__pfet_01v8"
 PIN_ORDER = "d g s b"
 
 
-def build_cs_amplifier(conn: sqlite3.Connection) -> str:
+def build_cs_amplifier(
+    conn: sqlite3.Connection,
+    *,
+    w_n: float = 1e-06,
+    l_n: float = 160e-09,
+    w_p: float = 2e-06,
+    l_p: float = 160e-09,
+) -> str:
     """Create project/lib/cell/symbols/tech/bindings/instances/nets/ports/params
-    for a Common-Source amplifier; returns the cell id."""
+    for a Common-Source amplifier; returns the cell id.
+
+    Geometry in SI meters (defaults reproduce the Stage 3C prototype).
+    Stage 4 sizes `w_n`/`w_p` through these knobs; validator-enforced PDK
+    minima still apply (no bypass at this layer)."""
     pid, lib, cell, tech = (new_id() for _ in range(4))
     ncell, pcell, nsym, psym = (new_id() for _ in range(4))
     conn.execute("INSERT INTO project VALUES (?, ?, ?)", (pid, "cs_amp_demo", STAMP))
@@ -78,10 +89,10 @@ def build_cs_amplifier(conn: sqlite3.Connection) -> str:
         )
 
     params: tuple[tuple[str, str, float], ...] = (
-        (nmos, "W", 1e-06),
-        (nmos, "L", 160e-09),
-        (pmos, "W", 2e-06),
-        (pmos, "L", 160e-09),
+        (nmos, "W", w_n),
+        (nmos, "L", l_n),
+        (pmos, "W", w_p),
+        (pmos, "L", l_p),
     )
     for iid, pname, pvalue in params:
         conn.execute(
