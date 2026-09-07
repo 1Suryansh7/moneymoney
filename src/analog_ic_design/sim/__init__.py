@@ -18,6 +18,8 @@ from analog_ic_design.sim.reproduce import (
 from analog_ic_design.sim.testbench import (
     assemble_ac,
     assemble_dc_sweep,
+    assemble_loop_gain,
+    assemble_step_response,
     assemble_transient,
 )
 from analog_ic_design.sim.waveform import (
@@ -42,6 +44,8 @@ __all__ = [
     "Waveform",
     "assemble_ac",
     "assemble_dc_sweep",
+    "assemble_loop_gain",
+    "assemble_step_response",
     "assemble_transient",
     "build_cs_amplifier",
     "build_inverter",
@@ -57,3 +61,4 @@ __all__ = [
     "sha256_hex",
     "waveforms_close",
 ]
+

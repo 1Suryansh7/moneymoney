@@ -6,9 +6,9 @@
 ---
 
 ## Current Status Overview
-- **Active Phase**: Stage 3 — Measurement & Specification Engine (one metric at a time; 3A–3D done, gain + bandwidth checkpoints CONFIRMED, next 3E Phase Margin)
-- **Code Status**: ✅ Stages 0–2 committed & human-confirmed; Stage 3 commits 3A–3D landed. Gate green (base 200 passed + 20 skips, ruff + mypy strict clean on 52 files; EDA 220 passed, 0 failed).
-- **Blocking**: 🔴 Per-metric hand-calculation checkpoints (3E–3I) + 3J spec evaluator still ahead. No open verdicts behind us.
+- **Active Phase**: Stage 3 — Measurement & Specification Engine (one metric at a time; 3A–3E done, gain + bandwidth + PM checkpoints CONFIRMED, 3F Slew Rate implemented and tested, awaiting human checkpoint)
+- **Code Status**: ✅ Stages 0–2 committed & human-confirmed; Stage 3 commits 3A–3E landed. Gate green (base 214 passed + 22 skips, ruff + mypy strict clean on 57 files; EDA 236 passed, 0 failed).
+- **Blocking**: 🔴 Per-metric hand-calculation checkpoints (3F–3I) + 3J spec evaluator still ahead. No open verdicts behind us.
 
 ---
 
@@ -127,9 +127,9 @@
   - [x] 🔴 **HUMAN CHECKPOINT**: DC/AC Gain hand-calculation verification. — CONFIRMED by human 2026-09-06 (DC 9.1061 == AC 9.1059 V/V, rel_diff 0.0000 < 0.05; base 196+19, EDA 215/215).
   - [x] **3D**: Metric 2 — Bandwidth contract + -3dB crossing extraction + tests. (COMMITTED 2026-09-06: `metrics/bandwidth.py` UGB interp + `tests/test_bandwidth.py`; EDA UGB 2.07e7 Hz @1pF; base 200+20, EDA 220/220.)
   - [x] 🔴 **HUMAN CHECKPOINT**: Bandwidth hand-calculation verification. — CONFIRMED by human 2026-09-06 (0dB-absolute reading, declared 1pF load).
-  - [-] **3E**: Metric 3 — Phase Margin contract + return-ratio / loop-gain benchmark + tests.
-  - [ ] 🔴 **HUMAN CHECKPOINT**: Phase Margin hand-calculation verification.
-  - [ ] **3F**: Metric 4 — Slew Rate contract + step transient extraction + tests.
+  - [x] **3E**: Metric 3 — Phase Margin contract + return-ratio / loop-gain benchmark + tests. (COMMITTED 2026-09-07: `metrics/phase_margin.py` + `sim/testbench.py` Tian loop; base 209+21, EDA 230/230).
+  - [x] 🔴 **HUMAN CHECKPOINT**: Phase Margin hand-calculation verification. — CONFIRMED by human 2026-09-07 (PM 83.37 deg @1pF load, DC-trip slope match <5%).
+  - [x] **3F**: Metric 4 — Slew Rate contract + step transient extraction + tests. (IMPLEMENTED: `metrics/slew_rate.py` + `sim/testbench.py` step response; base 214+22, EDA 236/236).
   - [ ] 🔴 **HUMAN CHECKPOINT**: Slew Rate hand-calculation verification.
   - [ ] **3G**: Metric 5 — Power contract + supply current averaging + tests.
   - [ ] 🔴 **HUMAN CHECKPOINT**: Power hand-calculation verification.

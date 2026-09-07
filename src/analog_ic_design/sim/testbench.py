@@ -199,3 +199,52 @@ def assemble_ac(
     lines.append(f".ac dec {points_per_decade} {f_start} {f_stop}")
     lines.append(".end")
     return "\n".join(lines) + "\n"
+
+
+def assemble_step_response(
+    fragment: str,
+    *,
+    vdd_net: str = "vdd",
+    vdd_volts: float = 1.8,
+    vss_net: str = "vss",
+    in_net: str = "in",
+    v_start: float = 0.0,
+    v_stop: float = 1.8,
+    t_delay: float = 1e-9,
+    t_edge: float = 10e-12,
+    t_stop: float = 5e-9,
+    t_step: float = 1e-12,
+    extra_lines: Sequence[str] = (),
+    includes: Sequence[str] = (),
+    libs: Sequence[tuple[str, str]] = (),
+) -> str:
+    """Assemble a large-signal rail-to-rail step transient deck around a cell `fragment`.
+
+    Stimulus: fast step from v_start to v_stop with sub-10ps edge time.
+    Analysis: fine-step transient (.tran t_step t_stop) for sub-picosecond edge resolution.
+    """
+    body = fragment.splitlines()
+    while body and not body[-1].strip():
+        body.pop()
+    if body and body[-1].strip().lower() == ".end":
+        body.pop()
+    title, rest = (body[0], body[1:]) if body else ("* testbench", [])
+    lines = [title]
+    lines += [f".include {path}" for path in includes]
+    lines += [f".lib '{path}' {section}" for path, section in libs]
+    lines.append(".param mc_mm_switch=0")
+    lines.append(".option scale=1e-6")
+    lines += [_to_microns(line) for line in rest]
+    lines.append(f"VDD {vdd_net} 0 DC {vdd_volts}")
+    lines.append(f"VSS {vss_net} 0 DC 0")
+    pulse_cmd = (
+        f"Vin {in_net} 0 DC {v_start} "
+        f"PULSE({v_start} {v_stop} {t_delay} {t_edge} {t_edge} 100n 200n)"
+    )
+    lines.append(pulse_cmd)
+
+    lines += list(extra_lines)
+    lines.append(f".tran {t_step} {t_stop}")
+    lines.append(".end")
+    return "\n".join(lines) + "\n"
+
