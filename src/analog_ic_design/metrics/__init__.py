@@ -24,6 +24,7 @@ from analog_ic_design.metrics.gain import (
 from analog_ic_design.metrics.offset import extract_offset
 from analog_ic_design.metrics.phase_margin import extract_phase_margin
 from analog_ic_design.metrics.power import extract_power
+from analog_ic_design.metrics.settling_time import extract_settling_time
 from analog_ic_design.metrics.slew_rate import (
     extract_falling_slew_rate,
     extract_rising_slew_rate,
@@ -51,6 +52,7 @@ __all__ = [
     "extract_phase_margin",
     "extract_power",
     "extract_rising_slew_rate",
+    "extract_settling_time",
     "extract_slew_rate",
 ]
 

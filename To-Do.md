@@ -133,10 +133,10 @@
   - [x] 🔴 **HUMAN CHECKPOINT**: Slew Rate hand-calculation verification. — CONFIRMED WITH NOTE 2026-09-07 (unloaded 4.96e11 V/s, loaded 8.32e9 V/s @50fF).
   - [x] **3G**: Metric 5 — Power contract + supply current averaging + tests. (COMMITTED 2026-09-07 `032e6a7`: `metrics/power.py`, branch sign probed on 1k load; live inverter 0.55 µW steady to 0.5%).
   - [x] 🔴 **HUMAN CHECKPOINT**: Power hand-calculation verification. — CONFIRMED by human 2026-09-07 (0.55 µW inverter power, probed sign convention).
-  - [x] **3H**: Metric 6 — Offset contract + differential DC balance + tests. (COMMITTED: `metrics/offset.py` Vid-at-Vod-zero + `sim/diff_pair.py` mirror-load fixture; symmetric 1.9e-10 V, 2:1 mismatch −77 mV correct sign.)
+  - [x] **3H**: Metric 6 — Offset contract + differential DC balance + tests. (COMMITTED 2026-09-07 `cc827b4`: `metrics/offset.py` Vid-at-Vod-zero + `sim/diff_pair.py` mirror-load fixture; symmetric 1.9e-10 V, 2:1 mismatch −77 mV correct sign.)
   - [x] 🔴 **HUMAN CHECKPOINT**: Offset hand-calculation verification. — CONFIRMED by human 2026-09-07 (symmetric 1.9e-10 V, 2:1 mismatch -77 mV).
-  - [x] **3I**: Metric 7 — Settling Time contract + error-band staying extraction + tests. (IMPLEMENTED 2026-09-07: `metrics/settling_time.py` last-violation + staying rule + `assemble_closed_loop_step`; live ts=26.2 ns @1pF. Unloaded settles in 20 ps via source feedthrough — no loop dynamics — so the benchmark is declared loaded.)
-  - [ ] 🔴 **HUMAN CHECKPOINT**: Settling Time hand-calculation verification.
+  - [x] **3I**: Metric 7 — Settling Time contract + error-band staying extraction + tests. (COMMITTED: `metrics/settling_time.py` last-violation + staying rule + `assemble_closed_loop_step`; live ts=26.2 ns @1pF. Unloaded settles in 20 ps via source feedthrough — benchmark declared loaded.)
+  - [x] 🔴 **HUMAN CHECKPOINT**: Settling Time hand-calculation verification. — CONFIRMED by human 2026-09-07 (26.2 ns @ 1 pF, feedthrough finding verified).
   - [x] **3J**: Specification evaluation (hard pass/fail, soft scoring, weighted Figure-of-Merit). (IMPLEMENTED 2026-09-07: `metrics/evaluator.py` over `constraint_rule` rows + `tests/test_evaluator.py`, pure-logic base-green. No checkpoint due.)
 - [ ] **Stage 4 — Optimization Layer**
   - [ ] `Optimizer` interface & `OptunaOptimizer` implementation.

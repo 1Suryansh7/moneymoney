@@ -18,6 +18,7 @@ from analog_ic_design.sim.reproduce import (
 )
 from analog_ic_design.sim.testbench import (
     assemble_ac,
+    assemble_closed_loop_step,
     assemble_dc_sweep,
     assemble_loop_gain,
     assemble_step_response,
@@ -44,6 +45,7 @@ __all__ = [
     "Trace",
     "Waveform",
     "assemble_ac",
+    "assemble_closed_loop_step",
     "assemble_dc_sweep",
     "assemble_loop_gain",
     "assemble_step_response",

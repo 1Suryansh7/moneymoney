@@ -127,6 +127,53 @@ def assemble_loop_gain(
     return "\n".join(lines) + "\n"
 
 
+def assemble_closed_loop_step(
+    fragment: str,
+    *,
+    vdd_net: str = "vdd",
+    vdd_volts: float = 1.8,
+    vss_net: str = "vss",
+    out_net: str = "out",
+    in_net: str = "in",
+    v_step: float = 0.05,
+    t_delay: float = 5e-9,
+    t_edge: float = 10e-12,
+    t_stop: float = 50e-9,
+    t_step: float = 0.1e-9,
+    extra_lines: Sequence[str] = (),
+    includes: Sequence[str] = (),
+    libs: Sequence[tuple[str, str]] = (),
+) -> str:
+    """Assemble a closed-loop step deck: the fragment's loop stays closed
+    through a step voltage source between `out_net` and `in_net` (Tian-style,
+    as in `assemble_loop_gain`, but transient).
+
+    At t_delay the source steps by `v_step`; the loop responds and the output
+    settles to a new equilibrium. Same PDK-boundary conventions throughout.
+    """
+    body = fragment.splitlines()
+    while body and not body[-1].strip():
+        body.pop()
+    if body and body[-1].strip().lower() == ".end":
+        body.pop()
+    title, rest = (body[0], body[1:]) if body else ("* testbench", [])
+    lines = [title]
+    lines += [f".include {path}" for path in includes]
+    lines += [f".lib '{path}' {section}" for path, section in libs]
+    lines.append(".param mc_mm_switch=0")
+    lines.append(".option scale=1e-6")
+    lines += [_to_microns(line) for line in rest]
+    lines.append(f"VDD {vdd_net} 0 DC {vdd_volts}")
+    lines.append(f"VSS {vss_net} 0 DC 0")
+    lines.append(
+        f"Vinj {out_net} {in_net} DC 0 PULSE(0 {v_step} {t_delay} {t_edge} {t_edge} 1m 2m)"
+    )
+    lines += list(extra_lines)
+    lines.append(f".tran {t_step} {t_stop}")
+    lines.append(".end")
+    return "\n".join(lines) + "\n"
+
+
 def assemble_dc_sweep(
     fragment: str,
     *,
