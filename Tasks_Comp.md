@@ -155,7 +155,6 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 2. **Push + GitHub Actions run** — CONNECTED 2026-09-06: `origin` → `RobinBroG/moneymoney`, branch `main`, all commits pushed (remote HEAD == local `0859745`, verified). CI pin hardened (`actions/checkout@11d5960a…`, PGP-verified v4). Remote Actions UI not observable from here (private repo) — human to confirm green run + default branch `main`.
 4. `actions/checkout@v4` floating major — CLOSED 2026-09-06 (pinned to immutable SHA `11d5960a326750d5838078e36cf38b85af677262`; act dry-run plans clean).
 5. Automated W/L-minima checks — CLOSED 2026-09-06 (`circuit/pdk_limits.py` ingested from pinned PDK bins; validator enforces as `schema`; base 205+20, EDA 225/225).
-4. `actions/checkout@v4` floating major (accepted for now; Dependabot later).
-5. Automated W/L-minima checks (needs PDK minima ingestion; human eyes cover it at checkpoints).
 6. Everything Stage 3E+ (phase margin next, one metric at a time).
+
 

@@ -21,6 +21,7 @@ from analog_ic_design.metrics.gain import (
     extract_ac_gain_db,
     extract_dc_gain,
 )
+from analog_ic_design.metrics.phase_margin import extract_phase_margin
 
 __all__ = [
     "AC_GAIN",
@@ -38,4 +39,5 @@ __all__ = [
     "extract_ac_gain_db",
     "extract_bandwidth",
     "extract_dc_gain",
+    "extract_phase_margin",
 ]

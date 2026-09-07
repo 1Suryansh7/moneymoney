@@ -127,7 +127,7 @@
   - [x] 🔴 **HUMAN CHECKPOINT**: DC/AC Gain hand-calculation verification. — CONFIRMED by human 2026-09-06 (DC 9.1061 == AC 9.1059 V/V, rel_diff 0.0000 < 0.05; base 196+19, EDA 215/215).
   - [x] **3D**: Metric 2 — Bandwidth contract + -3dB crossing extraction + tests. (COMMITTED 2026-09-06: `metrics/bandwidth.py` UGB interp + `tests/test_bandwidth.py`; EDA UGB 2.07e7 Hz @1pF; base 200+20, EDA 220/220.)
   - [x] 🔴 **HUMAN CHECKPOINT**: Bandwidth hand-calculation verification. — CONFIRMED by human 2026-09-06 (0dB-absolute reading, declared 1pF load).
-  - [ ] **3E**: Metric 3 — Phase Margin contract + return-ratio / loop-gain benchmark + tests.
+  - [-] **3E**: Metric 3 — Phase Margin contract + return-ratio / loop-gain benchmark + tests.
   - [ ] 🔴 **HUMAN CHECKPOINT**: Phase Margin hand-calculation verification.
   - [ ] **3F**: Metric 4 — Slew Rate contract + step transient extraction + tests.
   - [ ] 🔴 **HUMAN CHECKPOINT**: Slew Rate hand-calculation verification.
