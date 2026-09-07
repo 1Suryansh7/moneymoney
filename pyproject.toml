@@ -25,6 +25,9 @@ dev = [
   # Waveform plotting for simulation artifacts (Stage 2H checkpoint PNG).
   # Human-approved 2026-09-05; playbook §3.2 prescribes matplotlib for Stage 2.
   "matplotlib==3.11.1",
+  # Bayesian optimization backend (Stage 4 prompt mandates Optuna first;
+  # plan-ordered, not discretionary). Registry-read 2026-09-07: 5.0.0.
+  "optuna==5.0.0",
 ]
 
 [tool.setuptools.packages.find]
