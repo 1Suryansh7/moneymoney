@@ -24,9 +24,7 @@ from analog_ic_design.store import (
 STAMP = "2026-09-05T00:00:00+00:00"
 STRUCTURAL = ("project", "library", "cell", "symbol", "instance", "port", "net")
 EXISTENCE = ("design_revision", "artifact")
-DEFERRED = (
-    "experiment",
-)
+DEFERRED: tuple[str, ...] = ()
 
 
 @pytest.fixture()
@@ -57,7 +55,7 @@ def _hierarchy(conn: sqlite3.Connection) -> dict[str, str]:
 
 
 def test_migrate_lands_current_version_and_is_idempotent(db: sqlite3.Connection) -> None:
-    assert SCHEMA_VERSION == 6
+    assert SCHEMA_VERSION == 7
     assert get_schema_version(db) == SCHEMA_VERSION
     assert migrate(db) == SCHEMA_VERSION
     assert get_schema_version(db) == SCHEMA_VERSION
@@ -215,3 +213,114 @@ def test_job_failure_records_error(db: sqlite3.Connection) -> None:
     db.commit()
     row = db.execute("SELECT status, error FROM job WHERE id = ?", (jid,)).fetchone()
     assert row == ("failed", "Schema: bad cell")
+
+
+def _trial_job(db: sqlite3.Connection) -> str:
+    jid = new_id()
+    db.execute(
+        "INSERT INTO job VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (jid, "trial", "succeeded", '{"w": 1e-06}', '{"ugb": 1e7}', None, STAMP, STAMP),
+    )
+    db.commit()
+    return jid
+
+
+def _experiment_row(
+    db: sqlite3.Connection, study: str, trial: int, job_id: str | None
+) -> str:
+    eid = new_id()
+    db.execute(
+        "INSERT INTO experiment VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            eid,
+            study,
+            trial,
+            "trial",
+            "succeeded",
+            "nominal",
+            '{"w_n": 1e-06}',
+            '{"bandwidth": 2e7}',
+            "pass",
+            "r" * 64,
+            7,
+            job_id,
+            STAMP,
+        ),
+    )
+    db.commit()
+    return eid
+
+
+def test_experiment_round_trip(db: sqlite3.Connection) -> None:
+    jid = _trial_job(db)
+    eid = _experiment_row(db, "demo", 0, jid)
+    row = db.execute(
+        "SELECT study, trial, kind, status, corner, parameters, metrics,"
+        " verdict, reproducibility_id, seed, job_id FROM experiment WHERE id = ?",
+        (eid,),
+    ).fetchone()
+    assert row == (
+        "demo",
+        0,
+        "trial",
+        "succeeded",
+        "nominal",
+        '{"w_n": 1e-06}',
+        '{"bandwidth": 2e7}',
+        "pass",
+        "r" * 64,
+        7,
+        jid,
+    )
+
+
+def test_experiment_rejects_bad_vocabulary(db: sqlite3.Connection) -> None:
+    jid = _trial_job(db)
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute(
+            "INSERT INTO experiment VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                new_id(),
+                "demo",
+                1,
+                "vibing",
+                "succeeded",
+                "nominal",
+                "{}",
+                "{}",
+                "pass",
+                "r" * 64,
+                7,
+                jid,
+                STAMP,
+            ),
+        )
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute(
+            "INSERT INTO experiment VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                new_id(),
+                "demo",
+                2,
+                "trial",
+                "crashed",
+                "nominal",
+                "{}",
+                "{}",
+                "fail",
+                "r" * 64,
+                7,
+                jid,
+                STAMP,
+            ),
+        )
+
+
+def test_experiment_job_link_nulls_on_delete(db: sqlite3.Connection) -> None:
+    jid = _trial_job(db)
+    eid = _experiment_row(db, "demo", 0, jid)
+    db.execute("DELETE FROM job WHERE id = ?", (jid,))
+    db.commit()
+    row = db.execute("SELECT job_id FROM experiment WHERE id = ?", (eid,)).fetchone()
+    assert row[0] is None
+    assert db.execute("SELECT COUNT(*) FROM experiment").fetchone()[0] == 1

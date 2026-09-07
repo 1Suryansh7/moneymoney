@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-SCHEMA_VERSION: Final = 6
+SCHEMA_VERSION: Final = 7
 
 _MIGRATION_1 = """
 CREATE TABLE schema_version (
@@ -191,6 +191,24 @@ CREATE TABLE measurement (
 );
 """
 
+_MIGRATION_7 = """
+CREATE TABLE experiment (
+    id TEXT PRIMARY KEY,
+    study TEXT NOT NULL,
+    trial INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('trial', 'baseline')),
+    status TEXT NOT NULL CHECK (status IN ('succeeded', 'failed')),
+    corner TEXT NOT NULL DEFAULT 'nominal',
+    parameters TEXT NOT NULL,
+    metrics TEXT NOT NULL,
+    verdict TEXT NOT NULL,
+    reproducibility_id TEXT NOT NULL,
+    seed INTEGER NOT NULL,
+    job_id TEXT REFERENCES job(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL
+);
+"""
+
 MIGRATIONS: Final = (
     (1, _MIGRATION_1),
     (2, _MIGRATION_2),
@@ -198,6 +216,7 @@ MIGRATIONS: Final = (
     (4, _MIGRATION_4),
     (5, _MIGRATION_5),
     (6, _MIGRATION_6),
+    (7, _MIGRATION_7),
 )
 
 

@@ -138,11 +138,11 @@
   - [x] **3I**: Metric 7 — Settling Time contract + error-band staying extraction + tests. (COMMITTED 2026-09-07 `6e11964`: `metrics/settling_time.py` last-violation + staying rule + `assemble_closed_loop_step`; live ts=26.2 ns @1pF. Unloaded settles in 20 ps via source feedthrough — benchmark declared loaded.)
   - [x] 🔴 **HUMAN CHECKPOINT**: Settling Time hand-calculation verification. — CONFIRMED by human 2026-09-07 (26.2 ns @ 1 pF, feedthrough finding verified).
   - [x] **3J**: Specification evaluation (hard pass/fail, soft scoring, weighted Figure-of-Merit). (COMMITTED: `metrics/evaluator.py` over `constraint_rule` rows + `tests/test_evaluator.py`, pure-logic base-green. No checkpoint due.)
-- [ ] **Stage 4 — Optimization Layer**
-  - [ ] `Optimizer` interface & `OptunaOptimizer` implementation.
-  - [ ] Experiment Ledger recording every trial (success and failure).
-  - [ ] Common-source amplifier reproducible sizing against specification.
-  - [ ] 🟡 **HUMAN CHECKPOINT (Advisory)**: Search-space boundary or rapid convergence audit.
+- [x] **Stage 4 — Optimization Layer** — COMPLETE (4A–4D; demo green, no advisory trigger)
+  - [x] `Optimizer` interface & `OptunaOptimizer` implementation. (4B ask/tell ABC + SI SearchSpace; 4C seeded TPE, determinism proven without sims; optuna==5.0.0 plan-mandated dep.)
+  - [x] Experiment Ledger recording every trial (success and failure). (4A migration v7 `experiment` table; 4B ledger writer/reader; failed trials recorded with failure class.)
+  - [x] Common-source amplifier reproducible sizing against specification. (4D: 8-trial study seed 7, winner trial 5 w_n=2.198µm w_p=5.019µm, gain 9.139, UGB 13.44 MHz, spec passed; winner re-simulated within 1e-6; base 243+26, EDA 269/269.)
+  - [x] 🟡 **HUMAN CHECKPOINT (Advisory)**: Search-space boundary or rapid convergence audit. — NOT TRIGGERED (winner interior on both axes; 8-trial seeded-TPE startup, no order-of-magnitude jump claimed).
 - [ ] **Stage 4.5 — Robustness**
   - [ ] PVT corner definitions bound to PDKAdapter.
   - [ ] Monte Carlo sampling using authentic PDK variation models.
