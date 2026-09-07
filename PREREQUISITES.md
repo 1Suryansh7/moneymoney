@@ -78,19 +78,19 @@ The Dockerfile builds against these exact tags/hashes (never `:latest`). All val
 The local host and container Python environment require the following pinned tooling:
 
 ### 4.1 Strict Type Checking (`mypy`)
-- **Version**: `mypy >= 1.9.0`
+- **Version**: `mypy == 2.3.1` (hermetic pin 2026-09-06; floors let fresh builds drift — see CI post-mortem in Tasks_Comp.md)
 - **Configuration**: Strict mode mandatory (`--strict`, `disallow_untyped_defs = true`, `disallow_any_generics = true`, `no_implicit_optional = true`).
 
 ### 4.2 Fast Linting & Code Formatting (`ruff`)
-- **Version**: `ruff >= 0.3.0`
+- **Version**: `ruff == 0.16.6` (hermetic pin 2026-09-06)
 - **Configuration**: Line length 100, rules enabled: `E` (Pycodestyle), `F` (Pyflakes), `I` (isort), `B` (flake8-bugbear), `UP` (pyupgrade).
 
 ### 4.3 Automated Test Framework (`pytest`)
-- **Version**: `pytest >= 8.0.0`, `pytest-cov >= 5.0.0`
+- **Version**: `pytest == 9.1.1`, `pytest-cov == 7.1.0` (hermetic pins 2026-09-06)
 - **Execution Target**: Stage 0 requires 100% pass on all interface signature tests with zero warnings.
 
 ### 4.4 Git & Pre-Commit Hooks
-- **Tool**: `pre-commit >= 3.6.0`
+- **Tool**: `pre-commit == 4.6.2` (hermetic pin 2026-09-06), `matplotlib == 3.11.1` (plot backend)
 - **Enforcement**: Blocks commits if unformatted, untyped, or failing linter checks.
 
 ---

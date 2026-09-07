@@ -25,6 +25,9 @@
 - [ADR-017: ngspice 46 → 47 Correction (Top-Level Folder Does Not Exist)](#adr-017-ngspice-46--47-correction-top-level-folder-does-not-exist)
 - [ADR-018: Unit Kernel Ships Types + Display Formatting Only, No Parser](#adr-018-unit-kernel-ships-types--display-formatting-only-no-parser)
 - [ADR-019: Platform Language Stability & Native Compiled Extension Gate](#adr-019-platform-language-stability--native-compiled-extension-gate)
+- [ADR-020: PDK Deck Emission Uses Micron Geometry + scale=1e-6 (SI Stays Canonical)](#adr-020-pdk-deck-emission-uses-micron-geometry--scale1e-6-si-stays-canonical)
+- [ADR-021: Failing-Decks Execute Only in Workers (In-Process Error Paths Segfault)](#adr-021-failing-decks-execute-only-in-workers-in-process-error-paths-segfault)
+- [ADR-022: Stage 3 Measurement Conventions (Tian Loop, Declared Loads, Branch Sign)](#adr-022-stage-3-measurement-conventions-tian-loop-declared-loads-branch-sign)
 
 ---
 
@@ -278,3 +281,14 @@
 - **Rationale**: The alternative (allowing in-process error-path calls) makes the suite order-dependent and one bad deck away from a segfault with no Python traceback at the true culprit.
 - **Alternatives Considered**: Reinitializing/unloading libngspice after failures (rejected: handle caching is load-bearing; re-init semantics of a corrupted global state are unknowable from our side).
 - **Consequences**: EDA tests must not call `run_deck` in-process with decks that fail inside C; use `JobRunner` and assert on the ledger error text.
+
+---
+
+### ADR-022: Stage 3 Measurement Conventions (Tian Loop, Declared Loads, Branch Sign)
+- **Date**: 2026-09-07
+- **Status**: Accepted
+- **Context**: The seven metric implementations each required conventions beyond their contracts: (1) Phase margin has no dedicated closed-loop fixture cell (diff_amp lands in 3H), so the loop must be closed at deck level. (2) Bandwidth, loop-gain, and settling benchmarks show no usable dynamics unloaded (near-zero diffusion area pushes poles beyond the sweep; unloaded "settling" is source feedthrough). (3) Supply-current sign is invisible in the deck — ngspice reports branch current entering the source positive terminal. (4) The brief sketches bandwidth as "-3dB" while the committed contract specifies the 0dB-absolute unity crossing.
+- **Decision**: (1) Tian injection: close amplifier loops through a zero-DC-voltage source at deck level (`assemble_loop_gain`, `assemble_closed_loop_step`); measured M = V(out)/V(in) equals the open-loop transfer exactly (derivation in `metrics/phase_margin.py`). (2) Bandwidth-class benchmarks are declared loaded (1 pF `Cload` in the testbench; fixtures untouched) — an unloaded AC/settling number is not trusted. (3) Supply power uses P = mean(VDD) × mean(−I(branch)), with the sign grounded by a 1 kΩ resistive probe, not by convention memory. (4) Where brief prose and the committed `MetricContract` diverge, the contract wins (0dB-absolute UGB); the checkpoint records the reading.
+- **Rationale**: Each convention converts a silent wrong-number risk (feedthrough "settling", unmeasurable bandwidth, sign-flipped power) into a declared, tested testbench condition. Stage 4's optimizer consumes these metrics blindly, so the conventions must be architectural, not tribal.
+- **Alternatives Considered**: New dedicated fixture cells per metric (rejected: compiler has no source/resistor support, so injection must live at deck level regardless); trusting unloaded dynamics (rejected: empirically feedthrough-dominated).
+- **Consequences**: 3J evaluator and Stage 4 optimization inherit these testbenches verbatim; changing any convention re-opens its metric checkpoint.
