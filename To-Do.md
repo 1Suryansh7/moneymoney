@@ -129,15 +129,15 @@
   - [x] 🔴 **HUMAN CHECKPOINT**: Bandwidth hand-calculation verification. — CONFIRMED by human 2026-09-06 (0dB-absolute reading, declared 1pF load).
   - [x] **3E**: Metric 3 — Phase Margin contract + return-ratio / loop-gain benchmark + tests. (COMMITTED 2026-09-07: `metrics/phase_margin.py` + `sim/testbench.py` Tian loop; base 209+21, EDA 230/230).
   - [x] 🔴 **HUMAN CHECKPOINT**: Phase Margin hand-calculation verification. — CONFIRMED by human 2026-09-07 (PM 83.37 deg @1pF load, DC-trip slope match <5%).
-  - [x] **3F**: Metric 4 — Slew Rate contract + step transient extraction + tests. (IMPLEMENTED: `metrics/slew_rate.py` + `sim/testbench.py` step response; base 214+22, EDA 236/236).
-  - [ ] 🔴 **HUMAN CHECKPOINT**: Slew Rate hand-calculation verification.
-  - [ ] **3G**: Metric 5 — Power contract + supply current averaging + tests.
-  - [ ] 🔴 **HUMAN CHECKPOINT**: Power hand-calculation verification.
-  - [ ] **3H**: Metric 6 — Offset contract + differential DC balance + tests.
+  - [x] **3F**: Metric 4 — Slew Rate contract + step transient extraction + tests. (COMMITTED 2026-09-07 `0d4eff6`: `metrics/slew_rate.py` + `sim/testbench.py` step response).
+  - [x] 🔴 **HUMAN CHECKPOINT**: Slew Rate hand-calculation verification. — CONFIRMED WITH NOTE 2026-09-07 (unloaded 4.96e11 V/s, loaded 8.32e9 V/s @50fF).
+  - [x] **3G**: Metric 5 — Power contract + supply current averaging + tests. (COMMITTED: `metrics/power.py`, branch sign probed on 1k load; live inverter 0.55 µW steady to 0.5%).
+  - [x] 🔴 **HUMAN CHECKPOINT**: Power hand-calculation verification. — CONFIRMED by human 2026-09-07 (0.55 µW inverter power, probed sign convention).
+  - [x] **3H**: Metric 6 — Offset contract + differential DC balance + tests. (IMPLEMENTED 2026-09-07: `metrics/offset.py` Vid-at-Vod-zero + `sim/diff_pair.py` mirror-load fixture; symmetric 1.9e-10 V, 2:1 mismatch −77 mV correct sign.)
   - [ ] 🔴 **HUMAN CHECKPOINT**: Offset hand-calculation verification.
-  - [ ] **3I**: Metric 7 — Settling Time contract + error-band staying extraction + tests.
+  - [x] **3I**: Metric 7 — Settling Time contract + error-band staying extraction + tests. (IMPLEMENTED 2026-09-07: `metrics/settling_time.py` last-violation + staying rule + `assemble_closed_loop_step`; live ts=26.2 ns @1pF. Unloaded settles in 20 ps via source feedthrough — no loop dynamics — so the benchmark is declared loaded.)
   - [ ] 🔴 **HUMAN CHECKPOINT**: Settling Time hand-calculation verification.
-  - [ ] **3J**: Specification evaluation (hard pass/fail, soft scoring, weighted Figure-of-Merit).
+  - [x] **3J**: Specification evaluation (hard pass/fail, soft scoring, weighted Figure-of-Merit). (IMPLEMENTED 2026-09-07: `metrics/evaluator.py` over `constraint_rule` rows + `tests/test_evaluator.py`, pure-logic base-green. No checkpoint due.)
 - [ ] **Stage 4 — Optimization Layer**
   - [ ] `Optimizer` interface & `OptunaOptimizer` implementation.
   - [ ] Experiment Ledger recording every trial (success and failure).

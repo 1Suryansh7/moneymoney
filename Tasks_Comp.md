@@ -95,9 +95,9 @@ plausibility check, not PDK-quoted.
 Base (`make test`): 6 → 12 → 99 → 108 → 113 → 118 → 129 → 140 → 144 passed
 (Stages 0–1, zero warnings throughout via `filterwarnings = error`),
 then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
-196+19 (3A–3C) → 200+20 (3D) → 209+21 (3E) → 214+22 (3F). mypy strict clean throughout (13 → 29 →
-52 → 57 files). EDA full suite: 182 (2H) → 186 (hardening) → 215 (3A–3C) →
-220 (3D) → 230 (3E) → 236 passed, 0 failed (3F).
+196+19 (3A–3C) → 200+20 (3D) → 209+21 (3E) → 214+22 (3F) → 232+25 (3G–3J). mypy strict clean throughout (13 → 29 →
+52 → 57 → 66 files). EDA full suite: 182 (2H) → 186 (hardening) → 215 (3A–3C) →
+220 (3D) → 230 (3E) → 236 (3F) → 257 passed, 0 failed (3G–3J).
 
 ## Final pinned toolchain (all observed)
 
@@ -129,7 +129,11 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 | 3C gain | `9884494` | `extract_dc_gain` / `extract_ac_gain` + `cs_amp_nmos` fixture + DC-sweep/AC assemblers | `metrics/gain.py`, `sim/cs_amp.py`, `sim/testbench.py` (`assemble_dc_sweep`, `assemble_ac`, both honor ADR-020); tests in `test_gain.py`. Gain checkpoint CONFIRMED by human 2026-09-06 (DC 9.1061 == AC 9.1059 V/V, rel 0.0000 < 0.05; base 196+19, EDA 215/215) |
 | 3D bandwidth | `43aaed6` | `extract_bandwidth` (unity-gain crossing, linear interp) | `metrics/bandwidth.py`; tests in `test_bandwidth.py` (exact crossings, first-crossing semantics, 7 rejections, live UGB). Bandwidth checkpoint CONFIRMED by human 2026-09-06 (UGB 2.07e7 Hz @ declared 1 pF load, 0dB-absolute reading; base 200+20, EDA 220/220). Load note: unloaded fixture pole sits beyond the 10 GHz sweep (gain 2.45 @10 GHz observed), so bandwidth is declared loaded — fixture untouched |
 | 3E phase margin | `13bbe58` | `extract_phase_margin` via Tian loop gain + `assemble_loop_gain` | `metrics/phase_margin.py`, `sim/testbench.py` (`assemble_loop_gain`); tests in `test_phase_margin.py` (0 deg oscillator, 60 deg synthetic, 7 rejections, live Tian loop on `cs_amp_nmos`). Checkpoint CONFIRMED 2026-09-07 (PM 83.37 deg @1pF load, DC-trip slope match <5%; base 209+21, EDA 230/230) |
-| 3F slew rate | pending | `extract_slew_rate` (20%-80% rise/fall linear interp) + `assemble_step_response` | `metrics/slew_rate.py`, `sim/testbench.py` (`assemble_step_response`); tests in `test_slew_rate.py` (exact 1.8e9 V/s rise/fall, min(rise,fall), 5 rejections, live rail-to-rail step on `inverter`: unloaded 4.88e11 V/s, 50fF loaded 1.80e10 V/s; base 214+22, EDA 236/236) |
+| 3F slew rate | `0d4eff6` | `extract_slew_rate` (20%-80% rise/fall linear interp) + `assemble_step_response` | `metrics/slew_rate.py`, `sim/testbench.py` (`assemble_step_response`); tests in `test_slew_rate.py` (exact 1.8e9 V/s rise/fall, min(rise,fall), 5 rejections, live rail-to-rail step on `inverter`). Verification 2026-09-07: unloaded 4.88e11 CONFIRMED by 0.1 ps refinement (4.96e11, within 1.8%); loaded figure 1.80e10 in checkpoint text DOES NOT reproduce — observed 8.32e9 twice bitwise. Verdict pending corrected figure |
+| 3G power | pending | `extract_power` (VDD·mean(−Ibranch), branch sign probed on 1 kΩ load) | `metrics/power.py`; tests in `test_power.py` (exact DC/sine/window, 5 rejections). Live inverter 0.55 µW steady to 0.5% over 5 periods. Checkpoint CONFIRMED 2026-09-07 |
+| 3H offset | uncommitted | `extract_offset` (Vid at Vod zero) + `diff_pair_nmos` fixture (mirror load) | `metrics/offset.py`, `sim/diff_pair.py`; tests in `test_offset.py` (exact 3 mV crossing, 5 rejections). Symmetric 1.9e-10 V; 2:1 mismatch −77 mV correct sign. Checkpoint OPEN |
+| 3I settling | uncommitted | `extract_settling_time` (last violation + staying rule) + `assemble_closed_loop_step` | `metrics/settling_time.py`; tests in `test_settling_time.py` (exact 4.6052 ns exponential, staying-spike semantics, 6 rejections). Live ts=26.2 ns @1pF; unloaded 20 ps is source feedthrough (benchmark declared loaded). Checkpoint OPEN |
+| 3J evaluator | uncommitted | hard/soft/weighted evaluation over `constraint_rule` rows | `metrics/evaluator.py`; tests in `test_evaluator.py` (tolerance edges, soft fractions, FOM, fail-closed). Pure logic, base-green. No checkpoint due |
 
 
 ## CI post-mortem 2026-09-06 (first-ever GitHub run, both jobs red)
@@ -154,7 +158,7 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **Stage 3 — Measurement & Specification Engine** — 3E Phase Margin next (return-ratio benchmark; current-mirror shortcut forbidden), then 3F–3I (checkpoint each) + 3J evaluator.
+1. **Stage 3 — Measurement & Specification Engine** — 3A–3F committed; 3G–3J implemented, verified (base 232+25, EDA 257/257), uncommitted. Checkpoints 3E–3I verdicts pending (3F figure corrected: loaded 8.32e9 observed). Next: Stage 4 after verdicts + push.
 2. **Push + GitHub Actions run** — CONNECTED 2026-09-06: `origin` → `RobinBroG/moneymoney`, branch `main`, all commits pushed (remote HEAD == local `0859745`, verified). CI pin hardened (`actions/checkout@11d5960a…`, PGP-verified v4). Remote Actions UI not observable from here (private repo) — human to confirm green run + default branch `main`.
 4. `actions/checkout@v4` floating major — CLOSED 2026-09-06 (pinned to immutable SHA `11d5960a326750d5838078e36cf38b85af677262`; act dry-run plans clean).
 5. Automated W/L-minima checks — CLOSED 2026-09-06 (`circuit/pdk_limits.py` ingested from pinned PDK bins; validator enforces as `schema`; base 205+20, EDA 225/225).
