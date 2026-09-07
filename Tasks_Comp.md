@@ -97,7 +97,7 @@ Base (`make test`): 6 → 12 → 99 → 108 → 113 → 118 → 129 → 140 → 
 then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 196+19 (3A–3C) → 200+20 (3D) → 209+21 (3E) → 214+22 (3F) → 232+25 (3G–3J) → 243+26 (4A–4D) → 256+28 (4.5A–4.5C). mypy strict clean throughout (13 → 29 →
 52 → 57 → 66 → 72 → 80 files). EDA full suite: 182 (2H) → 186 (hardening) → 215 (3A–3C) →
-220 (3D) → 230 (3E) → 236 (3F) → 257 (3G–3J) → 269 (Stage 4) → 4.5 pending full run.
+220 (3D) → 230 (3E) → 236 (3F) → 257 (3G–3J) → 269 (Stage 4) → 284 passed, 0 failed (4.5A–4.5C).
 
 ## Final pinned toolchain (all observed)
 
