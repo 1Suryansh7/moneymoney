@@ -23,6 +23,8 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 
+from analog_ic_design.robust.corner import Corner
+
 #: Geometry keys converted meters -> microns at deck emission (Sky130
 #: binned-model lookup matches raw numbers in microns; see module docstring).
 _GEOM_RE = re.compile(r"\b([WLwl])=(-?[0-9][0-9.eE+-]*)")
@@ -38,6 +40,22 @@ def _to_microns(line: str) -> str:
     return _GEOM_RE.sub(_one, line)
 
 
+def _corner_libs(libs: Sequence[tuple[str, str]], corner: Corner | None) -> list[str]:
+    """`.lib` lines for a deck: corner replaces the section of `libs[0]`."""
+    if corner is None:
+        return [f".lib '{path}' {section}" for path, section in libs]
+    if not libs:
+        raise ValueError("Schema: corner requires a .lib path via libs (no default PDK path)")
+    return [f".lib '{libs[0][0]}' {corner.process}"]
+
+
+def _corner_supply(vdd_net: str, vdd_volts: float, corner: Corner | None) -> list[str]:
+    """Supply lines: corner VDD overrides; VSS ground always explicit (ADR-020)."""
+    vdd = corner.vdd if corner is not None else vdd_volts
+    extra = [f".temp {corner.temp_celsius():.2f}"] if corner is not None else []
+    return extra + [f"VDD {vdd_net} 0 DC {vdd}"]
+
+
 def assemble_transient(
     fragment: str,
     *,
@@ -49,6 +67,7 @@ def assemble_transient(
     tstop_s: float = 30e-9,
     includes: Sequence[str] = (),
     libs: Sequence[tuple[str, str]] = (),
+    corner: Corner | None = None,
 ) -> str:
     """Assemble a complete transient deck around a cell `fragment`.
 
@@ -66,11 +85,11 @@ def assemble_transient(
     title, rest = (body[0], body[1:]) if body else ("* testbench", [])
     lines = [title]
     lines += [f".include {path}" for path in includes]
-    lines += [f".lib '{path}' {section}" for path, section in libs]
+    lines += _corner_libs(libs, corner)
     lines.append(".param mc_mm_switch=0")
     lines.append(".option scale=1e-6")
     lines += [_to_microns(line) for line in rest]
-    lines.append(f"VDD {vdd_net} 0 DC {vdd_volts}")
+    lines += _corner_supply(vdd_net, vdd_volts, corner)
     # The compiler emits net names verbatim (no `vss` -> `0` magic), so the
     # fixture's return net needs its own explicit ground reference; without
     # it `vss` floats and the output shows feedthrough above the rail.
@@ -187,6 +206,7 @@ def assemble_dc_sweep(
     extra_lines: Sequence[str] = (),
     includes: Sequence[str] = (),
     libs: Sequence[tuple[str, str]] = (),
+    corner: Corner | None = None,
 ) -> str:
     """Assemble a DC transfer sweep deck around a cell `fragment`."""
     body = fragment.splitlines()
@@ -197,11 +217,11 @@ def assemble_dc_sweep(
     title, rest = (body[0], body[1:]) if body else ("* testbench", [])
     lines = [title]
     lines += [f".include {path}" for path in includes]
-    lines += [f".lib '{path}' {section}" for path, section in libs]
+    lines += _corner_libs(libs, corner)
     lines.append(".param mc_mm_switch=0")
     lines.append(".option scale=1e-6")
     lines += [_to_microns(line) for line in rest]
-    lines.append(f"VDD {vdd_net} 0 DC {vdd_volts}")
+    lines += _corner_supply(vdd_net, vdd_volts, corner)
     lines.append(f"VSS {vss_net} 0 DC 0")
     lines.append(f"Vin {sweep_net} 0 DC {v_start}")
     lines += list(extra_lines)
@@ -225,6 +245,7 @@ def assemble_ac(
     extra_lines: Sequence[str] = (),
     includes: Sequence[str] = (),
     libs: Sequence[tuple[str, str]] = (),
+    corner: Corner | None = None,
 ) -> str:
     """Assemble an AC small-signal frequency response deck around a cell `fragment`."""
     body = fragment.splitlines()
@@ -235,11 +256,11 @@ def assemble_ac(
     title, rest = (body[0], body[1:]) if body else ("* testbench", [])
     lines = [title]
     lines += [f".include {path}" for path in includes]
-    lines += [f".lib '{path}' {section}" for path, section in libs]
+    lines += _corner_libs(libs, corner)
     lines.append(".param mc_mm_switch=0")
     lines.append(".option scale=1e-6")
     lines += [_to_microns(line) for line in rest]
-    lines.append(f"VDD {vdd_net} 0 DC {vdd_volts}")
+    lines += _corner_supply(vdd_net, vdd_volts, corner)
     lines.append(f"VSS {vss_net} 0 DC 0")
     lines.append(f"Vin {in_net} 0 DC {v_bias} AC {ac_mag}")
     lines += list(extra_lines)

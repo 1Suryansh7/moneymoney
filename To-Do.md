@@ -143,7 +143,7 @@
   - [x] Experiment Ledger recording every trial (success and failure). (4A migration v7 `experiment` table; 4B ledger writer/reader; failed trials recorded with failure class.)
   - [x] Common-source amplifier reproducible sizing against specification. (4D: 8-trial study seed 7, winner trial 5 w_n=2.198µm w_p=5.019µm, gain 9.139, UGB 13.44 MHz, spec passed; winner re-simulated within 1e-6; base 243+26, EDA 269/269.)
   - [x] 🟡 **HUMAN CHECKPOINT (Advisory)**: Search-space boundary or rapid convergence audit. — NOT TRIGGERED (winner interior on both axes; 8-trial seeded-TPE startup, no order-of-magnitude jump claimed).
-- [ ] **Stage 4.5 — Robustness**
+- [-] **Stage 4.5 — Robustness** (4.5A corner axis in progress)
   - [ ] PVT corner definitions bound to PDKAdapter.
   - [ ] Monte Carlo sampling using authentic PDK variation models.
   - [ ] Versioned `StatisticalProtocol` definition.
