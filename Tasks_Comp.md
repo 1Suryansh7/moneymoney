@@ -95,9 +95,9 @@ plausibility check, not PDK-quoted.
 Base (`make test`): 6 → 12 → 99 → 108 → 113 → 118 → 129 → 140 → 144 passed
 (Stages 0–1, zero warnings throughout via `filterwarnings = error`),
 then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
-196+19 (3A–3C) → 200+20 (3D) → 209+21 (3E) → 214+22 (3F) → 232+25 (3G–3J) → 243+26 (4A–4D). mypy strict clean throughout (13 → 29 →
-52 → 57 → 66 → 72 files). EDA full suite: 182 (2H) → 186 (hardening) → 215 (3A–3C) →
-220 (3D) → 230 (3E) → 236 (3F) → 257 (3G–3J) → 269 passed, 0 failed (4A–4D).
+196+19 (3A–3C) → 200+20 (3D) → 209+21 (3E) → 214+22 (3F) → 232+25 (3G–3J) → 243+26 (4A–4D) → 256+28 (4.5A–4.5C). mypy strict clean throughout (13 → 29 →
+52 → 57 → 66 → 72 → 80 files). EDA full suite: 182 (2H) → 186 (hardening) → 215 (3A–3C) →
+220 (3D) → 230 (3E) → 236 (3F) → 257 (3G–3J) → 269 (Stage 4) → 4.5 pending full run.
 
 ## Final pinned toolchain (all observed)
 
@@ -136,8 +136,16 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 | 3J evaluator | `2443152` | hard/soft/weighted evaluation over `constraint_rule` rows | `metrics/evaluator.py`; tests in `test_evaluator.py` (tolerance edges, soft fractions, FOM, fail-closed). Pure logic, base-green. No checkpoint due |
 
 
-## Stage 4 — Optimization Layer (4A–4D implemented, verified, uncommitted)
+## Stage 4.5 — Robustness (4.5A–4.5C committed; yield checkpoint OPEN below)
 
+| Commit | Scope | Status & Evidence |
+|---|---|---|
+| 4.5A corners | Corner axis + deck plumbing + live 5-corner matrix | `docs/stages/stage-4.5.md`, `robust/corner.py` (SI K/V, 5-envelope + 45-matrix defined-only), `sim/testbench.py` corner params (`.temp`/`.lib`/VDD; corner without libs fails closed); `tests/test_corner.py` + `tests/test_pvt_sim.py`. Live TT 9.106/20.7M (reproduces nominal exactly), FF 63.1M > SS 12.0M monotonic, per-corner ledger rows |
+| 4.5B sampler | Seeded geometric MC sampler (ngspice-native proven unseedable) | `robust/mc_sampler.py` (per-(seed,sample) streams, declared relative sigmas — protocol parameters, not foundry data); spike table in `tests/test_mc_spike.py` (mc=1 varies ~6%, setseed repeats fail). Verified green standalone at its commit via isolated worktree |
+| 4.5C protocol | StatisticalProtocol + Wilson CI + report builder | `robust/protocol.py` (N/seeds/corners/supplies/temps/mechanisms/method/thresholds/CI; stdlib NormalDist, no SciPy); `tests/test_protocol.py` (validation, Wilson goldens, synthetic reports). Live N=8 DC-gain MC report (see checkpoint) |
+
+
+## Stage 4 — Optimization Layer (4A–4D committed, demo green)
 | Commit | Scope | Status & Evidence |
 |---|---|---|
 | 4A brief+schema | Stage brief + Migration v7 (`experiment` ledger) | `docs/stages/stage-4.md`; `store/schema.py` v7; `test_schema.py` (round-trip, vocab CHECKs, job-delete SET NULL) |

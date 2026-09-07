@@ -6,6 +6,12 @@ from analog_ic_design.robust.corner import (
     Corner,
 )
 from analog_ic_design.robust.mc_sampler import MonteCarloSampler, PerturbationConfig
+from analog_ic_design.robust.protocol import (
+    RobustnessReport,
+    StatisticalProtocol,
+    build_report,
+    wilson_interval,
+)
 
 __all__ = [
     "FAST_5_CORNER_ENVELOPE",
@@ -13,4 +19,8 @@ __all__ = [
     "Corner",
     "MonteCarloSampler",
     "PerturbationConfig",
+    "RobustnessReport",
+    "StatisticalProtocol",
+    "build_report",
+    "wilson_interval",
 ]
