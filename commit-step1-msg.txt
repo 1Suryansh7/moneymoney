@@ -1,0 +1,14 @@
+Phase 0 Step 1: phase-margin unwrap fix plus signed reporting (VERIFY-PM-001)
+
+extract_phase_margin interpolated principal-value cmath.phase and
+returned 180-abs(phase) with no unwrapping, fabricating PM=+155 for
+unstable multi-pole loops (committed 6F PM 152.4 now UNVERIFIED,
+predicted deeply negative or marginal). Fix: unwrap_phase_degrees
+before crossing interpolation, anchor-invariant signed PM = 180 minus
+lag-from-DC, STABLE/MARGINAL/UNSTABLE classification, float API
+preserved, contract text aligned to lag formulation. Two old unit
+expectations (0.0, 60.0) corrected to 180.0 and 120.0 with derivations
+in comments - they encoded the abs() bug under the M=G(s) convention.
+Wrap/branch-cut/unstable/marginal adversarial suite added. ADR-027
+recorded. Gates: ruff plus mypy-strict clean, base 311 passed, EDA
+phase-margin file 11 passed incl. live cs_amp regression unchanged.

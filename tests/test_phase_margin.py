@@ -7,13 +7,21 @@ runs under `@NEEDS_LIB`.
 
 from __future__ import annotations
 
+import cmath
+import math
 from pathlib import Path
 
 import pytest
 
 from analog_ic_design.circuit import compile_netlist, validate
 from analog_ic_design.metrics.contract import PHASE_MARGIN
-from analog_ic_design.metrics.phase_margin import extract_phase_margin
+from analog_ic_design.metrics.phase_margin import (
+    StabilityClassification,
+    classify_stability,
+    extract_phase_margin,
+    extract_phase_margin_detailed,
+    unwrap_phase_degrees,
+)
 from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.ngspice import RawSim, SimError, libngspice_available, run_deck
 from analog_ic_design.sim.testbench import assemble_dc_sweep, assemble_loop_gain
@@ -42,17 +50,116 @@ def _loop_wave(freqs: list[float], ratios: list[complex]) -> ACWaveform:
     )
 
 
-def test_phase_margin_oscillator_zero() -> None:
-    # Real-negative ratios: 180 deg lag at unity -> PM = 0.
+def _rect(mag: float, deg: float) -> complex:
+    """Phasor helper: exact principal-value construction for synthetic waves."""
+    return cmath.rect(mag, math.radians(deg))
+
+
+def test_phase_margin_negative_real_unity_reports_full_margin() -> None:
+    # Ratios pinned on the negative-real axis (-2.0 -> -0.5): zero lag
+    # accumulated from the DC phasor, so PM = 180. Under the M = G(s)
+    # convention this is NOT oscillation (classical loop gain is +2 -> +0.5,
+    # positive-real, never near -1). The old expectation 0.0 came from
+    # 180 - |180| and is corrected here per VERIFY-PM-001 / ADR-027.
     pm = extract_phase_margin(_loop_wave([1e6, 2e6], [-2.0 + 0j, -0.5 + 0j]))
-    assert abs(pm - 0.0) < 1e-6
+    assert abs(pm - 180.0) < 1e-6
 
 
-def test_phase_margin_interpolated_sixty() -> None:
-    # Crossing at f=1.6667e6 between (-2.0 @180 deg) and (0.5j @90 deg):
-    # phase = 180*(1-2/3) + 90*(2/3) = 120 deg -> PM = 60.
+def test_phase_margin_interpolated_signed() -> None:
+    # Crossing at f=1.6667e6, unwrapped phase 180 -> 120 (lag 60 from DC):
+    # PM = 180 - 60 = 120 (STABLE). The old expectation 60.0 came from
+    # 180 - |120|; corrected per VERIFY-PM-001 / ADR-027.
     pm = extract_phase_margin(_loop_wave([1e6, 2e6], [-2.0 + 0j, 0.5j]))
-    assert abs(pm - 60.0) < 1e-6
+    assert abs(pm - 120.0) < 1e-6
+
+
+def test_phase_margin_single_pole_stable() -> None:
+    # No wrap on this deck: unwrapped [180, 120, 103.33], lag 76.67.
+    # Old and new formulas agree here (backward-compat proof).
+    pm = extract_phase_margin(
+        _loop_wave(
+            [1e6, 2e6, 4e6],
+            [-10.0 + 0j, _rect(2.0, 120.0), _rect(0.5, 95.0)],
+        )
+    )
+    assert abs(pm - 103.3333333) < 1e-3
+
+
+def test_adversarial_wrapped_phase_reports_unstable() -> None:
+    # Stage 6F bug replication: true lag 343.64 deg (principal readings
+    # [160, 20, -120, +100] wrap past -180). Old code lerped principals
+    # (-120 -> +100 through 0) and reported a fake PM = +160.
+    # Correct: PM = 180 - 343.6364 = -163.6364, UNSTABLE.
+    pm = extract_phase_margin(
+        _loop_wave(
+            [1e6, 2e6, 4e6, 8e6],
+            [
+                _rect(8.0, 160.0),
+                _rect(4.0, 20.0),
+                _rect(1.5, -120.0),
+                _rect(0.4, 100.0),
+            ],
+        )
+    )
+    assert abs(pm + 163.6363636) < 1e-3
+    assert pm < 0.0
+
+
+def test_branch_cut_bracket_unwraps_continuously() -> None:
+    # Principals [-170, +170] must unwrap to [-170, -190] (continuous lag),
+    # never lerp through 0 (naive gives PM = 123.33; correct is 166.67).
+    pm = extract_phase_margin(
+        _loop_wave([1e6, 2e6], [_rect(2.0, -170.0), _rect(0.5, 170.0)])
+    )
+    assert abs(pm - 166.6666667) < 1e-3
+
+
+def test_multi_pole_unstable_without_wrap() -> None:
+    # No branch crossing, yet lag 266.36 deg at unity: PM = -86.36.
+    # Old code returned +83.64 (fake stable) via 180 - |-96.36|.
+    pm = extract_phase_margin(
+        _loop_wave(
+            [1e6, 2e6, 4e6, 8e6],
+            [
+                _rect(6.0, 170.0),
+                _rect(3.0, 60.0),
+                _rect(1.5, -60.0),
+                _rect(0.4, -140.0),
+            ],
+        )
+    )
+    assert abs(pm + 86.3636364) < 1e-3
+    assert pm < 0.0
+
+
+def test_marginal_band_classification() -> None:
+    # Lag 142.22 deg at unity: PM = 37.78, MARGINAL (rings, not robust).
+    wave = _loop_wave(
+        [1e6, 2e6, 4e6],
+        [-3.0 + 0j, _rect(1.5, 60.0), _rect(0.6, 20.0)],
+    )
+    data = extract_phase_margin_detailed(wave)
+    assert abs(data.phase_margin_deg - 37.7777778) < 1e-3
+    assert data.stability == StabilityClassification.MARGINAL
+    assert data.unity_gain_freq_hz > 0.0
+
+
+def test_detailed_telemetry_and_classification_bounds() -> None:
+    stable = extract_phase_margin_detailed(
+        _loop_wave([1e6, 2e6], [-2.0 + 0j, 0.5j])
+    )
+    assert stable.stability == StabilityClassification.STABLE
+    assert abs(stable.phase_at_ugb_deg - 120.0) < 1e-6
+    assert isinstance(extract_phase_margin(_loop_wave([1e6, 2e6], [-2.0 + 0j, 0.5j])), float)
+
+    assert classify_stability(45.0) == StabilityClassification.STABLE
+    assert classify_stability(0.0) == StabilityClassification.MARGINAL
+    assert classify_stability(-0.1) == StabilityClassification.UNSTABLE
+
+    assert unwrap_phase_degrees([]) == []
+    assert unwrap_phase_degrees([170.0, -170.0]) == [170.0, 190.0]
+    assert unwrap_phase_degrees([-170.0, 170.0]) == [-170.0, -190.0]
+    assert unwrap_phase_degrees([10.0, 20.0, 30.0]) == [10.0, 20.0, 30.0]
 
 
 def test_phase_margin_contract_bound() -> None:
