@@ -95,9 +95,9 @@ plausibility check, not PDK-quoted.
 Base (`make test`): 6 → 12 → 99 → 108 → 113 → 118 → 129 → 140 → 144 passed
 (Stages 0–1, zero warnings throughout via `filterwarnings = error`),
 then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
-196+19 (3A–3C) → 200+20 (3D) → 209+21 (3E) → 214+22 (3F) → 232+25 (3G–3J) → 243+26 (4A–4D) → 256+28 (4.5A–4.5C). mypy strict clean throughout (13 → 29 →
-52 → 57 → 66 → 72 → 80 files). EDA full suite: 182 (2H) → 186 (hardening) → 215 (3A–3C) →
-220 (3D) → 230 (3E) → 236 (3F) → 257 (3G–3J) → 269 (Stage 4) → 284 passed, 0 failed (4.5A–4.5C).
+196+19 (3A–3C) → 200+20 (3D) → 209+21 (3E) → 214+22 (3F) → 232+25 (3G–3J) → 243+26 (4A–4D) → 256+28 (4.5A–4.5C) → 276+28 (5A–5C). mypy strict clean throughout (13 → 29 →
+52 → 57 → 66 → 72 → 80 → 89 files). EDA full suite: 182 (2H) → 186 (hardening) → 215 (3A–3C) →
+220 (3D) → 230 (3E) → 236 (3F) → 257 (3G–3J) → 269 (Stage 4) → 284 (4.5A–4.5C) → 304 passed, 0 failed (5A–5C).
 
 ## Final pinned toolchain (all observed)
 
@@ -154,6 +154,15 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 | 4D demo | Live cs_amp sizing: 8-trial study seed 7 vs hard spec (gain≥8, UGB≥10MHz) | `tests/test_optimize_demo.py` (worker sims with timeouts; every trial a `job`+`experiment` row). Winner trial 5: w_n=2.198µm, w_p=5.019µm, gain 9.139, UGB 13.44 MHz, spec passed; interior on both axes (advisory NOT triggered); winner re-simulated within 1e-6. Base 243+26, EDA 269/269 |
 
 
+## Stage 5 — AI Diagnostics & Copilot (5A–5C implemented, verified, uncommitted)
+
+| Commit | Scope | Status & Evidence |
+|---|---|---|
+| 5A classifier | Deterministic taxonomy classifier + migration v8 (`ai_action`) | `ai/taxonomy.py` (12-category order, prefix/category/spec mapping, fail-closed); `ai/actions.py` (provenance writer); `tests/test_ai_classify.py` |
+| 5B provider | `LLMProvider` (Gemini stdlib-urllib + Mock) + residency guard + secret filter | `ai/provider.py` (alias resolution explicit > env > config, injectable transport, malformed replies fail closed); `ai/residency.py` (DISABLED/LOCAL_ONLY/HOSTED_ALLOWED, opt-in records, immediate reversion, redaction); `tests/test_ai_provider.py` (zero network) |
+| 5C explainer | Grounded explainer + Mock demos | `ai/explainer.py` (classify→retrieve→generate→substring citation check→refuse; AIAction before return, refusals included; `hosted` flag routing); `tests/test_ai_explain.py` (cited narration, empty/uncited refusal, unknown-ID fail-closed, DISABLED block). Advisory noted, never triggered as failure |
+
+
 ## CI post-mortem 2026-09-06 (first-ever GitHub run, both jobs red)
 
 - Symptom: `smoke` failed in 44 s, `eda` in 14 m 07 s — both at pytest
@@ -176,10 +185,10 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **Stage 4 — Optimization Layer** — COMPLETE (4A–4D committed coherently below; demo green, advisory not triggered). Next: Stage 4.5 Robustness.
+1. **Stage 5 — AI Diagnostics & Copilot** — COMPLETE (5A–5C implemented, verified, uncommitted; advisory noted, never a failure). Next: commit, push, watch CI, then Stage 6.
 2. **Push + GitHub Actions run** — CONNECTED 2026-09-06: `origin` → `RobinBroG/moneymoney`, branch `main`, all commits pushed. CI history observed 2026-09-07: #1 red (pre-fix cache teardown, post-mortem above), **#2 GREEN (hermetic fix verified remotely)**, #3/#4/#5 GREEN. Latest (#6, docs) was in progress at last sighting.
 4. `actions/checkout@v4` floating major — CLOSED 2026-09-06 (pinned to immutable SHA `11d5960a326750d5838078e36cf38b85af677262`; act dry-run plans clean).
 5. Automated W/L-minima checks — CLOSED 2026-09-06 (`circuit/pdk_limits.py` ingested from pinned PDK bins; validator enforces as `schema`; base 205+20, EDA 225/225).
-6. **Stage 4 — Optimization Layer** (Optuna Bayesian optimizer + Experiment Ledger + boundary checks).
+6. **Stage 6 — Topology Intelligence** (templates + ledger retrieval + LangGraph state machine; BLOCKING checkpoint on every proposal).
 
 

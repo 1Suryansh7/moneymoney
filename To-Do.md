@@ -148,11 +148,13 @@
   - [x] Monte Carlo sampling using authentic PDK variation models. (4.5B: ngspice-native MC proven unseedable across workers → seeded geometric perturbation with declared sigmas; PDK corner files + bins retained for PVT.)
   - [x] Versioned `StatisticalProtocol` definition. (4.5C: frozen dataclass N/seeds/corners/supplies/temps/mechanisms/method/thresholds/CI + pure Wilson CI + report builder. Live N=8 DC-gain MC report.)
   - [x] 🔴 **HUMAN CHECKPOINT**: Mandatory signoff on any statistical percentage headline. — CONFIRMED by human 2026-09-07 (N=8, 8/8, CI 0.676–1.000 @95%; thin-N caveat noted).
-- [ ] **Stage 5 — AI Diagnostics & Copilot**
-  - [ ] Deterministic failure classifier based on 12-category taxonomy.
-  - [ ] Grounded explainer with strict citation check (returns refusal if uncited).
-  - [ ] `LLMProvider` implementation with `GeminiProvider` and `MockProvider`.
-  - [ ] `AIAction` provenance logging.
+- [x] **Stage 5 — AI Diagnostics & Copilot** — COMPLETE (5A–5C; demos green, advisory noted below)
+  - [x] Deterministic failure classifier based on 12-category taxonomy. (5A: prefix/category/spec mapping, fail-closed on unknown; `ai/taxonomy.py`.)
+  - [x] Grounded explainer with strict citation check (returns refusal if uncited). (5C: substring citation semantics, refusal string exact, provenance-first; failed-run + opt-run Mock demos.)
+  - [x] `LLMProvider` implementation with `GeminiProvider` and `MockProvider`. (5B: stdlib-urllib transport, injectable for tests; Mock deterministic; aliases resolve explicit > env > config, UNCONFIGURED fails closed.)
+  - [x] `AIAction` provenance logging. (5A migration v8; every call — including refusals — records before returning.)
+  - [x] Residency guard + secret filter. (5B: DISABLED/LOCAL_ONLY(default)/HOSTED_ALLOWED, opt-in records, immediate reversion, redaction; base 276+28.)
+  - [x] 🟡 **Advisory (AI explanations)**: explainer narrations cite actual IDs or refuse — NOT TRIGGERED as a failure (refusal path proven by test); first live hosted narration remains new-pattern evidence when a key exists.
 - [ ] **Stage 6 — Topology Intelligence**
   - [ ] Parametric topology templates for 6 standard analog building blocks.
   - [ ] Experiment Ledger retrieval linking templates to sizing history.

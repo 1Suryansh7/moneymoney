@@ -28,6 +28,7 @@
 - [ADR-020: PDK Deck Emission Uses Micron Geometry + scale=1e-6 (SI Stays Canonical)](#adr-020-pdk-deck-emission-uses-micron-geometry--scale1e-6-si-stays-canonical)
 - [ADR-021: Failing-Decks Execute Only in Workers (In-Process Error Paths Segfault)](#adr-021-failing-decks-execute-only-in-workers-in-process-error-paths-segfault)
 - [ADR-022: Stage 3 Measurement Conventions (Tian Loop, Declared Loads, Branch Sign)](#adr-022-stage-3-measurement-conventions-tian-loop-declared-loads-branch-sign)
+- [ADR-023: Stage 5 Grounded-AI Rules (Substring Citations, Session Opt-In, Zero-Dep Transport)](#adr-023-stage-5-grounded-ai-rules-substring-citations-session-opt-in-zero-dep-transport)
 
 ---
 
@@ -292,3 +293,14 @@
 - **Rationale**: Each convention converts a silent wrong-number risk (feedthrough "settling", unmeasurable bandwidth, sign-flipped power) into a declared, tested testbench condition. Stage 4's optimizer consumes these metrics blindly, so the conventions must be architectural, not tribal.
 - **Alternatives Considered**: New dedicated fixture cells per metric (rejected: compiler has no source/resistor support, so injection must live at deck level regardless); trusting unloaded dynamics (rejected: empirically feedthrough-dominated).
 - **Consequences**: 3J evaluator and Stage 4 optimization inherit these testbenches verbatim; changing any convention re-opens its metric checkpoint.
+
+---
+
+### ADR-023: Stage 5 Grounded-AI Rules (Substring Citations, Session Opt-In, Zero-Dep Transport)
+- **Date**: 2026-09-07
+- **Status**: Accepted
+- **Context**: Stage 5 wires model calls into an engineering platform where a plausible-but-uncited sentence is the top failure mode. Three sub-decisions were needed: (1) what "citation check" code can honestly enforce without NLP fantasy; (2) where the hosted opt-in record lives without a project table (none exists yet); (3) how `GeminiProvider` calls the API without adding a dependency.
+- **Decision**: (1) Substring citation semantics: `cited_ids` are evidence IDs appearing verbatim in the prose; empty set refuses with the exact string. Documented as catching uncited prose, not judging semantic truth. (2) Session-scoped opt-in records on the guard (provider/model/artifact-classes/timestamp); mode reversion blocks immediately regardless of stored records; per-call audit survives in `AIAction` rows. Project-table persistence is deferred to Stage 7 (genuine project rows arrive there). (3) stdlib-urllib transport, injectable for tests; model IDs resolve explicit > env > config file, UNCONFIGURED fails closed; malformed replies fail closed, never repaired. CI stays non-strict on aliases (call-time enforcement instead) so fresh clones never need secrets.
+- **Rationale**: Each rule keeps the failure closed at the cheapest layer: fake citations impossible to sneak past an empty check, no project-schema migration for a session concern, no supply-chain surface for one HTTPS POST.
+- **Alternatives Considered**: NLP-based claim extraction (rejected: untestable fantasy at this scope); `google-generativeai` SDK dependency (rejected: unnecessary surface, pinned-set discipline); strict-CI aliases (rejected: demands secrets in repo/CI).
+- **Consequences**: Stage 6 proposals reuse `LLMProvider`, guard, and `AIAction`; swapping in a real project table later must preserve the immediate-reversion guarantee.

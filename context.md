@@ -82,11 +82,12 @@ Operational code and agent configuration NEVER hardcode model generation names (
 
 ## 5. Current Project Status & File Inventory
 
-### Active Status: STAGES 0–4 COMMITTED & HUMAN-CONFIRMED — STAGE 4.5 IMPLEMENTED (4.5C PENDING FULL EDA)
-> Stage 4.5: 4.5A corner axis + live 5-corner matrix committed; 4.5B sampler
-> committed (ngspice-native MC proven unseedable); 4.5C protocol + live N=8
-> MC report (8/8, CI 0.676–1.000) with yield checkpoint CONFIRMED 2026-09-07.
-> Gate green: base 256+28, EDA 284/284. Next: commit, push, then Stage 5.
+### Active Status: STAGES 0–4.5 COMMITTED & HUMAN-CONFIRMED — STAGE 5 IMPLEMENTED, UNCOMMITTED
+> Stage 5 (5A classifier + v8 AIAction, 5B provider/guard/redaction, 5C
+> grounded explainer with Mock demos) implemented, base-green 276+28.
+> Advisory noted, never triggered as failure; first live hosted narration
+> remains new-pattern evidence (no key exists in repo or CI).
+> Next: commit 5A–5C, push, watch CI, then Stage 6.
 > PDK deck boundary: micron geometry + scale=1e-6, explicit VSS ground (ADR-020); failing decks run
 > in workers only (ADR-021). WSL2 Ubuntu is the sanctioned `make` shell
 > (GNU Make 4.3 + Docker 29.6.2 verified); stock PowerShell has no `make`.
@@ -122,15 +123,18 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── tests/test_sim.py, test_jobs.py, test_reproduce.py, test_waveform.py, test_stress.py, test_inverter.py # Stage 2 tests
 ├── tests/test_metrics.py, test_gain.py, test_bandwidth.py, test_phase_margin.py, test_slew_rate.py  # Stage 3 tests (contracts→slew)
 ├── tests/test_power.py, test_offset.py, test_settling_time.py, test_evaluator.py  # Stage 3 tests (power→evaluator)
-├── tests/test_schema.py (v7 experiment), test_optimize.py, test_optimize_demo.py  # Stage 4 tests (ledger, optimizer, demo)
+├── tests/test_schema.py (v8 AIAction), test_optimize.py, test_optimize_demo.py  # Stage 4 tests (ledger, optimizer, demo)
 ├── tests/test_corner.py, test_pvt_sim.py, test_mc_spike.py, test_protocol.py  # Stage 4.5 tests (corners, matrix, sampler, protocol)
+├── tests/test_ai_classify.py, test_ai_provider.py, test_ai_explain.py  # Stage 5 tests (classifier, provider, explainer)
 ├── examples/plot_inverter.py # Stage 2H waveform generation demo
 ├── src/analog_ic_design/     # ENGINE_API_VERSION=0.1; interfaces/, engine/,
-│                             # units/ (quantity, display), store/ (schema v7),
+│                             # units/ (quantity, display), store/ (schema v8),
 │                             # circuit/ (graph, canonical, compiler, validator, pdk_limits),
 │                             # sim/ (backend, ngspice, jobs, reproduce, waveform, testbench, inverter, cs_amp, diff_pair),
 │                             # metrics/ (contract matrix, gain, bandwidth, phase_margin, slew_rate, power, offset, settling_time, evaluator),
 │                             # optimize/ (optimizer interface, ledger, optuna TPE),
+│                             # robust/ (corners, MC sampler, statistical protocol),
+│                             # ai/ (taxonomy, provenance, provider, residency, explainer),
 │                             # robust/ (corners, MC sampler, statistical protocol)
 ├── Tasks_Comp.md           # completed-tasks evidence ledger
 ├── docs/stages/stage-0.md  # Layer 2 stage brief (§7–§9: verification, audit, EDA)
@@ -139,6 +143,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── docs/stages/stage-3.md  # Layer 2 stage brief (Measurement & Specification Engine)
 ├── docs/stages/stage-4.md  # Layer 2 stage brief (Optimization Layer)
 ├── docs/stages/stage-4.5.md  # Layer 2 stage brief (Robustness: PVT + Monte Carlo)
+├── docs/stages/stage-5.md  # Layer 2 stage brief (AI Diagnostics & Copilot)
 └── docs/stage-0-layered-debt.md  # CLOSED (R-1..R-8 checked off)
 ```
 
