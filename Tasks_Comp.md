@@ -193,9 +193,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **Stage 6 Human Checkpoint Signoff** — MEASURED data ready: seed-42 Miller candidate gain 42.40dB / UGB 4.70MHz / PM 113.9deg vs 60dB/40MHz/60deg spec = FAIL on gain+UGB (PM passes). AWAITING human verdict: reject proposal or authorize a real-sim sizing push (expanded space incl. L + bias DOFs).
-2. **Push Stage 6 to GitHub** — 6E `ababde1` committed locally (gates green); push to `origin/main` pending checkpoint verdict.
-3. **Stage 7 — Schematic UI** — (Interactive UI calling `DesignEngine v0.1` API exclusively; Playwright equivalence test).
+1. **Stage 6 Human Checkpoint Signoff** — MEASURED winner (focused space, seed 100, trial 6): gain 75.16dB / UGB 62.41MHz / PM 152.4deg vs 60dB/40MHz/60deg spec = PASS on all three. AWAITING human verdict: accept / reject / compare. Advisory: winning Rz=7953Ω at the 8000Ω bound (moot: PM margin +92deg).
+2. **Push to GitHub** — 6E `ababde1` + 6F committed locally (gates green); push to `origin/main` pending checkpoint verdict.
+3. **Stage 7 — Schematic UI** — ON HOLD: user supplies own UI/UX design; agent will edit/build it then. Prereqs recorded: 7A concrete `EngineV01` facade + 7B read-only API service + 7C canvas with Playwright UI≡API equivalence test.
 4. **Stage 8 — Physical Design** — (KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow).
 
 ## 2026-09-09 — Stage 0–6 verification sweep + 6E rework (all green)

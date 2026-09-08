@@ -155,12 +155,13 @@
   - [x] `AIAction` provenance logging. (5A migration v8; every call — including refusals — records before returning.)
   - [x] Residency guard + secret filter. (5B: DISABLED/LOCAL_ONLY(default)/HOSTED_ALLOWED, opt-in records, immediate reversion, redaction; base 276+28.)
   - [x] 🟡 **Advisory (AI explanations)**: explainer narrations cite actual IDs or refuse — NOT TRIGGERED as a failure (refusal path proven by test); first live hosted narration remains new-pattern evidence when a key exists.
-- [-] **Stage 6 — Topology Intelligence** — 6A–6C verified; 6D reworked as 6E (sim-grounded), awaiting human signoff
+- [-] **Stage 6 — Topology Intelligence** — 6A–6C verified; 6D reworked as 6E (sim-grounded) then sized to spec in 6F; awaiting human signoff
   - [x] Parametric topology templates for 6 standard analog building blocks (6A `3bbc21b`).
   - [x] Experiment Ledger retrieval linking templates to sizing history + AI-03 adversarial ranking (6B `68c8c14`).
   - [x] `CandidateCircuitIR` and proposal state machine with immediate `ai_action` provenance (6C `9eceb1c`).
   - [x] Two-stage Miller verification reworked simulator-grounded (6E `ababde1`): analytical estimator deleted (fail-closed), single-ended AC drive, phasors rebuilt from complex_vectors, taxonomy-worded errors, DB commit fixes worker lock. Gates: base 305+29, EDA 334 passed.
-  - [ ] 🔴 **HUMAN CHECKPOINT**: MEASURED seed-42 candidate gain 42.40dB / UGB 4.70MHz / PM 113.9deg vs 60dB/40MHz/60deg spec — proposal FAILS spec (AWAITING VERDICT: reject or authorize sizing push).
+  - [x] Real-sim Optuna sizing push to spec (6F): expanded 12-dim space (L params), PM-aware cost, per-trial failure tolerance (failed trials recorded, never abort). Winner MEASURED gain 75.16dB / UGB 62.41MHz / PM 152.4deg — all spec targets pass. 🟡 Advisory: winning Rz=7953Ω sits at the 8000Ω bound; PM margin (+92deg) makes it moot — proceeding flagged.
+  - [ ] 🔴 **HUMAN CHECKPOINT**: Stage 6 proposal PASSES spec on measured data (AWAITING VERDICT: accept design / reject / compare).
 - [ ] **Stage 7 — Schematic UI**
   - [ ] Interactive UI client calling `DesignEngine v0.1` API exclusively.
   - [ ] Playwright automated equivalence test (UI vs Python API netlist hash match).

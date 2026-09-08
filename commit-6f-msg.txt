@@ -1,0 +1,12 @@
+Stage 6 Commit 6F: real-sim sizing push brings Miller to spec
+
+Study 1 (wide 12-dim space, seed 42, 24 trials) mapped the gain-UGB
+frontier; study 2 (focused space, seed 100, 16 trials) found trial 6,
+MEASURED gain 75.16dB / UGB 62.41MHz / PM 152.4deg: all spec targets
+pass. Loop now records per-trial sim failures as data (Stage 4 rule)
+instead of aborting; cost gains a PM term; optional space override
+(v0.1 additive). Committed demo re-simulates the exact winning point
+and asserts spec compliance on measured values. Advisory: winning Rz
+sits at the 8000-ohm bound; PM margin plus 92 deg makes it moot.
+
+Gates: base 305 passed / 29 env-skipped; EDA 334 passed, 0 failed.

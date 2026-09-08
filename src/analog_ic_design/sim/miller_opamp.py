@@ -62,13 +62,25 @@ class MillerMetrics:
     phase_margin_deg: float
 
 
+# Penalty cost observed for trials whose simulation fails. Worse than any
+# measured spec miss (those are O(1e2)), so TPE learns away from dead
+# regions; the trial itself is recorded with empty metrics and a
+# failure-class verdict, never dropped.
+_FAILED_TRIAL_COST: Final = 1.0e6
+
 MILLER_SEARCH_SPACE: Final = SearchSpace({
-    "w_in": (2.0e-06, 25.0e-06),
+    "w_in": (5.0e-06, 40.0e-06),
+    "l_in": (0.5e-06, 2.0e-06),
     "w_load": (2.0e-06, 25.0e-06),
-    "w_out": (10.0e-06, 60.0e-06),
-    "w_load2": (5.0e-06, 40.0e-06),
-    "cc": (0.5e-12, 3.0e-12),
-    "rz": (500.0, 4000.0),
+    "l_load": (0.5e-06, 2.0e-06),
+    "w_tail": (5.0e-06, 60.0e-06),
+    "l_tail": (0.5e-06, 2.0e-06),
+    "w_out": (10.0e-06, 100.0e-06),
+    "l_out": (0.5e-06, 2.0e-06),
+    "w_load2": (5.0e-06, 60.0e-06),
+    "l_load2": (0.5e-06, 2.0e-06),
+    "cc": (0.3e-12, 3.0e-12),
+    "rz": (200.0, 8000.0),
 })
 
 
@@ -220,21 +232,32 @@ def run_miller_sizing_optimization(
     *,
     target_gain_db: float = 60.0,
     target_ugb_hz: float = 40.0e6,
+    target_pm_deg: float = 60.0,
     n_trials: int = 5,
     seed: int = 42,
     jobs: JobRunner | None = None,
     sky130_lib: str | None = None,
+    space: SearchSpace | None = None,
 ) -> TrialResult:
     """Run Optuna sizing study over two_stage_miller parameter space.
 
     Every trial is a real ngspice simulation (MEASURED metrics recorded to
     the experiment ledger). Fails closed before the first trial when no
     simulator backend is provided, so no unfounded rows are ever written.
+    Per-trial simulation failures are data, not aborts (Stage 4 rule):
+    recorded with status 'failed', an empty metric set, and a verdict
+    naming the failure class, then observed at a penalty cost so the
+    optimizer learns away from dead regions.
     """
     if n_trials < 1:
         raise SimError(f"Schema: n_trials must be positive, got {n_trials}")
+    if jobs is None or sky130_lib is None:
+        raise SimError(
+            "Schema: run_miller_sizing_optimization requires a simulator "
+            "backend (jobs + sky130_lib); refusing to run an unfounded study"
+        )
     opt = OptunaOptimizer(
-        MILLER_SEARCH_SPACE,
+        space if space is not None else MILLER_SEARCH_SPACE,
         seed=seed,
         study_name="miller_sizing_demo",
         direction="minimize",
@@ -251,14 +274,32 @@ def run_miller_sizing_optimization(
             evidence_ids=(f"TRIAL-{t_idx}",),
             requested_spec_id="SPEC-MILLER-60DB",
         )
-        metrics, repro = evaluate_miller_candidate(
-            conn, cand, jobs=jobs, sky130_lib=sky130_lib, seed=seed + t_idx
-        )
-
-        # Cost: penalty for missing 60dB gain or 40MHz bandwidth
-        gain_penalty = max(0.0, target_gain_db - metrics.gain_db) * 10.0
-        ugb_penalty = max(0.0, (target_ugb_hz - metrics.ugb_hz) / 1e6) * 5.0
-        cost = gain_penalty + ugb_penalty
+        try:
+            metrics, repro = evaluate_miller_candidate(
+                conn, cand, jobs=jobs, sky130_lib=sky130_lib, seed=seed + t_idx
+            )
+        except SimError as exc:
+            trial_metrics: dict[str, float] = {}
+            repro = "n/a"
+            status, verdict = "failed", f"{type(exc).__name__}: {exc}"
+            cost = _FAILED_TRIAL_COST
+        else:
+            # Cost: shortfall penalties on gain (dB), UGB (MHz), phase margin.
+            # Zero cost means the trial meets all three spec targets at once.
+            gain_penalty = max(0.0, target_gain_db - metrics.gain_db) * 10.0
+            ugb_penalty = max(0.0, (target_ugb_hz - metrics.ugb_hz) / 1e6) * 5.0
+            pm_penalty = max(0.0, target_pm_deg - metrics.phase_margin_deg) * 5.0
+            cost = gain_penalty + ugb_penalty + pm_penalty
+            trial_metrics = {
+                "gain_db": metrics.gain_db,
+                "ugb_hz": metrics.ugb_hz,
+                "pm_deg": metrics.phase_margin_deg,
+            }
+            status, verdict = (
+                ("succeeded", "pass")
+                if cost == 0.0
+                else ("failed", f"spec_gap_cost={cost:.2f}")
+            )
 
         opt.observe(params, cost)
 
@@ -266,15 +307,11 @@ def run_miller_sizing_optimization(
             study="two_stage_miller_sizing_demo",
             trial=t_idx,
             kind="trial",
-            status="succeeded" if cost == 0.0 else "failed",
+            status=status,
             corner="nominal",
             parameters=params,
-            metrics={
-                "gain_db": metrics.gain_db,
-                "ugb_hz": metrics.ugb_hz,
-                "pm_deg": metrics.phase_margin_deg,
-            },
-            verdict="pass" if cost == 0.0 else f"spec_gap_cost={cost:.2f}",
+            metrics=trial_metrics,
+            verdict=verdict,
             reproducibility_id=repro,
             seed=seed + t_idx,
             job_id=None,
