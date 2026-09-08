@@ -193,9 +193,14 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **Stage 6 Human Checkpoint Signoff** — In progress: emit blocking human checkpoint alert block for Miller op-amp proposal.
-2. **Push Stage 6 to GitHub** — Pending commit 6D completion and push to `origin/main`.
+1. **Stage 6 Human Checkpoint Signoff** — MEASURED data ready: seed-42 Miller candidate gain 42.40dB / UGB 4.70MHz / PM 113.9deg vs 60dB/40MHz/60deg spec = FAIL on gain+UGB (PM passes). AWAITING human verdict: reject proposal or authorize a real-sim sizing push (expanded space incl. L + bias DOFs).
+2. **Push Stage 6 to GitHub** — 6E `ababde1` committed locally (gates green); push to `origin/main` pending checkpoint verdict.
 3. **Stage 7 — Schematic UI** — (Interactive UI calling `DesignEngine v0.1` API exclusively; Playwright equivalence test).
 4. **Stage 8 — Physical Design** — (KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow).
+
+## 2026-09-09 — Stage 0–6 verification sweep + 6E rework (all green)
+- Verified Stages 0–5 against AGENTS.md: SI discipline clean (no parser, display-only formatting), golden `nmos.cir` untouched since 1G, NEEDS_LIB skips are documented env-gating (EDA runs them: 334 passed, 0 skipped), provider urllib confined to `ai/provider.py`, spawn isolation in `sim/jobs.py`, optuna pinned `==5.0.0`, no green-washing, no PDK-from-memory writes beyond quoted bindings.
+- Known debt recorded: `DesignEngine` remains an ABC skeleton (no concrete engine; first real caller is Stage 7 GUI) — DECISIONS.md entry; concrete `EngineV01` facade is a Stage 7 prerequisite, not a Stage 6 fix.
+- 6D flaws found live: (a) missing `conn.commit()` in `instantiate_template` locked worker INSERTs; (b) ungrounded analytical estimator emitted 63.2dB/44.8MHz/62.1deg; (c) differential-drive vip reference inflated UGB 2x; (d) real-part-only phasors fabricated PM = 0.0000; (e) fabricated `power_w` default; (f) taxonomy-less error strings. All fixed in 6E `ababde1`; TRUE measured numbers above.
 
 

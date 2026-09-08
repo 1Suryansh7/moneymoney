@@ -321,3 +321,14 @@
 - **Alternatives Considered**: Direct LLM SPICE netlist text generation (rejected: high hallucination rate, non-convergent netlists, breaks relational schema); automatic commit if all constraints pass (rejected: violates the fundamental platform law "the agent proposes, the simulator decides, and the human commits").
 - **Consequences**: Stage 7 UI and Stage 8 physical design consume verified, human-committed cell revisions from this workflow.
 
+---
+
+### ADR-025: Stage 6E Simulator-Grounded Miller Path + DesignEngine Facade Debt
+- **Date**: 2026-09-09
+- **Status**: Accepted
+- **Context**: Verification sweep of Stages 0–6 found Stage 6D's Miller demo ungrounded: an analytical estimator emitted 63.2dB/44.8MHz/62.1deg without simulation; AC phasors were rebuilt from real parts only (fabricating PM = 0.0000); the differential-drive vip reference inflated UGB ~2x; `power_w` defaulted to a fabricated 0.5mW; `instantiate_template` never committed, locking worker-process INSERTs. TRUE ngspice-47 BSIM4 measurement (seed 42): gain 42.40dB, UGB 4.70MHz, PM 113.9deg — proposal FAILS the 60dB/40MHz spec on gain+UGB (PM passes).
+- **Decision**: (1) Estimator deleted — evaluation fails closed without a backend; (2) single-ended AC drive (Vid = 1.0V on vip, vin AC ground) so vip-referenced ratios are true differential-input metrics with Stage 3 extractors untouched; (3) phasors rebuilt from `complex_vectors`; (4) `power_w` removed from `MillerMetrics`; (5) taxonomy-worded errors; (6) `conn.commit()` in the `instantiate_template` funnel; (7) tests assert honesty properties (finiteness, ledger rows, AWAITING_HUMAN halt), never spec compliance. Separately: `DesignEngine` stays an ABC skeleton — no concrete engine exists, so Law 4's single-entry-point is currently a contract, not a mechanism. Building the concrete `EngineV01` facade over the existing modules is declared a Stage 7 prerequisite (7A), not backfilled into Stage 6.
+- **Rationale**: Cheapest layer that closes each hole: fail-closed beats labeling; drive change beats touching checkpointed metric code; funnel commit beats per-template commits. The facade is deferred because no Stage 0–6 done-when requires it and its first real caller is the Stage 7 GUI.
+- **Alternatives Considered**: Keeping a PREDICTED-labeled estimator (rejected: §9.1 — predictions must fall back to the simulator, and estimator rows polluted the experiment ledger); touching `extract_bandwidth`/`extract_phase_margin` for differential math (rejected: checkpointed Stage 3 code stays untouched); backfilling EngineV01 now (rejected: >400-line scope creep into Stage 7 territory).
+- **Consequences**: 6E committed (`ababde1`); Stage 6 checkpoint re-raised with measured numbers — verdict (reject vs sizing push) is human. Stage 7 begins with 7A (concrete engine + Playwright equivalence harness).
+

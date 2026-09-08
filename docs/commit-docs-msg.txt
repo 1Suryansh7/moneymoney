@@ -1,0 +1,5 @@
+Docs: Stage 6E close-out, ADR-025, tracker sync
+
+To-Do / Tasks_Comp / DECISIONS record the 0-6 verification sweep, the
+6E rework, TRUE measured Miller numbers, and the pending human verdict.
+Drop the 6E commit-message helper file.
