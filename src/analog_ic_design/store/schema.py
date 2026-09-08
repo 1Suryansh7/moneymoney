@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-SCHEMA_VERSION: Final = 7
+SCHEMA_VERSION: Final = 8
 
 _MIGRATION_1 = """
 CREATE TABLE schema_version (
@@ -209,6 +209,32 @@ CREATE TABLE experiment (
 );
 """
 
+_MIGRATION_8 = """
+CREATE TABLE ai_action (
+    id TEXT PRIMARY KEY,
+    action_type TEXT NOT NULL CHECK (
+        action_type IN (
+            'explain_failure', 'narrate_optimization',
+            'propose_topology', 'propose_sizing'
+        )
+    ),
+    model_provider TEXT NOT NULL,
+    model_name TEXT NOT NULL,
+    model_version TEXT,
+    prompt_version TEXT NOT NULL,
+    input_context_hash TEXT NOT NULL,
+    output_hash TEXT NOT NULL,
+    source_artifacts TEXT NOT NULL,
+    resulting_design_revision TEXT,
+    human_decision TEXT NOT NULL CHECK (
+        human_decision IN ('accept', 'reject', 'edited', 'n/a')
+    ) DEFAULT 'n/a',
+    token_cost REAL,
+    latency_s REAL,
+    created_at TEXT NOT NULL
+);
+"""
+
 MIGRATIONS: Final = (
     (1, _MIGRATION_1),
     (2, _MIGRATION_2),
@@ -217,6 +243,7 @@ MIGRATIONS: Final = (
     (5, _MIGRATION_5),
     (6, _MIGRATION_6),
     (7, _MIGRATION_7),
+    (8, _MIGRATION_8),
 )
 
 

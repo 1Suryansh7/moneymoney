@@ -55,7 +55,7 @@ def _hierarchy(conn: sqlite3.Connection) -> dict[str, str]:
 
 
 def test_migrate_lands_current_version_and_is_idempotent(db: sqlite3.Connection) -> None:
-    assert SCHEMA_VERSION == 7
+    assert SCHEMA_VERSION == 8
     assert get_schema_version(db) == SCHEMA_VERSION
     assert migrate(db) == SCHEMA_VERSION
     assert get_schema_version(db) == SCHEMA_VERSION
