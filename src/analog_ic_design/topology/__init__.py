@@ -12,6 +12,13 @@ from analog_ic_design.topology.knowledge_base import (
     query_template_capabilities,
     record_template_experiment,
 )
+from analog_ic_design.topology.proposal import (
+    WORKFLOW_STATES,
+    CandidateCircuitIR,
+    ProposalWorkflowResult,
+    decide_proposal,
+    execute_proposal_workflow,
+)
 from analog_ic_design.topology.retriever import (
     ScoredCandidate,
     TargetSpec,
@@ -35,17 +42,22 @@ from analog_ic_design.topology.templates import (
 
 __all__ = [
     "REGISTERED_TEMPLATES",
+    "CandidateCircuitIR",
     "CascodeTemplate",
     "CommonSourceTemplate",
     "CurrentMirrorTemplate",
     "DiffPairTemplate",
     "FoldedCascodeTemplate",
+    "ProposalWorkflowResult",
     "ScoredCandidate",
     "TargetSpec",
     "TemplateCapabilities",
     "TemplateTradeoffs",
     "TopologyTemplate",
     "TwoStageMillerTemplate",
+    "WORKFLOW_STATES",
+    "decide_proposal",
+    "execute_proposal_workflow",
     "get_template",
     "get_template_experiments",
     "instantiate_template",
