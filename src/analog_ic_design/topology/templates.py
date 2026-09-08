@@ -907,4 +907,6 @@ def instantiate_template(
     template = get_template(template_id)
     cname = cell_name or f"{template_id}_cell"
     p = params or {}
-    return template.instantiate(conn, p, cname, project_name=project_name)
+    cell_id = template.instantiate(conn, p, cname, project_name=project_name)
+    conn.commit()
+    return cell_id

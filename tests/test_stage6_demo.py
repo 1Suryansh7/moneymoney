@@ -1,9 +1,14 @@
-"""Stage 6 Milestone Integration Demo: Two-Stage Miller Op-Amp (Commit 6D).
+"""Stage 6 Milestone Integration Demo: Two-Stage Miller Op-Amp.
 
 Benchmark specification:
 "Design a 2-stage Miller op-amp, 60dB gain, 40MHz UGB"
 producing a template instantiation that validates, simulates, gets sized by
 Stage 4 optimizer, and sits as a proposal awaiting accept/reject.
+
+Grounding rule (§9.1): every metric here is MEASURED by ngspice. Base tests
+use explicit test doubles (labeled) or assert fail-closed behavior; only the
+NEEDS_LIB tests touch the simulator. Spec compliance is a human verdict at
+the checkpoint — never a test assertion.
 
 Constitutional Law:
 Emits the mandatory BLOCKING HUMAN CHECKPOINT (§8 & §12). Never auto-committed.
@@ -11,6 +16,7 @@ Emits the mandatory BLOCKING HUMAN CHECKPOINT (§8 & §12). Never auto-committed
 
 from __future__ import annotations
 
+import math
 import sqlite3
 from collections.abc import Generator
 from pathlib import Path
@@ -26,7 +32,7 @@ from analog_ic_design.sim.miller_opamp import (
     format_stage6_checkpoint_alert,
     run_miller_sizing_optimization,
 )
-from analog_ic_design.sim.ngspice import libngspice_available
+from analog_ic_design.sim.ngspice import SimError, libngspice_available
 from analog_ic_design.store.schema import connect, migrate
 from analog_ic_design.topology import (
     CandidateCircuitIR,
@@ -64,11 +70,15 @@ def test_miller_deck_assembly(db: sqlite3.Connection) -> None:
     assert "Vbias2" in deck
     assert "Vip" in deck
     assert "Vin" in deck
+    # Single-ended drive: Vid = Vip - Vin = 1.0 V AC (Stage 6E grounding fix).
+    assert "AC 1.0" in deck
+    assert "AC -0.5" not in deck
     assert ".ac dec 10 1.0 10000000000.0" in deck
     assert deck.endswith(".end\n")
 
 
-def test_miller_analytical_evaluation(db: sqlite3.Connection) -> None:
+def test_miller_evaluation_fails_closed_without_backend(db: sqlite3.Connection) -> None:
+    """No simulator backend -> SimError, never an analytical estimate (§9.1)."""
     cand = CandidateCircuitIR(
         topology_id="two_stage_miller",
         parameters={
@@ -79,34 +89,23 @@ def test_miller_analytical_evaluation(db: sqlite3.Connection) -> None:
             "w_load2": 15.0e-6, "l_load2": 0.5e-6,
             "cc": 1.2e-12, "rz": 1500.0,
         },
-        reasoning="Sized for 60 dB gain, 40 MHz UGB",
+        reasoning="Fail-closed probe without a backend",
         evidence_ids=("EXP-DEMO-1",),
         requested_spec_id="SPEC-60DB-40MHZ",
     )
-    metrics, repro = evaluate_miller_candidate(db, cand, seed=42)
-
-    assert metrics.gain_db >= 60.0
-    assert metrics.ugb_hz >= 40.0e6
-    assert metrics.phase_margin_deg >= 55.0
-    assert len(repro) == 64
+    with pytest.raises(SimError, match="requires a simulator backend"):
+        evaluate_miller_candidate(db, cand, seed=42)
 
 
-def test_miller_sizing_optimization_loop(db: sqlite3.Connection) -> None:
-    """Stage 4 Optuna optimization sizes two_stage_miller against 60dB/40MHz spec."""
-    winner = run_miller_sizing_optimization(
-        db, target_gain_db=60.0, target_ugb_hz=40.0e6, n_trials=6, seed=42
-    )
+def test_miller_sizing_fails_closed_without_backend(db: sqlite3.Connection) -> None:
+    """Sizing loop writes zero ledger rows when no backend is present."""
+    with pytest.raises(SimError, match="requires a simulator backend"):
+        run_miller_sizing_optimization(db, n_trials=2, seed=42)
 
-    assert winner is not None
-    assert winner.status == "succeeded"
-    assert winner.metrics["gain_db"] >= 60.0
-    assert winner.metrics["ugb_hz"] >= 40.0e6
-
-    # Verify winner was persisted in the experiment ledger
     count = db.execute(
         "SELECT COUNT(*) FROM experiment WHERE study = 'two_stage_miller_sizing_demo'"
     ).fetchone()[0]
-    assert count == 6
+    assert count == 0
 
 
 def test_blocking_human_checkpoint_alert_format() -> None:
@@ -128,7 +127,12 @@ def test_blocking_human_checkpoint_alert_format() -> None:
         cand,
         validation_status="PASSED",
         simulation_status="PASSED",
-        constraints_status="Gain=63.2dB (>=60dB), UGB=44.8MHz (>=40MHz) -> PASS",
+        # Illustrative strings (format shape only). Example values transcribed
+        # from the live EDA ngspice run 2026-09-09 (gain 42.40 dB, UGB 4.70 MHz).
+        constraints_status=(
+            "Gain=MEASURED 42.40dB (<60dB), UGB=MEASURED 4.70MHz (<40MHz)"
+            " -> FAIL, human verdict required"
+        ),
         diff_summary="[New Cell: two_stage_miller_v1]",
     )
 
@@ -150,14 +154,17 @@ def test_stage6_end_to_end_proposal_workflow(db: sqlite3.Connection) -> None:
             "w_load2": 12.0e-6, "l_load2": 0.5e-6,
             "cc": 1.2e-12, "rz": 1500.0,
         },
-        reasoning="Optimized candidate meeting 60dB/40MHz spec.",
+        reasoning="State-machine probe with a simulator stand-in (values are "
+        "illustrative test doubles, not measurements).",
         evidence_ids=("EXP-OPT-WINNER",),
         requested_spec_id="SPEC-60DB-40MHZ",
     )
 
     def sim_cb(conn: sqlite3.Connection, cell_id: str) -> dict[str, float]:
-        m, _ = evaluate_miller_candidate(conn, proposal)
-        return {"gain_db": m.gain_db, "ugb_hz": m.ugb_hz, "pm_deg": m.phase_margin_deg}
+        # Test double standing in for ngspice: exercises the state machine
+        # only (the real simulator path is covered by the NEEDS_LIB test).
+        # Values are illustrative, never measurements.
+        return {"gain_db": 63.0, "ugb_hz": 44.0e6, "pm_deg": 62.0}
 
     def eval_cb(metrics: dict[str, float]) -> bool:
         return metrics["gain_db"] >= 60.0 and metrics["ugb_hz"] >= 40.0e6
@@ -192,7 +199,13 @@ def test_stage6_end_to_end_proposal_workflow(db: sqlite3.Connection) -> None:
 
 @NEEDS_LIB
 def test_live_two_stage_miller_spice_simulation(tmp_path: Path) -> None:
-    """Live ngspice-47 simulation with Sky130A BSIM4 models in EDA container."""
+    """Live ngspice-47 BSIM4 measurement of the two-stage Miller (EDA only).
+
+    Asserts honesty properties of a real measurement — finiteness, ledger
+    recording, and halting at AWAITING_HUMAN with a checkpoint alert.
+    Spec compliance is decided by the human at the checkpoint and is
+    NEVER asserted here.
+    """
     db_path = tmp_path / "live_miller.sqlite"
     conn = connect(str(db_path))
     migrate(conn)
@@ -208,7 +221,7 @@ def test_live_two_stage_miller_spice_simulation(tmp_path: Path) -> None:
             "w_load2": 12.0e-6, "l_load2": 0.5e-6,
             "cc": 1.2e-12, "rz": 1500.0,
         },
-        reasoning="Live BSIM4 verification",
+        reasoning="Live BSIM4 measurement (outcome recorded, not assumed)",
         evidence_ids=("LIVE-1",),
         requested_spec_id="SPEC-LIVE-60DB",
     )
@@ -217,6 +230,53 @@ def test_live_two_stage_miller_spice_simulation(tmp_path: Path) -> None:
         conn, cand, jobs=jobs, sky130_lib=SKY130_LIB, seed=42
     )
 
-    assert metrics.gain_v_v > 100.0
-    assert metrics.ugb_hz > 1.0e6
+    # A real measurement is finite and reproducibility-identified.
+    assert math.isfinite(metrics.gain_v_v) and metrics.gain_v_v > 0.0
+    assert math.isfinite(metrics.gain_db)
+    assert math.isfinite(metrics.ugb_hz) and metrics.ugb_hz > 0.0
+    assert math.isfinite(metrics.phase_margin_deg)
     assert len(repro) == 64
+
+    # Real-sim Optuna sizing: every trial simulated, every trial recorded.
+    winner = run_miller_sizing_optimization(
+        conn, target_gain_db=60.0, target_ugb_hz=40.0e6,
+        n_trials=6, seed=42, jobs=jobs, sky130_lib=SKY130_LIB,
+    )
+    assert winner is not None
+    assert set(winner.metrics) == {"gain_db", "ugb_hz", "pm_deg"}
+    count = conn.execute(
+        "SELECT COUNT(*) FROM experiment WHERE study = 'two_stage_miller_sizing_demo'"
+    ).fetchone()[0]
+    assert count == 6
+
+    # Full proposal workflow on measured data halts at AWAITING_HUMAN.
+    def live_sim_cb(c: sqlite3.Connection, cell_id: str) -> dict[str, float]:
+        m, _ = evaluate_miller_candidate(
+            c, cand, jobs=jobs, sky130_lib=SKY130_LIB, seed=7
+        )
+        return {"gain_db": m.gain_db, "ugb_hz": m.ugb_hz, "pm_deg": m.phase_margin_deg}
+
+    result = execute_proposal_workflow(
+        conn,
+        cand,
+        simulate_fn=live_sim_cb,
+        evaluate_fn=lambda m: m["gain_db"] >= 60.0 and m["ugb_hz"] >= 40.0e6,
+    )
+    assert result.state == "AWAITING_HUMAN"
+    assert result.validation_passed is True
+    assert result.simulation_passed is True
+    assert isinstance(result.evaluation_passed, bool)
+    assert result.measurements is not None
+
+    verdict = "PASS" if result.evaluation_passed else "FAIL vs 60dB/40MHz spec"
+    alert = format_stage6_checkpoint_alert(
+        cand,
+        validation_status="PASSED",
+        simulation_status=f"MEASURED gain={metrics.gain_db:.2f}dB "
+        f"ugb={metrics.ugb_hz / 1e6:.3f}MHz pm={metrics.phase_margin_deg:.1f}deg",
+        constraints_status=f"{verdict} — human verdict required",
+        diff_summary="[New Cell: two_stage_miller_v1]",
+    )
+    assert "[ HUMAN CHECKPOINT — Stage 6 / AI design proposal ]" in alert
+    assert "Status: BLOCKING — never auto-committed, even when all checks pass." in alert
+    conn.close()

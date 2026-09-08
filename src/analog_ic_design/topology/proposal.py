@@ -160,7 +160,7 @@ def execute_proposal_workflow(
             candidate=candidate,
             state="REJECTED",
             cell_id=cell_id,
-            error_message="Circuit validation gate failed",
+            error_message="Schema: pre-simulation validation gate failed",
         )
 
     # Step 3: Simulation (if simulation callback provided)
@@ -187,7 +187,7 @@ def execute_proposal_workflow(
                 state="REJECTED",
                 cell_id=cell_id,
                 validation_passed=True,
-                error_message=f"Simulation failed: {exc}",
+                error_message=f"SPICE convergence: simulation callback failed: {exc}",
             )
 
     # Step 4: Constraint evaluation
