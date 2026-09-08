@@ -5,9 +5,12 @@ then config/models.json. Performs NO network call and reads NO secrets:
 it reports only whether each alias resolves to a real model id.
 
 Exit code: 0 always, unless --strict is passed, in which case an
-UNCONFIGURED alias exits 1. Stage 0 defaults to non-strict because no
-code path calls any provider yet, so an unconfigured alias is safe and
-must NOT break `make setup` on a fresh clone. Stage 5 flips CI to strict.
+UNCONFIGURED alias exits 1. Non-strict is permanent in CI: aliases stay
+UNCONFIGURED in-repo by design (model IDs resolve from the operator's
+environment at call time), and Stage 5 enforces configuration at dispatch
+instead — `resolve_alias` and missing-key checks fail closed there, so an
+unconfigured alias can never reach the network. Flipping CI to strict
+would demand secrets in the repo or CI env, which the residency law forbids.
 """
 
 from __future__ import annotations
