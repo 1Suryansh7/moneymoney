@@ -1,0 +1,11 @@
+Upgrade AGENT2.md to full constitution plus drop helper file
+
+AGENT2.md now carries every relevant AGENTS.md rule in executable form:
+full 12-category taxonomy chain, literal checkpoint alert block, the
+missing architecture/language-shift BLOCKING row, complete operational
+prompts 17.1-17.6 (start, handoff, triage, PDK gate, adversarial review,
+are-you-sure probe), condensed foundational contracts (reproducibility
+hashes, concurrency invariant, contracts matrix, statistical protocol,
+CACE boundary, language stability, wording), tooling/hardware/roster
+discipline. Also removes the Step-1 commit-message helper file.
+Gates: base 311 passed, 29 skipped.
