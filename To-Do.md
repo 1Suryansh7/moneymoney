@@ -155,11 +155,12 @@
   - [x] `AIAction` provenance logging. (5A migration v8; every call — including refusals — records before returning.)
   - [x] Residency guard + secret filter. (5B: DISABLED/LOCAL_ONLY(default)/HOSTED_ALLOWED, opt-in records, immediate reversion, redaction; base 276+28.)
   - [x] 🟡 **Advisory (AI explanations)**: explainer narrations cite actual IDs or refuse — NOT TRIGGERED as a failure (refusal path proven by test); first live hosted narration remains new-pattern evidence when a key exists.
-- [ ] **Stage 6 — Topology Intelligence**
-  - [ ] Parametric topology templates for 6 standard analog building blocks.
-  - [ ] Experiment Ledger retrieval linking templates to sizing history.
-  - [ ] LangGraph state machine for AI proposals.
-  - [ ] 🔴 **HUMAN CHECKPOINT**: Mandatory human approval for every topology proposal.
+- [-] **Stage 6 — Topology Intelligence** — 6A–6D implemented & verified, 305 tests passing, awaiting human signoff
+  - [x] Parametric topology templates for 6 standard analog building blocks (6A `3bbc21b`).
+  - [x] Experiment Ledger retrieval linking templates to sizing history + AI-03 adversarial ranking (6B `68c8c14`).
+  - [x] `CandidateCircuitIR` and proposal state machine with immediate `ai_action` provenance (6C `9eceb1c`).
+  - [x] Two-stage Miller op-amp Optuna sizing against 60dB/40MHz benchmark (6D).
+  - [ ] 🔴 **HUMAN CHECKPOINT**: Mandatory human approval for every topology proposal (AWAITING VERDICT).
 - [ ] **Stage 7 — Schematic UI**
   - [ ] Interactive UI client calling `DesignEngine v0.1` API exclusively.
   - [ ] Playwright automated equivalence test (UI vs Python API netlist hash match).

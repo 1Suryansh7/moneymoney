@@ -304,3 +304,20 @@
 - **Rationale**: Each rule keeps the failure closed at the cheapest layer: fake citations impossible to sneak past an empty check, no project-schema migration for a session concern, no supply-chain surface for one HTTPS POST.
 - **Alternatives Considered**: NLP-based claim extraction (rejected: untestable fantasy at this scope); `google-generativeai` SDK dependency (rejected: unnecessary surface, pinned-set discipline); strict-CI aliases (rejected: demands secrets in repo/CI).
 - **Consequences**: Stage 6 proposals reuse `LLMProvider`, guard, and `AIAction`; swapping in a real project table later must preserve the immediate-reversion guarantee.
+
+---
+
+### ADR-024: Stage 6 Topology Intelligence (Templates, AI-03 Retrieval Penalty, and Human Gate)
+- **Date**: 2026-09-08
+- **Status**: Accepted
+- **Context**: Stage 6 introduces topology templates, empirical knowledge base retrieval, and AI design proposals. Key risks: (1) free-form netlist hallucination; (2) retriever retrieving failed historical sizings due to high nominal text/spec similarity; (3) AI auto-committing or modifying design state without human approval; (4) non-SI units leaking into parameter spaces.
+- **Decision**:
+  1. Parametric Templates: Six standard analog topologies (`current_mirror`, `diff_pair`, `common_source`, `cascode`, `folded_cascode`, `two_stage_miller`) instantiate directly into the relational SQLite schema (`circuit_element`, `port`, `parameter`) via `instantiate_template()`, strictly in SI base units (meters, Farads, Ohms). No free-form netlist prose or arbitrary graph hallucination.
+  2. Multi-Criteria Retrieval (AI-03): Candidate sizing retrieval implements the multi-criteria formulation $S = w_{\text{spec}} \cdot s_{\text{spec}} + w_{\text{top}} \cdot s_{\text{top}} + w_{\text{yield}} \cdot Y - w_{\text{fail}} \cdot F$. An adversarial test enforces that historical trials with low PVT yield or failure verdicts receive heavy penalties, strictly preventing the platform from ever suggesting failed sizings merely because their nominal target spec matched.
+  3. Structured Proposal IR & Fail-Closed State Machine: Design proposals are represented exclusively as typed, frozen `CandidateCircuitIR` objects. The workflow enforces: `PROPOSED -> VALIDATED -> SIMULATED -> EVALUATED -> AWAITING_HUMAN -> COMMITTED / REJECTED`.
+  4. Immediate Provenance Logging: An `ai_action` row is inserted immediately upon proposal generation before validation or simulation can fail.
+  5. Constitutional Human Gate: There is zero code path from passing pre-simulation validation, SPICE simulation, and constraint evaluation to `COMMITTED` without explicit human intervention (`decide_proposal(conn, proposal_id, "accept")`). The system emits a blocking human checkpoint alert block (§8 & §12) and halts.
+- **Rationale**: Analog topology design is physical reality, not probabilistic completion. Hard constraints, deterministic validation, empirical retrieval penalties, and human commitment guarantee zero ungrounded drift.
+- **Alternatives Considered**: Direct LLM SPICE netlist text generation (rejected: high hallucination rate, non-convergent netlists, breaks relational schema); automatic commit if all constraints pass (rejected: violates the fundamental platform law "the agent proposes, the simulator decides, and the human commits").
+- **Consequences**: Stage 7 UI and Stage 8 physical design consume verified, human-committed cell revisions from this workflow.
+

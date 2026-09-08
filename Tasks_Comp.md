@@ -154,14 +154,22 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 | 4D demo | Live cs_amp sizing: 8-trial study seed 7 vs hard spec (gain≥8, UGB≥10MHz) | `tests/test_optimize_demo.py` (worker sims with timeouts; every trial a `job`+`experiment` row). Winner trial 5: w_n=2.198µm, w_p=5.019µm, gain 9.139, UGB 13.44 MHz, spec passed; interior on both axes (advisory NOT triggered); winner re-simulated within 1e-6. Base 243+26, EDA 269/269 |
 
 
-## Stage 5 — AI Diagnostics & Copilot (5A–5C implemented, verified, uncommitted)
+## Stage 5 — AI Diagnostics & Copilot (5A–5C COMMITTED & PUSHED `02b3c5b`)
 
 | Commit | Scope | Status & Evidence |
 |---|---|---|
-| 5A classifier | Deterministic taxonomy classifier + migration v8 (`ai_action`) | `ai/taxonomy.py` (12-category order, prefix/category/spec mapping, fail-closed); `ai/actions.py` (provenance writer); `tests/test_ai_classify.py` |
-| 5B provider | `LLMProvider` (Gemini stdlib-urllib + Mock) + residency guard + secret filter | `ai/provider.py` (alias resolution explicit > env > config, injectable transport, malformed replies fail closed); `ai/residency.py` (DISABLED/LOCAL_ONLY/HOSTED_ALLOWED, opt-in records, immediate reversion, redaction); `tests/test_ai_provider.py` (zero network) |
-| 5C explainer | Grounded explainer + Mock demos | `ai/explainer.py` (classify→retrieve→generate→substring citation check→refuse; AIAction before return, refusals included; `hosted` flag routing); `tests/test_ai_explain.py` (cited narration, empty/uncited refusal, unknown-ID fail-closed, DISABLED block). Advisory noted, never triggered as failure |
+| 5A classifier (`6aea310`) | Deterministic taxonomy classifier + migration v8 (`ai_action`) | `ai/taxonomy.py` (12-category order, prefix/category/spec mapping, fail-closed); `ai/actions.py` (provenance writer); `tests/test_ai_classify.py` |
+| 5B provider (`7f57ecd`) | `LLMProvider` (Gemini stdlib-urllib + Mock) + residency guard + secret filter | `ai/provider.py` (alias resolution explicit > env > config, injectable transport, malformed replies fail closed); `ai/residency.py` (DISABLED/LOCAL_ONLY/HOSTED_ALLOWED, opt-in records, immediate reversion, redaction); `tests/test_ai_provider.py` (zero network) |
+| 5C explainer (`02b3c5b`) | Grounded explainer + Mock demos | `ai/explainer.py` (classify→retrieve→generate→substring citation check→refuse; AIAction before return, refusals included; `hosted` flag routing); `tests/test_ai_explain.py` (cited narration, empty/uncited refusal, unknown-ID fail-closed, DISABLED block). Advisory noted, never triggered as failure |
 
+## Stage 6 — Topology Intelligence & Knowledge Base (6A–6D COMMITTED & VERIFIED)
+
+| Commit | Scope | Status & Evidence |
+|---|---|---|
+| 6A templates (`3bbc21b`) | Canonical Topology Template Library (6 standard blocks) | `topology/templates.py`: `current_mirror`, `diff_pair`, `common_source`, `cascode`, `folded_cascode`, `two_stage_miller`. Relational SQLite instantiation strictly in SI base units; `tests/test_topology_templates.py` (15 tests passing: pre-sim validation, connectivity, determinism) |
+| 6B retriever (`68c8c14`) | Knowledge Base linkage & AI-03 Multi-Criteria Retriever | `topology/knowledge_base.py` + `topology/retriever.py`: aggregates empirical trials and yield; multi-criteria scoring $S = w_{\text{spec}}s_{\text{spec}} + w_{\text{top}}s_{\text{top}} + w_{\text{yield}}Y - w_{\text{fail}}F$; `tests/test_topology_retriever.py` (4 tests passing, including mandatory AI-03 adversarial test rejecting failed sizings) |
+| 6C proposal (`9eceb1c`) | `CandidateCircuitIR` & Proposal State Machine | `topology/proposal.py`: immutable proposal IR, immediate `ai_action` logging, fail-closed pre-sim validation gate, human decision gate (`decide_proposal`). `tests/test_topology_proposal.py` (5 tests passing) |
+| 6D demo | Two-Stage Miller Op-Amp Sizing & Proposal Workflow Demo | `sim/miller_opamp.py`: AC deck assembly, analytical & SPICE evaluators, Optuna sizing against 60dB/40MHz, blocking human checkpoint alert block. `tests/test_stage6_demo.py` (5 passed, 1 live skipped). Suite total: 305 passed, 29 skipped |
 
 ## CI post-mortem 2026-09-06 (first-ever GitHub run, both jobs red)
 
@@ -185,10 +193,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **Stage 5 — AI Diagnostics & Copilot** — COMPLETE (5A–5C implemented, verified, uncommitted; advisory noted, never a failure). Next: commit, push, watch CI, then Stage 6.
-2. **Push + GitHub Actions run** — CONNECTED 2026-09-06: `origin` → `RobinBroG/moneymoney`, branch `main`, all commits pushed. CI history observed 2026-09-07: #1 red (pre-fix cache teardown, post-mortem above), **#2 GREEN (hermetic fix verified remotely)**, #3/#4/#5 GREEN. Latest (#6, docs) was in progress at last sighting.
-4. `actions/checkout@v4` floating major — CLOSED 2026-09-06 (pinned to immutable SHA `11d5960a326750d5838078e36cf38b85af677262`; act dry-run plans clean).
-5. Automated W/L-minima checks — CLOSED 2026-09-06 (`circuit/pdk_limits.py` ingested from pinned PDK bins; validator enforces as `schema`; base 205+20, EDA 225/225).
-6. **Stage 6 — Topology Intelligence** (templates + ledger retrieval + LangGraph state machine; BLOCKING checkpoint on every proposal).
+1. **Stage 6 Human Checkpoint Signoff** — In progress: emit blocking human checkpoint alert block for Miller op-amp proposal.
+2. **Push Stage 6 to GitHub** — Pending commit 6D completion and push to `origin/main`.
+3. **Stage 7 — Schematic UI** — (Interactive UI calling `DesignEngine v0.1` API exclusively; Playwright equivalence test).
+4. **Stage 8 — Physical Design** — (KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow).
 
 
