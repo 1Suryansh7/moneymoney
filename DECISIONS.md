@@ -365,3 +365,14 @@
 - **Alternatives Considered**: Third study around trial 9 (rejected: beyond authorized budget; recorded as future direction); weaker interim spec (rejected: not needed — two specs honestly pass, shortfall localized to UGB); parking sizing (rejected: AGENT2 §10 + verdict instruction).
 - **Consequences**: Demo exercises the honest-FAIL workflow path end-to-end (evaluation False, still halts, checkpoint emitted). Stage 6 checkpoint re-raised on the re-baselined numbers. Push still gated on human verdict.
 
+---
+
+### ADR-030: Stage 7A Architecture Lockdown (EngineV01 + Boundary Guard + v9)
+- **Date**: 2026-09-09
+- **Status**: Accepted (base green 325+30; EDA engine file 8 passed; full EDA re-run due after next code change)
+- **Context**: Law 4 existed as contract + skeleton only; no concrete engine, no CI enforcement, no checkpoint/state persistence. (ADR-029 stays reserved for the PDK-selection spike per ADR-028.)
+- **Decision**: (1) `EngineV01` strangler facade over existing modules — project/cell/instantiate/validate/netlist/simulate/connect delegate; ABC 11-method surface untouched so ENGINE_API_VERSION stays "0.1" (extensions live on concrete only); all other methods raise NotImplementedError with defer owners, pinned by tests. (2) AST boundary test fails ui/cli/sdk surfaces importing engine-side internals; engine-side packages and the suite are explicitly out of scope (strangler direction, not retroactive). (3) Migration v9: `checkpoint_registry` + `design_state` (ten-state vocabulary, per-cell UNIQUE, FK cascade); version pin 8→9 updated alongside the genuine migration; writers deferred to callers.
+- **Rationale**: Delegation-only facade cannot drift from verified modules; freezing the ABC avoids a gratuitous v0.2; scoping the guard to new surfaces keeps the existing green suite intact while constraining all future additions.
+- **Alternatives Considered**: Adding connect/measure/run_erc/run_lvs to the ABC (rejected: trips the exact-eleven contract test and forces a version bump for zero behavioral gain); retroactive boundary on tests/ (rejected: would nuke the green suite; direction is forward-only); DAO helpers now (rejected: behavior-owned helpers land with callers per schema.py convention).
+- **Consequences**: UI MVP / SDK / CLI have a single legal import surface; Stage 7B unblocked on user UI design. Push gated on the open Step-2 re-close verdict.
+
