@@ -1,8 +1,8 @@
 """AnalogBench registry + runner (R0 trust core).
 
 Eight canonical benchmarks B0–B7 form the release scoreboard. B0 (inverter),
-B1 (mirror) and B2 (diff pair) execute today; B3–B7 raise NotImplementedError
-with per-bench defer owners instead of faking results. Runner returns data
+B1 (mirror), B2 (diff pair) and B3 (common-source) execute today; B4–B7 raise
+NotImplementedError with per-bench defer owners instead of faking results. Runner returns data
 (BenchResult), never raises on simulation faults — failures are scoreboard
 rows, and the fail-closed contract surfaces them as status="error" with the
 taxonomy message attached.
@@ -16,7 +16,8 @@ from dataclasses import dataclass, field
 from typing import Final
 
 from analog_ic_design.engine.engine_v01 import EngineV01
-from analog_ic_design.metrics.gain import extract_ac_gain
+from analog_ic_design.metrics.gain import extract_ac_gain, extract_dc_gain
+from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.diff_pair import build_diff_pair
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.mirror import build_mirror
@@ -257,6 +258,89 @@ def _run_b2(*, db_path: str, seed: int) -> BenchResult:
         eng.close()
 
 
+def _job_vectors(eng: EngineV01) -> tuple[dict[str, list[float]], str]:
+    """Newest job's decoded vector payload plus its reproducibility id."""
+    jobs = eng.list_jobs()
+    if not jobs:
+        raise SimError("Schema: simulate returned no ledger job")
+    detail = eng.job_result(job_id=jobs[0]["job_id"])
+    payload = json.loads(str(detail["result"]))
+    return dict(payload["vectors"]), str(payload.get("reproducibility_id", ""))
+
+
+def _run_b3(*, db_path: str, seed: int) -> BenchResult:
+    setup = connect(db_path)
+    try:
+        migrate(setup)
+        cell = build_cs_amplifier(setup)
+    finally:
+        setup.close()
+    eng = EngineV01(db_path=db_path)
+    try:
+        valid, violations = eng.validate(cell_id=cell)
+        if not valid:
+            return BenchResult("B3", "fail", {}, (),
+                               f"Constraint: validation gate failed: {violations}")
+        frag = eng.netlist(cell_id=cell)
+        dc_deck = assemble_dc_sweep(
+            frag,
+            sweep_net="in",
+            v_start=0.4,
+            v_stop=1.2,
+            v_step=0.005,
+            extra_lines=["Vbias vbias 0 DC 0.9"],
+            libs=[(SKY130_LIB, "tt")],
+        )
+        try:
+            eng.simulate(netlist=dc_deck, seed=seed)
+            dc_vecs, _ = _job_vectors(eng)
+            vin = [float(v) for v in dc_vecs["in"]]
+            vout = [float(v) for v in dc_vecs["out"]]
+            dc_gain = extract_dc_gain(vin, vout)
+            slopes = [abs((vout[i + 1] - vout[i]) / (vin[i + 1] - vin[i]))
+                      for i in range(len(vin) - 1)]
+            trip = vin[slopes.index(max(slopes))]
+            ac_deck = assemble_ac(
+                frag,
+                in_net="in",
+                v_bias=trip,
+                extra_lines=["Vbias vbias 0 DC 0.9"],
+                libs=[(SKY130_LIB, "tt")],
+            )
+            repro = eng.simulate(netlist=ac_deck, seed=seed)
+        except SimError as exc:
+            return BenchResult("B3", "error", {}, (), f"{exc}")
+        jobs = eng.list_jobs()
+        detail = eng.job_result(job_id=jobs[0]["job_id"])
+        payload = json.loads(str(detail["result"]))
+        cx = {k: [complex(p[0], p[1]) for p in v]
+              for k, v in payload.get("complex_vectors", {}).items()}
+        wave = parse_ac(RawSim(vectors=payload["vectors"], complex_vectors=cx, log=""))
+        try:
+            ac_gain = extract_ac_gain(wave, in_node="in", out_node="out")
+        except SimError as exc:
+            return BenchResult("B3", "error", {}, (repro,), f"{exc}")
+        metrics = {
+            "dc_gain": dc_gain,
+            "ac_gain": ac_gain,
+            "vout_min_v": min(vout),
+            "vout_max_v": max(vout),
+        }
+        # Stage 3C measured DC 9.1061 == AC 9.1059 on this exact deck: the two
+        # independent analyses must agree (equivalence), the stage must show
+        # active gain, and the transfer must swing rail to rail. Equivalence
+        # band is 2x the contract tolerance — bench margin, not contract law.
+        rel_diff = abs(dc_gain - ac_gain) / dc_gain if dc_gain > 0 else float("inf")
+        if dc_gain > 5.0 and min(vout) < 0.1 and max(vout) > 1.7 and rel_diff < 0.10:
+            return BenchResult("B3", "pass", metrics, (repro,), "")
+        return BenchResult(
+            "B3", "fail", metrics, (repro,),
+            f"Constraint: gain/equivalence/swing broken (dc={dc_gain:.3f},"
+            f" ac={ac_gain:.3f}, rel={rel_diff:.3f})")
+    finally:
+        eng.close()
+
+
 def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
     """Execute one benchmark by id; unknown ids fail closed (Schema)."""
     if bench_id not in BENCHES:
@@ -267,5 +351,7 @@ def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
         return _run_b1(db_path=db_path, seed=seed)
     if bench_id == "B2":
         return _run_b2(db_path=db_path, seed=seed)
+    if bench_id == "B3":
+        return _run_b3(db_path=db_path, seed=seed)
     owner = BENCHES[bench_id].owner
     raise NotImplementedError(f"{bench_id} deferred to {owner}")
