@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-SCHEMA_VERSION: Final = 8
+SCHEMA_VERSION: Final = 9
 
 _MIGRATION_1 = """
 CREATE TABLE schema_version (
@@ -235,6 +235,34 @@ CREATE TABLE ai_action (
 );
 """
 
+_MIGRATION_9 = """
+CREATE TABLE checkpoint_registry (
+    id TEXT PRIMARY KEY,
+    checkpoint_key TEXT NOT NULL,
+    trigger TEXT NOT NULL,
+    required_evidence TEXT NOT NULL,
+    verification_action TEXT NOT NULL,
+    severity TEXT NOT NULL CHECK (severity IN ('blocking', 'advisory')),
+    reviewer TEXT,
+    decision TEXT NOT NULL CHECK (
+        decision IN ('confirmed', 'confirmed_with_note', 'rejected', 'insufficient', 'pending')
+    ) DEFAULT 'pending',
+    decided_at TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE design_state (
+    id TEXT PRIMARY KEY,
+    cell_id TEXT NOT NULL UNIQUE REFERENCES cell(id) ON DELETE CASCADE,
+    state TEXT NOT NULL CHECK (state IN (
+        'DRAFT', 'SIMULATION_READY', 'NOMINAL', 'PVT', 'MC', 'LAYOUT_READY',
+        'PHYSICAL_VERIFIED', 'POST_LAYOUT_VALIDATED', 'REVIEW_READY', 'RELEASED'
+    )),
+    design_revision TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+"""
+
 MIGRATIONS: Final = (
     (1, _MIGRATION_1),
     (2, _MIGRATION_2),
@@ -244,6 +272,7 @@ MIGRATIONS: Final = (
     (6, _MIGRATION_6),
     (7, _MIGRATION_7),
     (8, _MIGRATION_8),
+    (9, _MIGRATION_9),
 )
 
 

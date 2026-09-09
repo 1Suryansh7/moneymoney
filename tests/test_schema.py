@@ -55,7 +55,9 @@ def _hierarchy(conn: sqlite3.Connection) -> dict[str, str]:
 
 
 def test_migrate_lands_current_version_and_is_idempotent(db: sqlite3.Connection) -> None:
-    assert SCHEMA_VERSION == 8
+    # Pin bumped 8 -> 9 alongside the genuine v9 migration (checkpoint_registry
+    # + design_state); this tripwire exists to force exactly this acknowledgment.
+    assert SCHEMA_VERSION == 9
     assert get_schema_version(db) == SCHEMA_VERSION
     assert migrate(db) == SCHEMA_VERSION
     assert get_schema_version(db) == SCHEMA_VERSION
