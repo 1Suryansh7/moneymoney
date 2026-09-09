@@ -92,7 +92,7 @@ Operational code and agent configuration NEVER hardcode model generation names (
 > checkpoint_registry + design_state) → 7B HTTP service (pinned
 > fastapi/uvicorn/httpx2, threaded-server tests, thin-slice inverter wave
 > over HTTP ADR-032) → 7B-4 job observability routes for Run Center.
-> Gates: base 334+32, EDA 355 passed. CI Actions status unobserved from
+> Gates: base 338+33, EDA 370 passed + 1 legit skip (tallies reconcile at 371). CI Actions status unobserved from
 > here (no gh/token) — verify green in the GitHub tab.
 > Next: R0 trust core (AnalogBench suite first: R0-1 registry+runner+B0
 > committed `ca588c7`, base 338+33), then Lovable-shell wiring.
