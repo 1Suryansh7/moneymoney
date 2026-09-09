@@ -161,7 +161,9 @@
   - [x] `CandidateCircuitIR` and proposal state machine with immediate `ai_action` provenance (6C `9eceb1c`).
   - [x] Two-stage Miller verification reworked simulator-grounded (6E `ababde1`): analytical estimator deleted (fail-closed), single-ended AC drive, phasors rebuilt from complex_vectors, taxonomy-worded errors, DB commit fixes worker lock. Gates: base 305+29, EDA 334 passed.
   - [x] Real-sim Optuna sizing push to spec (6F): expanded 12-dim space (L params), PM-aware cost, per-trial failure tolerance (failed trials recorded, never abort). Winner MEASURED gain 75.16dB / UGB 62.41MHz / PM 152.4deg — all spec targets pass. 🟡 Advisory: winning Rz=7953Ω sits at the 8000Ω bound; PM margin (+92deg) makes it moot — proceeding flagged.
-  - [ ] 🔴 **HUMAN CHECKPOINT**: Stage 6 proposal PASSES spec on measured data (AWAITING VERDICT: accept design / reject / compare).
+  - [x] Phase 0 Step 1 (VERIFY-PM-001): unwrap-first signed PM (`d494d7c`, ADR-027). Old 6F PM 152.4 re-measured live at +27.58 MARGINAL — kind story confirmed, committed PASS refuted (180-27.58=152.42 closes exactly). Contract aligned to lag formulation; wrap suite permanent in CI.
+  - [x] Phase 0 Step 2 re-baseline: 16-trial wide re-run (best cost 214.71, no close) + 20-trial physics-focused study (seed 200, gm2-boosted W_out, Rz~=1/gm2, Cc 0.8-1.5pF). Empirical winner trial 17 MEASURED gain 81.30dB / UGB 16.58MHz / PM 63.64deg — gain+PM honestly pass, UGB shorts 40MHz. Demo rewritten to honesty properties (no spec assertions). Near-miss trial 9 (38dB/32.4MHz/57.7°) recorded as future direction.
+  - [ ] 🔴 **HUMAN CHECKPOINT**: re-baselined proposal (gain+PM pass, UGB short) + re-close decision executed per verdict (adopt empirical winner, ADR-028). Verdict options: accept / reject / compare / fund another round.
 - [ ] **Stage 7 — Schematic UI**
   - [ ] Interactive UI client calling `DesignEngine v0.1` API exclusively.
   - [ ] Playwright automated equivalence test (UI vs Python API netlist hash match).

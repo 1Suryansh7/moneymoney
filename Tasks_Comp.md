@@ -193,8 +193,8 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **Stage 6 Human Checkpoint Signoff** — MEASURED winner (focused space, seed 100, trial 6): gain 75.16dB / UGB 62.41MHz / PM 152.4deg vs 60dB/40MHz/60deg spec = PASS on all three. AWAITING human verdict: accept / reject / compare. Advisory: winning Rz=7953Ω at the 8000Ω bound (moot: PM margin +92deg).
-2. **Push to GitHub** — 6E `ababde1` + 6F committed locally (gates green); push to `origin/main` pending checkpoint verdict.
+1. **Stage 6 Human Checkpoint Signoff** — RE-BASELINED winner (focused study, seed 200, trial 17): gain 81.30dB / UGB 16.58MHz / PM 63.64deg vs 60dB/40MHz/60deg spec = gain+PM PASS, UGB SHORT. Old 6F winner re-measured +27.58 MARGINAL (kind story; 180-27.58=152.42 refutes committed PASS). AWAITING human verdict: accept / reject / compare / fund another round.
+2. **Push to GitHub** — 6E `ababde1` + 6F + Phase-0 Step 1 `d494d7c` committed locally; Step 2 pending gates; push to `origin/main` pending checkpoint verdict.
 3. **Stage 7 — Schematic UI** — ON HOLD: user supplies own UI/UX design; agent will edit/build it then. Prereqs recorded: 7A concrete `EngineV01` facade + 7B read-only API service + 7C canvas with Playwright UI≡API equivalence test.
 4. **Stage 8 — Physical Design** — (KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow).
 

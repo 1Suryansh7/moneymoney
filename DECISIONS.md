@@ -354,3 +354,14 @@
 - **Alternatives Considered**: Log-frequency interpolation (rejected: would fork UGB authority from `extract_bandwidth`); clamping negatives with a flag (rejected by user decision: signed values steer the optimizer); leaving old unit expectations (rejected: they encode the bug — flipped transparently with derivations in comments).
 - **Consequences**: 6F winner invalid pending re-measurement; demo spec assertions will go red until Step 2 re-baselines; wrap-regression tests are permanent CI gates per AGENT2 §5.
 
+---
+
+### ADR-028: Phase-0 Step-2 Re-baseline — Empirical Winner Adopted (UGB Short)
+- **Date**: 2026-09-09
+- **Status**: Accepted (pending human checkpoint verdict + full gates)
+- **Context**: VERIFY-PM-001 live confirmation: old 6F winner re-measured gain 75.16dB / UGB 62.41MHz / PM +27.58° MARGINAL — kind story confirmed (no wrap on that deck; 180−27.58=152.42 closes exactly, refuting the committed PASS). 16-trial wide re-run (default space, seed 100): best cost 214.71, no trial closes all three; failures-are-data path recorded 2 sub-unity trials honestly. 20-trial physics-focused study (seed 200; W_out 40–100µm for gm2, Rz 500–2500Ω ≈ 1/gm2, Cc 0.8–1.5pF): winner trial 17 MEASURED gain 81.30dB / UGB 16.58MHz / PM 63.64° (cost 117.08, all-UGB-shortfall). Near-miss trial 9 (38dB/32.4MHz/57.7°) shows the frontier but fails two specs at higher cost.
+- **Decision**: (1) Adopt trial-17 as the empirical winner per the human-approved fallback (re-close verdict option (a)-focused executed). (2) Demo rewritten to honesty properties (finite metrics, ledger rows, AWAITING_HUMAN halt) — the spec-compliance assertions that embedded the bug are deleted, resolving the test's contradiction with its own docstring. (3) Old-winner params, stale illustrative strings, and tracker PASS claims replaced with measured values everywhere (AGENT2 §10: no silent old numbers). (4) Numbering correction: ADR-027's line assigning PDK selection to 028 is superseded — PDK selection moves to 029.
+- **Rationale**: Cost function is the arbiter (117.08 < 147.79 < 269.75); trial 17 is the only point passing two specs including PM — the metric this whole exercise fixed. Chasing trial-9's region further would exceed the authorized focused budget without new human approval.
+- **Alternatives Considered**: Third study around trial 9 (rejected: beyond authorized budget; recorded as future direction); weaker interim spec (rejected: not needed — two specs honestly pass, shortfall localized to UGB); parking sizing (rejected: AGENT2 §10 + verdict instruction).
+- **Consequences**: Demo exercises the honest-FAIL workflow path end-to-end (evaluation False, still halts, checkpoint emitted). Stage 6 checkpoint re-raised on the re-baselined numbers. Push still gated on human verdict.
+
