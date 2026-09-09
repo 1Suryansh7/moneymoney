@@ -176,8 +176,10 @@
   - [x] 7B-3 thin slice: HTTP validate/netlist (base) + live transient sim parsed to rail-to-rail inversion assertions (EDA 2 passed in 21s). Gates: base 331+31.
   - [x] 7B-4 job observability (`f949200`): concrete-only `list_jobs`/`job_result` (ABC untouched); routes GET /jobs + GET /jobs/{job_id} with 404 mapping; base seeds ledger rows directly, EDA reads back a live RC sim through both routes. Gates: base 334+32, EDA jobs file 4 passed.
   - [ ] Next: workspace-by-workspace Lovable-shell wiring behind the boundary (per ADR-031); Playwright equivalence with first UI action.
-- [-] **R0 Trust Core — AnalogBench** (`ca588c7`; base 338+33)
+- [-] **R0 Trust Core — AnalogBench** (R0-1 `ca588c7`; R0-2a `1695af6`, R0-2b `0e74696`; base 342+35)
   - [x] R0-1 registry + runner + B0: eight benches B0–B7 with per-bench defer owners; B0 executes (build→validate→netlist→sim→swing via engine surfaces); BenchResult data on all paths (pass/fail/error, error carries taxonomy with zero sims); B1–B7 raise NotImplementedError. Full EDA 370 passed + 1 legit conditional skip (b0-nolib case) in 16.5 min.
+  - [x] R0-2a B1 mirror (`sim/mirror.py` fixture + runner): pushed-into-diode bias (pulling to ground parks both devices OFF, observed live ~1e-12 A); sweep-source branch vector fail-closed on ambiguity; 0.8–1.2 saturation ratio at Vout=0.9 plus triode-ordering. MEASURED 1.025 with Early slope 0.82/1.18 and KCL-closed return. EDA bench file green.
+  - [x] R0-2b B2 diff pair (runner): single-ended AC drive, both output gains via Stage 3 extractor over complex phasors; differential-action fingerprint MEASURED 8.075/0.536 — 3–30 mirror side plus under-2 diode side, bands structural not fitted. EDA bench file 8 passed + 3 skips.
 - [ ] **Stage 7 — Schematic UI**
   - [ ] Interactive UI client calling `DesignEngine v0.1` API exclusively.
   - [ ] Playwright automated equivalence test (UI vs Python API netlist hash match).

@@ -214,6 +214,11 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Routes (`5b8c80d`): lifespan-managed factory, engine-implemented methods only, taxonomy-preserving error map (422/500), SI floats on wire with string rejection asserted, SimError/version re-exported through engine surface, AST guard extended to `api/` + own-package allowance.
 - Thin slice (`ca155c4`, ADR-032): HTTP validate/netlist (base) + live transient sim parsed to rail-to-rail inversion assertions (EDA 2 passed in 21s). Base 331+31. Push gate lifted by 2026-09-09 CONFIRMED verdict.
 
+## 2026-09-09 — R0-2 mirror + diff-pair benches (base green, EDA file green)
+- B1 (`1695af6`): matched-pair fixture with bias-direction lesson recorded in code (push-into-diode, not pull-to-ground); sweep-branch identification fail-closed; saturation ratio + triode ordering acceptance. MEASURED ratio 1.025 @0.9V, Early slope to 1.18, KCL-closed return.
+- B2 (`0e74696`): single-ended AC drive on proven diff-pair fixture; differential-action fingerprint MEASURED 8.075/0.536; wide structural bands. Deferral representative advanced B1→B2→B3.
+- EDA bench file: 8 passed + 3 conditional skips (fail-closed paths). Base 342+35.
+
 ## 2026-09-09 — R0-1 AnalogBench + full EDA proof (370 green)
 - Registry B0–B7 + executable B0 (`bench/__init__.py`, `tests/test_bench.py`, commit `ca588c7`); B1–B7 raise with R0 owners. Full EDA suite: **370 passed, 1 skipped** (legit `pytest.skip` inside b0-nolib test on lib images) in 16.5 min — covers 7B API routes, thin slice, PM wrap suite, bench B0-live, and all prior stages. Tallies reconcile: 371 collected both images (base 338+33).
 
