@@ -22,7 +22,7 @@ PKG_ROOT = REPO_ROOT / "src" / "analog_ic_design"
 # Caller surfaces created after the boundary landed. Absent dirs pass
 # vacuously (documented, not green-washing: the self-tests below prove the
 # checker itself catches violations).
-GUARDED_PACKAGES: tuple[str, ...] = ("ui", "cli", "sdk")
+GUARDED_PACKAGES: tuple[str, ...] = ("ui", "cli", "sdk", "api")
 
 # Import roots a caller surface may touch, besides stdlib.
 ALLOWED_ROOTS: tuple[str, ...] = (
@@ -63,12 +63,21 @@ def _violations_in_file(path: Path) -> list[str]:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except SyntaxError as exc:
         return [f"{path}: unparseable ({exc})"]
+    try:
+        rel = path.relative_to(PKG_ROOT).with_suffix("").as_posix().replace("/", ".")
+        own = f"analog_ic_design.{rel}"
+    except ValueError:
+        own = ""
+    if own.endswith(".__init__"):
+        own = own[: -len(".__init__")]
     hits: list[str] = []
     for root in _imported_roots(tree):
         if any(root == f or root.startswith(f + ".") for f in FORBIDDEN_ROOTS):
             hits.append(f"{path}: forbidden import {root!r}")
         elif root == "analog_ic_design" or root.startswith("analog_ic_design."):
-            if not root.startswith(ALLOWED_ROOTS):
+            if not root.startswith(ALLOWED_ROOTS) and root != own and not root.startswith(
+                own + "."
+            ):
                 hits.append(f"{path}: non-engine import {root!r}")
     return hits
 

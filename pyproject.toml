@@ -37,9 +37,11 @@ dev = [
   # Bayesian optimization backend (Stage 4 prompt mandates Optuna first;
   # plan-ordered, not discretionary). Registry-read 2026-09-07: 5.0.0.
   "optuna==5.0.0",
-  # In-process HTTP client for FastAPI TestClient tests (Stage 7B;
-  # same 2026-09-09 approval as fastapi). Keeps API tests server-free.
-  "httpx==0.28.1",
+  # In-process HTTP client backing starlette TestClient (Stage 7B; same
+  # 2026-09-09 approval as fastapi). httpx2 is the Encode-blessed successor
+  # the installed starlette requires (plain httpx raises deprecation-as-error
+  # under our filterwarnings gate). Registry-read 2026-09-09: 2.12.0.
+  "httpx2==2.12.0",
 ]
 
 [tool.setuptools.packages.find]
