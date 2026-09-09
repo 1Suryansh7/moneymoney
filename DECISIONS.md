@@ -376,3 +376,14 @@
 - **Alternatives Considered**: Adding connect/measure/run_erc/run_lvs to the ABC (rejected: trips the exact-eleven contract test and forces a version bump for zero behavioral gain); retroactive boundary on tests/ (rejected: would nuke the green suite; direction is forward-only); DAO helpers now (rejected: behavior-owned helpers land with callers per schema.py convention).
 - **Consequences**: UI MVP / SDK / CLI have a single legal import surface; Stage 7B unblocked on user UI design. Push gated on the open Step-2 re-close verdict.
 
+---
+
+### ADR-031: Adopt Lovable Axiom shell as Stage 7 UI baseline
+- **Date**: 2026-09-09
+- **Status**: Accepted (human-approved; hand mockups B/C superseded)
+- **Context**: User-supplied `UI design 1/` delivers a complete Virtuoso-style IDE shell (14 workspaces, command palette, real 4-terminal MOSFET symbols with bulk arrows) as UI-only mock data with zero backend. Rebuilding it by hand would burn months; hand mockups cannot match its density.
+- **Decision**: (1) Adopt the shell + symbol geometry verbatim as the Stage 7 baseline. (2) Approve pinned `fastapi`/`uvicorn` (API service) + `playwright` (equivalence tests), installed at 7B start. (3) Dumb-frontend rule: no physics/netlisting/metric math in TypeScript; SI floats on the wire, formatting in display components. (4) Law 4 extended to FastAPI routes (engine-only, AST-guard mirror). (5) Separate Node container/host dev server; Python/EDA image untouched. (6) First wiring: thin-slice inverter through FastAPI. (ADR-029 stays reserved for the PDK spike.)
+- **Rationale**: Pixels + engine is the fastest credible path; every guardrail preserves the constitution across the language boundary.
+- **Alternatives Considered**: Continuing hand mockups B/C (rejected: superseded by a real shell); stdlib-http gateway to avoid the dep (rejected: React needs real HTTP + Playwright needs a server; approval granted properly).
+- **Consequences**: 7B scope is now wiring workspaces to the API service behind the boundary; showcase HTML in `mockups/` remains a selection artifact, not product code.
+

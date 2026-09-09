@@ -214,3 +214,21 @@ Plausible Number · Golden Drift · Silent Unit Coercion · Helpful Side Door ·
 Checkpoint Fatigue · Review-Loop Addiction · Multi-Stage Prompts — all kept.
 8. ☠️ **The Wrapped Phase**: trusting principal-value math on multi-pole
 data. Mitigation: unwrap-first + signed reporting + wrap regression tests.
+
+## 19. Stage 7 UI contract — Lovable shell adoption (NEW, approved 2026-09-09)
+- Baseline: `UI design 1/` ("Axiom IC Studio") is the Stage 7 UI baseline;
+  its MOSFET/passive SVG symbol geometry is adopted verbatim.
+- Approved dependencies (pinned hermetically when 7B server work starts):
+  `fastapi` + `uvicorn` (API service), `playwright` (UI≡API equivalence
+  tests). This approval satisfies §4 dependency discipline; no other
+  frontend-driven dependency is approved.
+- Frontend is dumb: zero physics, netlisting, or metric math in TypeScript —
+  display + events only. "Run AC" = JSON payload → FastAPI → EngineV01.
+- SI across the wire: JSON numbers are SI base-unit floats
+  (1.5e-6, 1.0e-12); human formatting lives in React display components only.
+- Law 4 extended: FastAPI routes call `DesignEngine v0.1` exclusively — no
+  `sqlite3`/ngspice/direct-schema imports in route code (AST-guard mirror).
+- Hermetic containers: React/Vite runs in its own lightweight Node container
+  or host dev server; it never touches or bloats the Python/EDA image.
+- Sequencing: Phase-0 math fix complete (`d494d7c`/`9980521`); first wiring
+  is the thin-slice inverter through FastAPI, then workspace-by-workspace.
