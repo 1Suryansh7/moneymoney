@@ -177,7 +177,7 @@
   - [x] 7B-4 job observability (`f949200`): concrete-only `list_jobs`/`job_result` (ABC untouched); routes GET /jobs + GET /jobs/{job_id} with 404 mapping; base seeds ledger rows directly, EDA reads back a live RC sim through both routes. Gates: base 334+32, EDA jobs file 4 passed.
   - [ ] Next: workspace-by-workspace Lovable-shell wiring behind the boundary (per ADR-031); Playwright equivalence with first UI action.
 - [-] **R0 Trust Core — AnalogBench** (`ca588c7`; base 338+33)
-  - [x] R0-1 registry + runner + B0: eight benches B0–B7 with per-bench defer owners; B0 executes (build→validate→netlist→sim→swing via engine surfaces); BenchResult data on all paths (pass/fail/error, error carries taxonomy with zero sims); B1–B7 raise NotImplementedError. EDA B0-live pending full-suite run.
+  - [x] R0-1 registry + runner + B0: eight benches B0–B7 with per-bench defer owners; B0 executes (build→validate→netlist→sim→swing via engine surfaces); BenchResult data on all paths (pass/fail/error, error carries taxonomy with zero sims); B1–B7 raise NotImplementedError. Full EDA 370 passed + 1 legit conditional skip (b0-nolib case) in 16.5 min.
 - [ ] **Stage 7 — Schematic UI**
   - [ ] Interactive UI client calling `DesignEngine v0.1` API exclusively.
   - [ ] Playwright automated equivalence test (UI vs Python API netlist hash match).
