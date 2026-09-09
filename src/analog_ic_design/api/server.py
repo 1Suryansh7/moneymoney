@@ -94,6 +94,23 @@ class SimulateOut(BaseModel):
     reproducibility_id: str
 
 
+class JobSummary(BaseModel):
+    """Ledger summary for the Run Center (no payloads)."""
+
+    job_id: str
+    kind: str
+    status: str
+    created_at: str
+    updated_at: str
+
+
+class JobDetail(JobSummary):
+    """Full ledger row, result payload included when present."""
+
+    result: str | None
+    error: str | None
+
+
 class HealthOut(BaseModel):
     """Service + engine contract identity."""
 
@@ -187,6 +204,17 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
             }
         except SimError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.get("/jobs", response_model=list[JobSummary])
+    def list_jobs(request: Request) -> list[dict[str, str]]:
+        return _engine(request).list_jobs()
+
+    @app.get("/jobs/{job_id}", response_model=JobDetail)
+    def get_job(job_id: str, request: Request) -> dict[str, str | None]:
+        try:
+            return _engine(request).job_result(job_id=job_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return app
 

@@ -152,6 +152,44 @@ class EngineV01(DesignEngine):
             self._runner = JobRunner(db_path=self._db_path, lib_path=lib_path)
         return "default"
 
+    def list_jobs(self) -> list[dict[str, str]]:
+        """Newest-first job ledger summaries for the Run Center (no payloads)."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, kind, status, created_at, updated_at FROM job"
+                " ORDER BY created_at DESC, id DESC"
+            ).fetchall()
+        return [
+            {
+                "job_id": str(row[0]),
+                "kind": str(row[1]),
+                "status": str(row[2]),
+                "created_at": str(row[3]),
+                "updated_at": str(row[4]),
+            }
+            for row in rows
+        ]
+
+    def job_result(self, *, job_id: str) -> dict[str, str | None]:
+        """Full ledger row for one job, result payload included when present."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT id, kind, status, result, error, created_at, updated_at"
+                " FROM job WHERE id = ?",
+                (job_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(f"unknown job {job_id!r}")
+        return {
+            "job_id": str(row[0]),
+            "kind": str(row[1]),
+            "status": str(row[2]),
+            "result": None if row[3] is None else str(row[3]),
+            "error": None if row[4] is None else str(row[4]),
+            "created_at": str(row[5]),
+            "updated_at": str(row[6]),
+        }
+
     def simulate(self, *, netlist: str, seed: int) -> str:
         """Submit `netlist` to an isolated worker; returns reproducibility id."""
         if not libngspice_available():
