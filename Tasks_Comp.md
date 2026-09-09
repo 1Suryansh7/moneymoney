@@ -195,7 +195,7 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 1. **Stage 6 Human Checkpoint Signoff** — RE-BASELINED winner (focused study, seed 200, trial 17): gain 81.30dB / UGB 16.58MHz / PM 63.64deg vs 60dB/40MHz/60deg spec = gain+PM PASS, UGB SHORT. Old 6F winner re-measured +27.58 MARGINAL (kind story; 180-27.58=152.42 refutes committed PASS). CONFIRMED by human 2026-09-09: accept Trial-17 as honest empirical baseline, UGB shortfall recorded; push authorized.
 2. **Push to GitHub** — verdict CONFIRMED 2026-09-09; push authorized for everything since `9980521` (6E/6F, Phase-0, 7A, 7B).
-3. **Stage 7 — Schematic UI** — Lovable Axiom shell ADOPTED as baseline (ADR-031); 7B API service built (`03635a8` pins, `1cc858f` threading, `5b8c80d` routes, `ca155c4` thin slice; base 331+31, EDA thin slice green) + 7B-4 job observability (`f949200`; base 334+32, EDA jobs file green). Next: workspace wiring + Playwright with first UI action.
+3. **Stage 7 — Schematic UI** — Lovable Axiom shell ADOPTED as baseline (ADR-031); 7B API service built (`03635a8` pins, `1cc858f` threading, `5b8c80d` routes, `ca155c4` thin slice; base 331+31, EDA thin slice green) + 7B-4 job observability (`f949200`; base 334+32, EDA jobs file green). R0-1 AnalogBench (`ca588c7`; base 338+33): registry B0–B7, executable B0, EDA B0-live pending full-suite run. Next: workspace wiring + Playwright with first UI action.
 4. **Stage 8 — Physical Design** — (KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow).
 
 ## 2026-09-09 — Stage 0–6 verification sweep + 6E rework (all green)

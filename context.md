@@ -82,15 +82,20 @@ Operational code and agent configuration NEVER hardcode model generation names (
 
 ## 5. Current Project Status & File Inventory
 
-### Active Status: STAGES 0–4.5 COMMITTED & HUMAN-CONFIRMED — STAGE 5 IMPLEMENTED, UNCOMMITTED
-> Stage 5 (5A classifier + v8 AIAction, 5B provider/guard/redaction, 5C
-> grounded explainer with Mock demos) implemented, base-green 276+28.
-> Advisory noted, never triggered as failure; first live hosted narration
-> remains new-pattern evidence (no key exists in repo or CI).
-> Next: commit 5A–5C, push, watch CI, then Stage 6.
-> PDK deck boundary: micron geometry + scale=1e-6, explicit VSS ground (ADR-020); failing decks run
-> in workers only (ADR-021). WSL2 Ubuntu is the sanctioned `make` shell
-> (GNU Make 4.3 + Docker 29.6.2 verified); stock PowerShell has no `make`.
+### Active Status: STAGES 0–6 + PHASE 0 + 7A + 7B COMMITTED & PUSHED (`origin/main`)
+> 6E sim-grounded Miller → 6F sizing (winner invalidated) → Phase 0 Steps 1–2
+> (PM unwrap fix ADR-027, re-baseline ADR-028, empirical winner trial 17:
+> gain 81.30dB / UGB 16.58MHz / PM 63.64°).
+> Step-2 re-close verdict CONFIRMED by human 2026-09-09 (accept Trial-17,
+> UGB shortfall recorded) — push gate lifted, all commits pushed.
+> 7A lockdown (EngineV01 strangler facade ADR-030, Law-4 AST guard, schema v9
+> checkpoint_registry + design_state) → 7B HTTP service (pinned
+> fastapi/uvicorn/httpx2, threaded-server tests, thin-slice inverter wave
+> over HTTP ADR-032) → 7B-4 job observability routes for Run Center.
+> Gates: base 334+32, EDA 355 passed. CI Actions status unobserved from
+> here (no gh/token) — verify green in the GitHub tab.
+> Next: R0 trust core (AnalogBench suite first: R0-1 registry+runner+B0
+> committed `ca588c7`, base 338+33), then Lovable-shell wiring.
 
 ### Repository File Map
 ```text
@@ -114,7 +119,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── tests/test_interfaces.py  # Law 4 backend contract tests (Commit 2)
 ├── tests/test_engine_api.py  # DesignEngine v0.1 freeze tests (Commit 2)
 ├── tests/test_units.py       # SI unit contract tests (1A)
-├── tests/test_schema.py      # migration + schema tests (1B, v1–v7)
+├── tests/test_schema.py      # migration + schema tests (1B, v1–v9)
 ├── tests/test_graph.py       # connectivity fact tests (1C)
 ├── tests/test_canonical.py   # canonical identity tests (1D)
 ├── tests/test_compiler.py    # netlist expectation tests (1E)
@@ -123,7 +128,24 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── tests/test_sim.py, test_jobs.py, test_reproduce.py, test_waveform.py, test_stress.py, test_inverter.py # Stage 2 tests
 ├── tests/test_metrics.py, test_gain.py, test_bandwidth.py, test_phase_margin.py, test_slew_rate.py  # Stage 3 tests (contracts→slew)
 ├── tests/test_power.py, test_offset.py, test_settling_time.py, test_evaluator.py  # Stage 3 tests (power→evaluator)
-├── tests/test_schema.py (v8 AIAction), test_optimize.py, test_optimize_demo.py  # Stage 4 tests (ledger, optimizer, demo)
+├── tests/test_schema.py (v9 checkpoint_registry + design_state)  # migrations incl v9
+├── tests/test_optimize.py, test_optimize_demo.py  # Stage 4 tests (ledger, optimizer, demo)
+├── tests/test_engine_v01.py + test_api_service.py + test_api_thin_slice.py + test_api_jobs.py  # 7A/7B engine, API, slice, jobs
+├── tests/test_design_state.py + test_architecture_boundary.py  # v9 tables, Law-4 AST guard
+├── tests/test_bench.py  # R0 AnalogBench registry + B0 (others deferred per-bench)
+├── src/analog_ic_design/     # ENGINE_API_VERSION=0.1; interfaces/, engine/ (ABC + EngineV01), api/ (FastAPI service),
+│                             # units/ (quantity, display), store/ (schema v9),
+│                             # circuit/ (graph, canonical, compiler, validator, pdk_limits),
+│                             # sim/ (backend, ngspice, jobs, reproduce, waveform, testbench, inverter, cs_amp, diff_pair),
+│                             # metrics/ (contract matrix, gain, bandwidth, phase_margin, slew_rate, power, offset, settling_time, evaluator),
+│                             # optimize/ (optimizer interface, ledger, optuna TPE),
+│                             # robust/ (corners, MC sampler, statistical protocol),
+│                             # ai/ (taxonomy, provenance, provider, residency, explainer),
+│                             # bench/ (AnalogBench registry + runner; B0 executable, B1–B7 deferred),
+│                             # topology/ (templates, KB, retriever, proposals),
+├── AGENT2.md             # v1.0-frozen implementation constitution + §19 UI adoption contract
+├── mockups/              # static selection artifacts (NOT product code): midnight-lab HTML, lovable showcase HTML
+├── UI\ design\ 1/        # adopted Lovable Axiom shell (Stage 7 UI baseline, ADR-031; untracked vendor-style drop)
 ├── tests/test_corner.py, test_pvt_sim.py, test_mc_spike.py, test_protocol.py  # Stage 4.5 tests (corners, matrix, sampler, protocol)
 ├── tests/test_ai_classify.py, test_ai_provider.py, test_ai_explain.py  # Stage 5 tests (classifier, provider, explainer)
 ├── examples/plot_inverter.py # Stage 2H waveform generation demo
