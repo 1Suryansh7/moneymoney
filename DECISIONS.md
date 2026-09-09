@@ -387,3 +387,14 @@
 - **Alternatives Considered**: Continuing hand mockups B/C (rejected: superseded by a real shell); stdlib-http gateway to avoid the dep (rejected: React needs real HTTP + Playwright needs a server; approval granted properly).
 - **Consequences**: 7B scope is now wiring workspaces to the API service behind the boundary; showcase HTML in `mockups/` remains a selection artifact, not product code.
 
+---
+
+### ADR-032: Stage 7B HTTP service + thin-slice proof (pins → routes → live wave)
+- **Date**: 2026-09-09
+- **Status**: Accepted (base 331+31 green; EDA thin slice 2 passed; full EDA re-run due with next suite change)
+- **Context**: UI baseline adopted (ADR-031) but no verified path existed from browser-shaped calls to the engine. Two live findings en route: (1) plain httpx is uninstallable under our gates — starlette 1.6 TestClient raises deprecation-as-error, so tests drive ASGI over real localhost HTTP via threaded uvicorn + httpx2 2.12.0; (2) uvicorn worker threads vs same-thread sqlite raised ProgrammingError in teardown — fixed at root with RLock serialization (engine + job ledger), not worked around.
+- **Decision**: (1) Pins: fastapi 0.141.1 + uvicorn 0.52.4 runtime, httpx2 2.12.0 dev, image-rebuild evidence on both images. (2) Lifespan-managed app factory; routes for engine-implemented methods only; 422/500 taxonomy-preserving error map; SimError + version re-exported through the engine surface; AST guard extended to `api/` with own-package allowance. (3) Thin slice proves UI-shaped HTTP → FastAPI → EngineV01 → worker sim → parsed rail-to-rail inversion wave. (4) Documented limit: one in-flight sim per engine binding until the R0 scheduler. (ADR-029 stays reserved for the PDK spike.)
+- **Rationale**: Every integration risk (pins, threads, error mapping, live sims) is now retired behind green gates before any Lovable-shell wiring begins; the shell work becomes pure binding against a proven contract.
+- **Alternatives Considered**: stdlib-http server (rejected: React + Playwright need real HTTP; approval properly granted); TestClient/httpx (rejected live: deprecation-as-error); per-thread engine connections (rejected: RLock serialization is simpler and matches single-binding semantics).
+- **Consequences**: Next is workspace-by-workspace shell binding + Playwright with the first UI action. Push of everything since `9980521` still gated on the open Step-2 re-close verdict.
+

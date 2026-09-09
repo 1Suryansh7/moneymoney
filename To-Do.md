@@ -169,6 +169,12 @@
   - [x] 7A-2 Law 4 boundary CI guard: AST test fails ui/cli/sdk surfaces importing engine-side internals; engine-side + suite explicitly out of scope (strangler direction); checker self-proven incl documented relative-import blind spot.
   - [x] 7A-3 migration v9: `checkpoint_registry` (blocking/advisory, five-vocabulary verdicts) + `design_state` (ten-state CHECK, per-cell UNIQUE, FK cascade); v8 upgrade preserves data; pin 8→9 acknowledged alongside genuine migration. Writers deferred to callers.
   - [ ] 🔴 **HUMAN CHECKPOINT**: Step-2 re-close verdict still open — push of everything since `9980521` stays gated on it.
+- [-] **Stage 7B — HTTP API service** (7B-1 `03635a8`, 7B-2a `1cc858f`, 7B-2b `5b8c80d`, 7B-3 `ca155c4`)
+  - [x] 7B-1 pins: fastapi 0.141.1 + uvicorn 0.52.4 runtime, httpx2 2.12.0 dev (httpx rejected: starlette TestClient trips deprecation-as-error); image rebuild evidence green.
+  - [x] 7B-2 service skeleton: lifespan-managed app factory, routes for health/projects/cells/instantiate/validate/netlist/simulate (engine-implemented only); taxonomy-preserving error map; SimError/version re-exported through engine surface; AST guard extended to `api/` + own-package allowance; threaded-server tests over real localhost HTTP.
+  - [x] Threading found live by the suite: RLock-serialized engine/job ledger over check_same_thread=False (store.connect additive kwarg); documented one-in-flight-sim limit until R0 scheduler.
+  - [x] 7B-3 thin slice: HTTP validate/netlist (base) + live transient sim parsed to rail-to-rail inversion assertions (EDA 2 passed in 21s). Gates: base 331+31.
+  - [ ] Next: workspace-by-workspace Lovable-shell wiring behind the boundary (per ADR-031); Playwright equivalence with first UI action.
 - [ ] **Stage 7 — Schematic UI**
   - [ ] Interactive UI client calling `DesignEngine v0.1` API exclusively.
   - [ ] Playwright automated equivalence test (UI vs Python API netlist hash match).

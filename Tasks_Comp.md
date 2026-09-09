@@ -195,7 +195,7 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 1. **Stage 6 Human Checkpoint Signoff** — RE-BASELINED winner (focused study, seed 200, trial 17): gain 81.30dB / UGB 16.58MHz / PM 63.64deg vs 60dB/40MHz/60deg spec = gain+PM PASS, UGB SHORT. Old 6F winner re-measured +27.58 MARGINAL (kind story; 180-27.58=152.42 refutes committed PASS). AWAITING human verdict: accept / reject / compare / fund another round.
 2. **Push to GitHub** — 6E `ababde1` + 6F + Phase-0 `d494d7c`/`9980521` + 7A `8f51c90`/`2d25985`/`06669bb` committed locally; push to `origin/main` pending checkpoint verdict.
-3. **Stage 7 — Schematic UI** — ON HOLD: user supplies own UI/UX design; agent will edit/build it then. Prereqs recorded: 7A concrete `EngineV01` facade + 7B read-only API service + 7C canvas with Playwright UI≡API equivalence test.
+3. **Stage 7 — Schematic UI** — Lovable Axiom shell ADOPTED as baseline (ADR-031); 7B API service built (`03635a8` pins, `1cc858f` threading, `5b8c80d` routes, `ca155c4` thin slice; base 331+31, EDA thin slice green). Next: workspace wiring + Playwright with first UI action.
 4. **Stage 8 — Physical Design** — (KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow).
 
 ## 2026-09-09 — Stage 0–6 verification sweep + 6E rework (all green)
@@ -207,5 +207,11 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - VERIFY-PM-001: `extract_phase_margin` interpolated principal values with `180-abs` and no unwrap — old 6F PM 152.4 re-measured live at +27.58 MARGINAL (kind story; arithmetic closes exactly). Fix (`d494d7c`, ADR-027): unwrap-first, anchor-invariant signed PM, classification, lag-form contract text, wrap suite permanent in CI. Two old unit expectations flipped transparently (0.0→180.0, 60.0→120.0). EDA phase-margin file 11 passed, live cs_amp unchanged.
 - Re-baseline (`9980521`, ADR-028): 16-trial wide re-run closed nothing (best 214.71); 20-trial focused study (seed 200) winner trial 17 at gain 81.30dB / UGB 16.58MHz / PM 63.64deg adopted as empirical winner; demo now asserts honesty properties only. Full EDA 340 passed.
 - 7A lockdown: `EngineV01` strangler facade (`8f51c90`, EDA engine file 8 passed incl live RC deck) — ABC 11 frozen, v0.1 intact; Law-4 AST boundary guard (`2d25985`); migration v9 checkpoint_registry + design_state (`06669bb`, pin 8→9 acknowledged). Base 325+30. Push of all of the above still gated on the open Step-2 re-close verdict.
+
+## 2026-09-09 — Stage 7B HTTP service + thin slice (base green, EDA spot green)
+- Pins (`03635a8`): fastapi 0.141.1 + uvicorn 0.52.4 runtime, httpx2 2.12.0 dev — plain httpx rejected live (starlette TestClient raises deprecation-as-error under filterwarnings gate); image rebuild evidence green both images.
+- Threading found by the suite, fixed at root (`1cc858f`): uvicorn worker threads vs same-thread sqlite conns surfaced as ProgrammingError in teardown; RLock serialization over check_same_thread=False in engine + job ledger (store.connect additive kwarg, default untouched). Documented limit: one in-flight sim per engine binding until R0.
+- Routes (`5b8c80d`): lifespan-managed factory, engine-implemented methods only, taxonomy-preserving error map (422/500), SI floats on wire with string rejection asserted, SimError/version re-exported through engine surface, AST guard extended to `api/` + own-package allowance.
+- Thin slice (`ca155c4`, ADR-032): HTTP validate/netlist (base) + live transient sim parsed to rail-to-rail inversion assertions (EDA 2 passed in 21s). Base 331+31. Push still gated on Step-2 verdict.
 
 
