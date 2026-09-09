@@ -1,8 +1,8 @@
 """AnalogBench registry + runner (R0 trust core).
 
-Eight canonical benchmarks B0–B7 form the release scoreboard. B0 (inverter)
-and B1 (mirror) execute today; B2–B7 raise NotImplementedError with
-per-bench defer owners instead of faking results. Runner returns data
+Eight canonical benchmarks B0–B7 form the release scoreboard. B0 (inverter),
+B1 (mirror) and B2 (diff pair) execute today; B3–B7 raise NotImplementedError
+with per-bench defer owners instead of faking results. Runner returns data
 (BenchResult), never raises on simulation faults — failures are scoreboard
 rows, and the fail-closed contract surfaces them as status="error" with the
 taxonomy message attached.
@@ -11,15 +11,18 @@ taxonomy message attached.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from typing import Final
 
 from analog_ic_design.engine.engine_v01 import EngineV01
+from analog_ic_design.metrics.gain import extract_ac_gain
+from analog_ic_design.sim.diff_pair import build_diff_pair
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.mirror import build_mirror
 from analog_ic_design.sim.ngspice import RawSim, SimError
-from analog_ic_design.sim.testbench import assemble_dc_sweep, assemble_transient
-from analog_ic_design.sim.waveform import parse_transient
+from analog_ic_design.sim.testbench import assemble_ac, assemble_dc_sweep, assemble_transient
+from analog_ic_design.sim.waveform import parse_ac, parse_transient
 from analog_ic_design.store.schema import connect, migrate
 
 SKY130_LIB = "/usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice"
@@ -199,6 +202,61 @@ def _run_b1(*, db_path: str, seed: int) -> BenchResult:
         eng.close()
 
 
+def _run_b2(*, db_path: str, seed: int) -> BenchResult:
+    setup = connect(db_path)
+    try:
+        migrate(setup)
+        cell = build_diff_pair(setup)
+    finally:
+        setup.close()
+    eng = EngineV01(db_path=db_path)
+    try:
+        valid, violations = eng.validate(cell_id=cell)
+        if not valid:
+            return BenchResult("B2", "fail", {}, (),
+                               f"Constraint: validation gate failed: {violations}")
+        frag = eng.netlist(cell_id=cell)
+        deck = assemble_ac(
+            frag,
+            in_net="inp",
+            v_bias=0.9,
+            extra_lines=["Vinn inn 0 DC 0.9", "Vbias vbias 0 DC 0.9"],
+            libs=[(SKY130_LIB, "tt")],
+        )
+        try:
+            repro = eng.simulate(netlist=deck, seed=seed)
+        except SimError as exc:
+            return BenchResult("B2", "error", {}, (), f"{exc}")
+        jobs = eng.list_jobs()
+        if not jobs:
+            return BenchResult("B2", "error", {}, (repro,),
+                               "Schema: simulate returned no ledger job")
+        detail = eng.job_result(job_id=jobs[0]["job_id"])
+        payload = json.loads(str(detail["result"]))
+        cx = {k: [complex(p[0], p[1]) for p in v]
+              for k, v in payload.get("complex_vectors", {}).items()}
+        wave = parse_ac(RawSim(vectors=payload["vectors"], complex_vectors=cx, log=""))
+        try:
+            gain_n = extract_ac_gain(wave, in_node="inp", out_node="outn")
+            gain_p = extract_ac_gain(wave, in_node="inp", out_node="outp")
+        except SimError as exc:
+            return BenchResult("B2", "error", {}, (repro,), f"{exc}")
+        metrics = {"gain_outn": gain_n, "gain_outp": gain_p}
+        # Single-ended drive: the mirror-loaded side (outn) must show active
+        # voltage gain while the diode-loaded side (outp) stays attenuated —
+        # MEASURED 8.075 / 0.536 live. That split is the differential-action
+        # fingerprint: a dead, misbiased, or converged-wrong pair cannot
+        # produce it. Bands stay wide by design (structure, not precision).
+        if math.isfinite(gain_n) and math.isfinite(gain_p) \
+                and 3.0 < gain_n < 30.0 and gain_p < 2.0:
+            return BenchResult("B2", "pass", metrics, (repro,), "")
+        return BenchResult(
+            "B2", "fail", metrics, (repro,),
+            f"Constraint: differential split broken (outn={gain_n:.3f}, outp={gain_p:.3f})")
+    finally:
+        eng.close()
+
+
 def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
     """Execute one benchmark by id; unknown ids fail closed (Schema)."""
     if bench_id not in BENCHES:
@@ -207,5 +265,7 @@ def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
         return _run_b0(db_path=db_path, seed=seed)
     if bench_id == "B1":
         return _run_b1(db_path=db_path, seed=seed)
+    if bench_id == "B2":
+        return _run_b2(db_path=db_path, seed=seed)
     owner = BENCHES[bench_id].owner
     raise NotImplementedError(f"{bench_id} deferred to {owner}")
