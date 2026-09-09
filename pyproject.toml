@@ -8,7 +8,16 @@ version = "0.0.0"
 description = "Open-source AI-native analog IC design platform (Stage 0: packaging only, no logic)"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
-dependencies = []
+# Runtime surface is intentionally minimal. Each entry below carries a
+# human approval (date + ticket) per dependency discipline — nothing is
+# added "while in there".
+dependencies = [
+  # Stage 7B HTTP API service (human-approved 2026-09-09, ADR-031):
+  # FastAPI routes call DesignEngine v0.1 exclusively (Law 4 mirror).
+  "fastapi==0.141.1",
+  # ASGI server for the API service (same approval as fastapi).
+  "uvicorn==0.52.4",
+]
 
 [project.optional-dependencies]
 # Hermetic pins (2026-09-06): exact versions observed green in the pinned
@@ -28,6 +37,9 @@ dev = [
   # Bayesian optimization backend (Stage 4 prompt mandates Optuna first;
   # plan-ordered, not discretionary). Registry-read 2026-09-07: 5.0.0.
   "optuna==5.0.0",
+  # In-process HTTP client for FastAPI TestClient tests (Stage 7B;
+  # same 2026-09-09 approval as fastapi). Keeps API tests server-free.
+  "httpx==0.28.1",
 ]
 
 [tool.setuptools.packages.find]
