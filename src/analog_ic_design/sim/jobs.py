@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import multiprocessing as mp
 import sqlite3
+import threading
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,13 +69,20 @@ def _simulate_worker(db_path: str, job_id: str, netlist: str, seed: int, lib_pat
 
 
 class JobRunner:
-    """Submits simulation jobs to isolated worker processes."""
+    """Submits simulation jobs to isolated worker processes.
+
+    Threading contract: HTTP servers call submit/wait/status from worker
+    threads, so every ledger touch runs serialized behind an RLock over a
+    `check_same_thread=False` connection. Simulation itself stays in
+    isolated OS processes — unchanged.
+    """
 
     def __init__(self, *, db_path: str | Path, lib_path: str = "libngspice.so") -> None:
         self._db_path = str(db_path)
         self._lib_path = lib_path
         self._ctx = mp.get_context("spawn")
-        self._conn = sqlite3.connect(self._db_path)
+        self._lock = threading.RLock()
+        self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._live: dict[str, mp.process.BaseProcess] = {}
 
@@ -87,25 +95,28 @@ class JobRunner:
         """Record a pending job and start its worker process."""
         job_id = new_id()
         payload = json.dumps({"netlist": netlist, "seed": seed})
-        self._conn.execute(
-            "INSERT INTO job (id, kind, status, payload, result, error, created_at, updated_at)"
-            " VALUES (?, 'simulate', 'pending', ?, NULL, NULL, ?, ?)",
-            (job_id, payload, utcnow_iso(), utcnow_iso()),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO job (id, kind, status, payload, result, error, created_at, updated_at)"
+                " VALUES (?, 'simulate', 'pending', ?, NULL, NULL, ?, ?)",
+                (job_id, payload, utcnow_iso(), utcnow_iso()),
+            )
+            self._conn.commit()
         proc = self._ctx.Process(
             target=_simulate_worker,
             args=(self._db_path, job_id, netlist, seed, self._lib_path),
             daemon=True,
         )
         proc.start()
-        self._live[job_id] = proc
+        with self._lock:
+            self._live[job_id] = proc
         return job_id
 
     def _read(self, job_id: str) -> JobResult:
-        row = self._conn.execute(
-            "SELECT status, result, error FROM job WHERE id = ?", (job_id,)
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT status, result, error FROM job WHERE id = ?", (job_id,)
+            ).fetchone()
         if row is None:
             raise KeyError(f"unknown job {job_id!r}")
         return JobResult(job_id=job_id, status=str(row[0]), result=row[1], error=row[2])
@@ -124,41 +135,46 @@ class JobRunner:
         if proc is None:
             return self._read(job_id)
         proc.join(timeout)
-        if proc.is_alive():
-            raise TimeoutError(f"job {job_id!r} still running after {timeout}s")
-        verdict = self._read(job_id)
-        if verdict.status in ("pending", "running"):
-            self._conn.execute(
-                "UPDATE job SET status = 'failed', error = ?, updated_at = ? WHERE id = ?",
-                (f"worker exited code {proc.exitcode} without a verdict", utcnow_iso(), job_id),
-            )
-            self._conn.commit()
+        with self._lock:
+            if proc.is_alive():
+                raise TimeoutError(f"job {job_id!r} still running after {timeout}s")
             verdict = self._read(job_id)
-        del self._live[job_id]
+            if verdict.status in ("pending", "running"):
+                self._conn.execute(
+                    "UPDATE job SET status = 'failed', error = ?, updated_at = ? WHERE id = ?",
+                    (f"worker exited code {proc.exitcode} without a verdict", utcnow_iso(), job_id),
+                )
+                self._conn.commit()
+                verdict = self._read(job_id)
+            del self._live[job_id]
         return verdict
 
     def cancel(self, job_id: str) -> str:
         """Terminate a live worker and mark `cancelled`; settled jobs keep status."""
-        proc = self._live.get(job_id)
-        if proc is not None and proc.is_alive():
-            proc.terminate()
-            proc.join(10)
-            if proc.is_alive():
-                proc.kill()
+        with self._lock:
+            proc = self._live.get(job_id)
+            if proc is not None and proc.is_alive():
+                proc.terminate()
                 proc.join(10)
-            self._conn.execute(
-                "UPDATE job SET status = 'cancelled', updated_at = ? WHERE id = ?",
-                (utcnow_iso(), job_id),
-            )
-            self._conn.commit()
-            del self._live[job_id]
+                if proc.is_alive():
+                    proc.kill()
+                    proc.join(10)
+                self._conn.execute(
+                    "UPDATE job SET status = 'cancelled', updated_at = ? WHERE id = ?",
+                    (utcnow_iso(), job_id),
+                )
+                self._conn.commit()
+                del self._live[job_id]
         return self._read(job_id).status
 
     def shutdown(self) -> None:
         """Terminate every live worker (best-effort) and close the ledger."""
-        for job_id in list(self._live):
+        with self._lock:
+            live = list(self._live)
+        for job_id in live:
             try:
                 self.cancel(job_id)
             except KeyError:
                 continue
-        self._conn.close()
+        with self._lock:
+            self._conn.close()

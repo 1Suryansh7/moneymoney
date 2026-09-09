@@ -286,9 +286,16 @@ def utcnow_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def connect(path: str | Path = ":memory:") -> sqlite3.Connection:
-    """Open a database with foreign-key enforcement ON (never the off default)."""
-    conn = sqlite3.connect(str(path))
+def connect(
+    path: str | Path = ":memory:", *, check_same_thread: bool = True
+) -> sqlite3.Connection:
+    """Open a database with foreign-key enforcement ON (never the off default).
+
+    `check_same_thread=False` is reserved for owners that serialize every
+    access behind their own lock (EngineV01, JobRunner under threaded
+    servers); default callers keep the interpreter's thread check.
+    """
+    conn = sqlite3.connect(str(path), check_same_thread=check_same_thread)
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 

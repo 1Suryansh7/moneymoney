@@ -17,6 +17,7 @@ measurement orchestration, `optimize` needs spec-to-target mapping,
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -32,28 +33,44 @@ _DEFAULT_LIB: str = "libngspice.so"
 _DEFAULT_LIBRARY_NAME: str = "analog_lib"
 _SIM_TIMEOUT_S: float = 300.0
 
+# Engine surface: the facade plus its error contract (callers import
+# SimError here, never from the simulator backend directly).
+__all__ = ["EngineV01", "SimError"]
+
 
 class EngineV01(DesignEngine):
-    """Single canonical entry point, bound to one migrated database file."""
+    """Single canonical entry point, bound to one migrated database file.
+
+    Threading contract: HTTP servers call these methods from worker threads,
+    so every database touch runs serialized behind an RLock over a
+    `check_same_thread=False` connection. Worker-process isolation for
+    simulation itself is unchanged. Limitation (documented, not hidden):
+    one in-flight simulation per engine binding — concurrent API scheduling
+    arrives with the R0 scheduler.
+    """
 
     def __init__(self, *, db_path: str | Path) -> None:
         self._db_path = str(db_path)
-        self._conn = connect(self._db_path)
+        self._lock = threading.RLock()
+        self._conn = connect(self._db_path, check_same_thread=False)
         migrate(self._conn)
         self._lib_path = _DEFAULT_LIB
         self._runner: JobRunner | None = None
 
     def close(self) -> None:
         """Shut down workers and release the database connection."""
-        if self._runner is not None:
-            self._runner.shutdown()
-            self._runner = None
-        self._conn.close()
+        with self._lock:
+            if self._runner is not None:
+                self._runner.shutdown()
+                self._runner = None
+            self._conn.close()
 
     def _require_cell(self, cell_id: str) -> tuple[str, str]:
-        row = self._conn.execute(
-            "SELECT cell.name, cell.library_id FROM cell WHERE cell.id = ?", (cell_id,)
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT cell.name, cell.library_id FROM cell WHERE cell.id = ?",
+                (cell_id,),
+            ).fetchone()
         if row is None:
             raise ValueError(f"Schema: unknown cell_id {cell_id!r}")
         return str(row[0]), str(row[1])
@@ -63,37 +80,39 @@ class EngineV01(DesignEngine):
         if not name.strip():
             raise ValueError("Schema: project name must be non-empty")
         pid = new_id()
-        self._conn.execute(
-            "INSERT INTO project VALUES (?, ?, ?)", (pid, name, utcnow_iso())
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO project VALUES (?, ?, ?)", (pid, name, utcnow_iso())
+            )
+            self._conn.commit()
         return pid
 
     def create_cell(self, *, project_id: str, cell_name: str) -> str:
         """Insert a cell under the project's library (created if absent)."""
-        exists = self._conn.execute(
-            "SELECT id FROM project WHERE id = ?", (project_id,)
-        ).fetchone()
-        if exists is None:
-            raise ValueError(f"Schema: unknown project_id {project_id!r}")
-        if not cell_name.strip():
-            raise ValueError("Schema: cell name must be non-empty")
-        lib = self._conn.execute(
-            "SELECT id FROM library WHERE project_id = ? AND name = ?",
-            (project_id, _DEFAULT_LIBRARY_NAME),
-        ).fetchone()
-        lib_id = str(lib[0]) if lib is not None else new_id()
-        if lib is None:
+        with self._lock:
+            exists = self._conn.execute(
+                "SELECT id FROM project WHERE id = ?", (project_id,)
+            ).fetchone()
+            if exists is None:
+                raise ValueError(f"Schema: unknown project_id {project_id!r}")
+            if not cell_name.strip():
+                raise ValueError("Schema: cell name must be non-empty")
+            lib = self._conn.execute(
+                "SELECT id FROM library WHERE project_id = ? AND name = ?",
+                (project_id, _DEFAULT_LIBRARY_NAME),
+            ).fetchone()
+            lib_id = str(lib[0]) if lib is not None else new_id()
+            if lib is None:
+                self._conn.execute(
+                    "INSERT INTO library VALUES (?, ?, ?, ?)",
+                    (lib_id, project_id, _DEFAULT_LIBRARY_NAME, utcnow_iso()),
+                )
+            cell_id = new_id()
             self._conn.execute(
-                "INSERT INTO library VALUES (?, ?, ?, ?)",
-                (lib_id, project_id, _DEFAULT_LIBRARY_NAME, utcnow_iso()),
+                "INSERT INTO cell VALUES (?, ?, ?, ?)",
+                (cell_id, lib_id, cell_name, utcnow_iso()),
             )
-        cell_id = new_id()
-        self._conn.execute(
-            "INSERT INTO cell VALUES (?, ?, ?, ?)",
-            (cell_id, lib_id, cell_name, utcnow_iso()),
-        )
-        self._conn.commit()
+            self._conn.commit()
         return cell_id
 
     def instantiate(
@@ -108,25 +127,29 @@ class EngineV01(DesignEngine):
         self._require_cell(cell_id)
         template = get_template(template_id)
         merged = template.validate_parameters(dict(parameters))
-        return instantiate_template(self._conn, template_id, params=merged)
+        with self._lock:
+            return instantiate_template(self._conn, template_id, params=merged)
 
     def validate(self, *, cell_id: str) -> tuple[bool, tuple[str, ...]]:
         """Run the pre-simulation gate; returns (valid, violation messages)."""
         self._require_cell(cell_id)
-        report = validate_cell(self._conn, cell_id)
+        with self._lock:
+            report = validate_cell(self._conn, cell_id)
         return report.valid, tuple(v.message for v in report.violations)
 
     def netlist(self, *, cell_id: str) -> str:
         """Compile the cell to its deterministic SPICE netlist."""
         self._require_cell(cell_id)
-        return compile_netlist(self._conn, cell_id)
+        with self._lock:
+            return compile_netlist(self._conn, cell_id)
 
     def connect(self, *, lib_path: str = _DEFAULT_LIB) -> str:
         """Bind the worker-runner to a simulator library; returns handle id."""
-        self._lib_path = lib_path
-        if self._runner is not None:
-            self._runner.shutdown()
-        self._runner = JobRunner(db_path=self._db_path, lib_path=lib_path)
+        with self._lock:
+            self._lib_path = lib_path
+            if self._runner is not None:
+                self._runner.shutdown()
+            self._runner = JobRunner(db_path=self._db_path, lib_path=lib_path)
         return "default"
 
     def simulate(self, *, netlist: str, seed: int) -> str:
