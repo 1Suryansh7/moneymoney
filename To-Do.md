@@ -174,6 +174,7 @@
   - [x] 7B-2 service skeleton: lifespan-managed app factory, routes for health/projects/cells/instantiate/validate/netlist/simulate (engine-implemented only); taxonomy-preserving error map; SimError/version re-exported through engine surface; AST guard extended to `api/` + own-package allowance; threaded-server tests over real localhost HTTP.
   - [x] Threading found live by the suite: RLock-serialized engine/job ledger over check_same_thread=False (store.connect additive kwarg); documented one-in-flight-sim limit until R0 scheduler.
   - [x] 7B-3 thin slice: HTTP validate/netlist (base) + live transient sim parsed to rail-to-rail inversion assertions (EDA 2 passed in 21s). Gates: base 331+31.
+  - [x] 7B-4 job observability (`f949200`): concrete-only `list_jobs`/`job_result` (ABC untouched); routes GET /jobs + GET /jobs/{job_id} with 404 mapping; base seeds ledger rows directly, EDA reads back a live RC sim through both routes. Gates: base 334+32, EDA jobs file 4 passed.
   - [ ] Next: workspace-by-workspace Lovable-shell wiring behind the boundary (per ADR-031); Playwright equivalence with first UI action.
 - [ ] **Stage 7 — Schematic UI**
   - [ ] Interactive UI client calling `DesignEngine v0.1` API exclusively.
