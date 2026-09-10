@@ -30,8 +30,10 @@ from analog_ic_design.ai.taxonomy import classify_failure
 from analog_ic_design.circuit.compiler import compile_netlist
 from analog_ic_design.circuit.validator import validate as validate_cell
 from analog_ic_design.engine.design_engine import DesignEngine
+from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.jobs import JobRunner
 from analog_ic_design.sim.ngspice import RawSim, SimError, libngspice_available
+from analog_ic_design.sim.testbench import assemble_transient
 from analog_ic_design.sim.waveform import parse_ac, parse_transient
 from analog_ic_design.store.schema import connect, migrate, new_id, utcnow_iso
 from analog_ic_design.topology.templates import get_template, instantiate_template
@@ -39,6 +41,15 @@ from analog_ic_design.topology.templates import get_template, instantiate_templa
 _DEFAULT_LIB: str = "libngspice.so"
 _DEFAULT_LIBRARY_NAME: str = "analog_lib"
 _SIM_TIMEOUT_S: float = 300.0
+# Container PDK path. Debt note: this literal is copy-pasted across bench,
+# examples, and tests (15 copies); normalizing them is out of scope here —
+# this copy serves the demo-testbench path only.
+_SKY130_LIB: str = "/usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice"
+
+# Demo testbenches the UI Run button may trigger. Single entry on purpose:
+# each addition is its own commit with its own EDA proof. (Seed of the R0
+# Testbench Manager; measure/check_constraints stay deferred.)
+_DEMO_TESTBENCHES: tuple[str, ...] = ("inverter_tran",)
 
 # Engine surface: the facade plus its error contract (callers import
 # SimError here, never from the simulator backend directly).
@@ -404,6 +415,38 @@ class EngineV01(DesignEngine):
             "action_id": explanation.action_id,
             "provider": provider.provider_name,
             "model": provider.model_name,
+        }
+
+    def run_demo_testbench(self, *, name: str, seed: int = 21) -> dict[str, str]:
+        """Build, validate, netlist, and simulate one canonical demo deck.
+
+        The deck is assembled server-side from the Stage 2 fixture, so the
+        frontend never authors netlists: it sends a name and polls the
+        returned job. Unknown names fail closed (Schema); simulator faults
+        surface as SimError with taxonomy wording.
+        """
+        if name not in _DEMO_TESTBENCHES:
+            raise ValueError(f"Schema: unknown demo testbench {name!r}")
+        with self._lock:
+            cell_id = build_inverter(self._conn)
+            report = validate_cell(self._conn, cell_id)
+            if not report.valid:
+                raise ValueError(
+                    "Schema: demo fixture failed validation: "
+                    + "; ".join(v.message for v in report.violations)
+                )
+            fragment = compile_netlist(self._conn, cell_id)
+        deck = assemble_transient(
+            fragment, tstop_s=30e-9, libs=[(_SKY130_LIB, "tt")]
+        )
+        reproducibility_id = self.simulate(netlist=deck, seed=seed)
+        jobs = self.list_jobs()
+        if not jobs:
+            raise SimError(f"SPICE convergence: no ledger row after demo {name!r}")
+        return {
+            "job_id": jobs[0]["job_id"],
+            "cell_id": cell_id,
+            "reproducibility_id": reproducibility_id,
         }
 
     def check_constraints(self, *, cell_id: str) -> tuple[bool, tuple[str, ...]]:

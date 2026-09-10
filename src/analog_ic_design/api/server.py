@@ -193,6 +193,21 @@ class ExplainOut(BaseModel):
     model: str
 
 
+class DemoRunIn(BaseModel):
+    """One-click demo simulation request (deck assembled server-side)."""
+
+    name: str
+    seed: int = 21
+
+
+class DemoRunOut(BaseModel):
+    """Job handle plus the cell the deck was built from."""
+
+    job_id: str
+    cell_id: str
+    reproducibility_id: str
+
+
 def _engine(request: Request) -> EngineV01:
     engine = request.app.state.engine
     assert isinstance(engine, EngineV01)
@@ -306,6 +321,15 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
             return _engine(request).explain_job(job_id=body.job_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/testbenches/run", response_model=DemoRunOut)
+    def run_demo_testbench(body: DemoRunIn, request: Request) -> dict[str, str]:
+        try:
+            return _engine(request).run_demo_testbench(name=body.name, seed=body.seed)
+        except SimError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 

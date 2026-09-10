@@ -208,6 +208,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Re-baseline (`9980521`, ADR-028): 16-trial wide re-run closed nothing (best 214.71); 20-trial focused study (seed 200) winner trial 17 at gain 81.30dB / UGB 16.58MHz / PM 63.64deg adopted as empirical winner; demo now asserts honesty properties only. Full EDA 340 passed.
 - 7A lockdown: `EngineV01` strangler facade (`8f51c90`, EDA engine file 8 passed incl live RC deck) — ABC 11 frozen, v0.1 intact; Law-4 AST boundary guard (`2d25985`); migration v9 checkpoint_registry + design_state (`06669bb`, pin 8→9 acknowledged). Base 325+30. Push gate lifted by 2026-09-09 CONFIRMED verdict.
 
+## 2026-09-10 — 7B-8 demo testbench route (Path B step 2d, base + EDA green)
+- Concrete-only `EngineV01.run_demo_testbench` + POST /testbenches/run; canonical inverter_tran deck from Stage 2 fixture, job/cell/reproducibility handles out. Suite caught SimError-subclasses-ValueError except-ordering. Base 359+39; EDA file 2 passed + 1 skip, live inversion proven.
+
 ## 2026-09-10 — 7B-7 copilot route (Path B step 2c, base green)
 - Concrete-only `EngineV01.explain_job` + POST /copilot/explain; failed-job error classified with job as evidence, MockProvider narration only, AIAction provenance pinned by ledger read-back. Succeeded/unclassifiable fail closed with no rows. Base 357+38.
 
