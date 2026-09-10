@@ -145,6 +145,9 @@ function useStoreValue() {
   const [lastJobId, setLastJobId] = useState<string | null>(null);
   const [demoCellId, setDemoCellId] = useState<string | null>(null);
   const [measuredGain, setMeasuredGain] = useState<{ value: number; unit: string } | null>(null);
+  const [measuredBandwidth, setMeasuredBandwidth] = useState<{ value: number; unit: string } | null>(
+    null,
+  );
   const [backendUp, setBackendUp] = useState<boolean | null>(null);
   const [simPhase, setSimPhase] = useState<SimPhase>("READY");
   const [simProgress, setSimProgress] = useState(0);
@@ -271,6 +274,7 @@ function useStoreValue() {
     const token = runToken.current;
     setLiveWave(null);
     setMeasuredGain(null);
+    setMeasuredBandwidth(null);
     setSimPhase("NETLISTING");
     setSimProgress(5);
     log("Run: POST /testbenches/run inverter_tran");
@@ -354,6 +358,18 @@ function useStoreValue() {
               if (token !== runToken.current) return;
               log(
                 `Gain measure skipped: ${merr instanceof Error ? merr.message : String(merr)}`,
+                "warn",
+              );
+            }
+            try {
+              const b = await measure(demoCell, "bandwidth");
+              if (token !== runToken.current) return;
+              setMeasuredBandwidth({ value: b.value, unit: b.unit });
+              log(`Measured bandwidth: ${(b.value / 1e6).toFixed(2)} MHz`);
+            } catch (merr) {
+              if (token !== runToken.current) return;
+              log(
+                `Bandwidth measure skipped: ${merr instanceof Error ? merr.message : String(merr)}`,
                 "warn",
               );
             }
@@ -477,6 +493,7 @@ function useStoreValue() {
     lastJobId,
     demoCellId,
     measuredGain,
+    measuredBandwidth,
     backendUp,
     simPhase,
     setSimPhase,

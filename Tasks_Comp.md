@@ -211,6 +211,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 ## 2026-09-10 — Quick-wins debt batch (base + EDA + tsc + build green)
 - CORS loopback-only; Misc signoff/metrics fiction → run-state truth; gates deck via assemble_transient (additive extra_lines; remapped samples EDA-proven). Base 371+42; EDA 8 passed.
 
+## 2026-09-10 — R0-4c bandwidth (contract unity crossing, base + EDA green)
+- extract_bandwidth off the in-memory AC sweep; inverter honestly refuses (6.52 V/V @10GHz measured); UI bandwidth attempt with warn-degradation. Own unconditional-extraction bug caught pre-commit. Base 371+43; EDA 4+1; tsc + build green.
+
 ## 2026-09-10 — R0-4b measure route + live gain row (base + EDA + e2e green)
 - POST /measure via `measure_with_unit` (contract-registry units); frontend measures post-waveforms, Explorer shows 15.24 V/V (23.66 dB) MEASURED. Base 371+42; EDA 4+1; Playwright 4/4. Two red runs root-caused to Playwright's 60s test timeout vs ~90s measure latency (test.slow(); CORS/slowness theories falsified with evidence).
 

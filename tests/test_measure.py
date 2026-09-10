@@ -85,8 +85,22 @@ def test_live_inverter_gain_agrees_and_persists(tmp_path: Path) -> None:
             conn.close()
         by_metric = {r[0]: (r[1], r[2]) for r in rows}
         assert set(by_metric) == {"dc_gain", "ac_gain"}
-        assert all(units == "V/V" for _, units in by_metric.values())
+        assert by_metric["dc_gain"][1] == "V/V"
         assert by_metric["dc_gain"][0] == dc
         assert by_metric["ac_gain"][0] == ac
+    finally:
+        eng.close()
+
+
+@NEEDS_LIB
+def test_live_inverter_bandwidth_refuses_per_contract(tmp_path: Path) -> None:
+    """The unloaded inverter still has 6.5 V/V at 10 GHz (measured live),
+    so the contract 1 Hz-10 GHz stimulus contains no unity crossing and
+    bandwidth fails closed. The first live number needs the cs_amp
+    testbench (the contract golden fixture) in R0-4d."""
+    eng, cell = _engine_with_inverter(tmp_path)
+    try:
+        with pytest.raises(SimError, match="never crosses unity"):
+            eng.measure(cell_id=cell, metric_id="bandwidth")
     finally:
         eng.close()

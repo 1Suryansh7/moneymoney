@@ -33,6 +33,7 @@ from analog_ic_design.ai.taxonomy import classify_failure
 from analog_ic_design.circuit.compiler import compile_netlist
 from analog_ic_design.circuit.validator import validate as validate_cell
 from analog_ic_design.engine.design_engine import DesignEngine
+from analog_ic_design.metrics.bandwidth import extract_bandwidth
 from analog_ic_design.metrics.contract import METRIC_BY_ID
 from analog_ic_design.metrics.gain import extract_ac_gain, extract_dc_gain
 from analog_ic_design.sim.inverter import build_inverter
@@ -496,17 +497,21 @@ class EngineV01(DesignEngine):
     def measure(self, *, cell_id: str, metric_id: str) -> float:
         """Measure one metric on inverter-shape cells (R0 Testbench Manager seed).
 
-        Supported metric_ids: dc_gain, ac_gain. Structural allowlist:
-        exactly one nfet_01v8 plus one pfet_01v8 instance with nets drawn
-        from {in, out, vdd, vss} — no bias ports, so no hidden bias
-        assumptions. Anything else fails closed: each new structure earns
-        its testbench with its own EDA proof. Both analyses always run
-        and must agree within 10% (single-analysis gain lies, observed
-        live in R0-3b); both Measurement rows persist in V/V.
+        Supported metric_ids: dc_gain, ac_gain, bandwidth. Structural
+        allowlist: exactly one nfet_01v8 plus one pfet_01v8 instance with
+        nets drawn from {in, out, vdd, vss} — no bias ports, so no hidden
+        bias assumptions. Anything else fails closed: each new structure
+        earns its testbench with its own EDA proof. The DC and AC analyses
+        always run; gain needs both to agree within 10% (single-analysis
+        gain lies, observed live in R0-3b) and both gain rows persist.
+        Bandwidth is the contract unity-gain crossing read off the same
+        AC sweep — zero extra sims — and persists only when the stimulus
+        actually holds a crossing.
         """
-        if metric_id not in ("dc_gain", "ac_gain"):
+        if metric_id not in ("dc_gain", "ac_gain", "bandwidth"):
             raise ValueError(
-                f"Schema: unknown metric_id {metric_id!r} (measured: dc_gain, ac_gain)"
+                "Schema: unknown metric_id"
+                f" {metric_id!r} (measured: dc_gain, ac_gain, bandwidth)"
             )
         self._require_cell(cell_id)
         with self._lock:
@@ -570,11 +575,8 @@ class EngineV01(DesignEngine):
         ac_job = self.list_jobs()[0]["job_id"]
         ac_row = self.job_result(job_id=ac_job)
         try:
-            ac_gain = extract_ac_gain(
-                parse_ac(_load_raw(str(ac_row["result"]), ac_job)),
-                in_node="in",
-                out_node="out",
-            )
+            ac_wave = parse_ac(_load_raw(str(ac_row["result"]), ac_job))
+            ac_gain = extract_ac_gain(ac_wave, in_node="in", out_node="out")
         except KeyError as exc:
             raise SimError(
                 f"SPICE convergence: missing AC trace for cell {cell_id!r}: {exc}"
@@ -595,7 +597,21 @@ class EngineV01(DesignEngine):
                 (new_id(), ac_job, "ac_gain", ac_gain, "V/V", utcnow_iso()),
             )
             self._conn.commit()
-        return dc_gain if metric_id == "dc_gain" else ac_gain
+        if metric_id == "dc_gain":
+            return dc_gain
+        if metric_id == "ac_gain":
+            return ac_gain
+        # Bandwidth reads off the same in-memory AC sweep (zero extra
+        # sims) and fails closed per contract when the stimulus holds no
+        # unity crossing — e.g. the unloaded inverter at 6.5 V/V @10GHz.
+        ugbw = extract_bandwidth(ac_wave, in_node="in", out_node="out")
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO measurement VALUES (?, ?, ?, ?, ?, ?)",
+                (new_id(), ac_job, "bandwidth", ugbw, "Hz", utcnow_iso()),
+            )
+            self._conn.commit()
+        return ugbw
 
     def measure_with_unit(self, *, cell_id: str, metric_id: str) -> dict[str, object]:
         """Measure plus the canonical contract unit symbol (wire-ready)."""
