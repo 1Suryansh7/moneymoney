@@ -51,4 +51,47 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     await page.screenshot({ path: "cockpit_simulation_verified.png", fullPage: true });
     console.log("Screenshot saved to cockpit_simulation_verified.png");
   });
+
+  test("creates a common_source cell via NewCellDialog and verifies live creation", async ({
+    page,
+  }) => {
+    // 1. Open the UI
+    await page.goto("http://localhost:5173", { waitUntil: "networkidle" });
+
+    // 2. Open File menu
+    const fileTrigger = page.locator("[role=menubar] button, [role=menuitem]").filter({ hasText: /^File$/ }).first();
+    await fileTrigger.click();
+
+    // 3. Click "New Cell View..."
+    const newCellItem = page.getByText("New Cell View...");
+    await expect(newCellItem).toBeVisible();
+    await newCellItem.click();
+
+    // 4. Verify NewCellDialog opened
+    await expect(page.getByText("New Cell View")).toBeVisible();
+
+    // 5. Fill cell name
+    const cellInput = page.getByPlaceholder("e.g. my_amp");
+    await cellInput.fill("cs_amp_test");
+
+    // 6. Select "common_source" template
+    const templateSelect = page.locator("select");
+    await templateSelect.selectOption("common_source");
+
+    // 7. Click "Create"
+    const createBtn = page.getByRole("button", { name: "Create" });
+    await expect(createBtn).toBeEnabled();
+    await createBtn.click();
+
+    // 8. Wait for dialog to close on success
+    await expect(page.getByText("New Cell View")).not.toBeVisible({ timeout: 10000 });
+
+    // 9. Verify creation log in console dock
+    const logEntry = page.locator("text=/Created my_project\\/cs_amp_test from common_source/i");
+    await expect(logEntry).toBeVisible({ timeout: 5000 });
+
+    // 10. Capture screenshot
+    await page.screenshot({ path: "cockpit_cell_created.png", fullPage: true });
+    console.log("Screenshot saved to cockpit_cell_created.png");
+  });
 });
