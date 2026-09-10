@@ -4,7 +4,7 @@
 // Every physical quantity arrives as an SI base-unit JSON number;
 // human formatting lives in display components, never here.
 
-const DEFAULT_BASE = "http://localhost:8000";
+const DEFAULT_BASE = "http://127.0.0.1:8000";
 
 let override: string | null = null;
 

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from analog_ic_design.engine import ENGINE_API_VERSION
@@ -233,6 +234,14 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
 
     app = FastAPI(title="OpenVirtuoso API", version=ENGINE_API_VERSION, lifespan=lifespan)
     app.state.db_path = resolved
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.get("/health", response_model=HealthOut)
     def health() -> dict[str, str]:
