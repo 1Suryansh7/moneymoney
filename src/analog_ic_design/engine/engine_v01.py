@@ -40,7 +40,7 @@ from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.jobs import JobRunner
 from analog_ic_design.sim.ngspice import RawSim, SimError, libngspice_available
 from analog_ic_design.sim.testbench import assemble_ac, assemble_dc_sweep, assemble_transient
-from analog_ic_design.sim.waveform import parse_ac, parse_transient
+from analog_ic_design.sim.waveform import ACWaveform, parse_ac, parse_transient
 from analog_ic_design.store.schema import connect, migrate, new_id, utcnow_iso
 from analog_ic_design.topology.templates import get_template, instantiate_template
 
@@ -494,19 +494,72 @@ class EngineV01(DesignEngine):
         """[defer R0] Needs tolerance-aware netlist/float comparison."""
         raise NotImplementedError("compare deferred to R0 comparison policies")
 
+    def _transfer_gain(
+        self,
+        fragment: str,
+        cell_id: str,
+        *,
+        extra_lines: list[str],
+        v_start: float,
+        v_stop: float,
+    ) -> tuple[float, float, float, ACWaveform, str, str]:
+        """DC sweep trip discovery plus AC at trip; returns gains, trip, wave, jobs."""
+        libs = [(_SKY130_LIB, "tt")]
+        self.simulate(
+            netlist=assemble_dc_sweep(
+                fragment, sweep_net="in", v_start=v_start, v_stop=v_stop,
+                v_step=0.005, extra_lines=extra_lines, libs=libs,
+            ),
+            seed=_MEASURE_SEED,
+        )
+        dc_job = self.list_jobs()[0]["job_id"]
+        dc_row = self.job_result(job_id=dc_job)
+        try:
+            dc_raw = _load_raw(str(dc_row["result"]), dc_job)
+            vin = [float(v) for v in dc_raw.vectors["in"]]
+            vout = [float(v) for v in dc_raw.vectors["out"]]
+            dc_gain = extract_dc_gain(vin, vout)
+            slopes = [abs((vout[i + 1] - vout[i]) / (vin[i + 1] - vin[i]))
+                      for i in range(len(vin) - 1)]
+            trip = vin[slopes.index(max(slopes))]
+        except (KeyError, IndexError, ZeroDivisionError) as exc:
+            raise SimError(
+                f"SPICE convergence: unusable DC transfer for cell {cell_id!r}: {exc}"
+            ) from exc
+        self.simulate(
+            netlist=assemble_ac(
+                fragment, in_net="in", v_bias=trip,
+                extra_lines=extra_lines, libs=libs,
+            ),
+            seed=_MEASURE_SEED,
+        )
+        ac_job = self.list_jobs()[0]["job_id"]
+        ac_row = self.job_result(job_id=ac_job)
+        try:
+            ac_wave = parse_ac(_load_raw(str(ac_row["result"]), ac_job))
+            ac_gain = extract_ac_gain(ac_wave, in_node="in", out_node="out")
+        except KeyError as exc:
+            raise SimError(
+                f"SPICE convergence: missing AC trace for cell {cell_id!r}: {exc}"
+            ) from exc
+        return dc_gain, ac_gain, trip, ac_wave, dc_job, ac_job
+
     def measure(self, *, cell_id: str, metric_id: str) -> float:
-        """Measure one metric on inverter-shape cells (R0 Testbench Manager seed).
+        """Measure one metric on registered cell structures (R0 Testbench Manager).
 
         Supported metric_ids: dc_gain, ac_gain, bandwidth. Structural
-        allowlist: exactly one nfet_01v8 plus one pfet_01v8 instance with
-        nets drawn from {in, out, vdd, vss} — no bias ports, so no hidden
-        bias assumptions. Anything else fails closed: each new structure
-        earns its testbench with its own EDA proof. The DC and AC analyses
-        always run; gain needs both to agree within 10% (single-analysis
-        gain lies, observed live in R0-3b) and both gain rows persist.
-        Bandwidth is the contract unity-gain crossing read off the same
-        AC sweep — zero extra sims — and persists only when the stimulus
-        actually holds a crossing.
+        allowlist (each earned with its own EDA proof):
+        - inverter: one nfet_01v8 + one pfet_01v8, nets ⊆ {in,out,vdd,vss};
+          full-rail sweep, no bias assumptions.
+        - common_source: same pair plus a vbias net; fixed 0.9 V PMOS-gate
+          bias (R0-3a recipe) with the 0.4-1.2 V sweep that avoids the
+          M1-off trap below and rail parking above.
+        Anything else fails closed. Gain needs DC/AC agreement within 10%
+        (single-analysis gain lies, observed live in R0-3b); both gain rows
+        persist. Bandwidth reads the same in-memory AC sweep — zero extra
+        sims — and fails closed per contract when the stimulus holds no
+        unity crossing (measured live: unloaded inverter 6.5, CS 2.5 V/V
+        at 10 GHz).
         """
         if metric_id not in ("dc_gain", "ac_gain", "bandwidth"):
             raise ValueError(
@@ -530,12 +583,16 @@ class EngineV01(DesignEngine):
                     "SELECT name FROM net WHERE cell_id = ?", (cell_id,)
                 ).fetchall()
             }
-        if (
-            syms != ["nfet_01v8", "pfet_01v8"]
-            or "in" not in nets
-            or "out" not in nets
-            or not nets <= {"in", "out", "vdd", "vss"}
+        if syms == ["nfet_01v8", "pfet_01v8"] and nets == {"in", "out", "vbias", "vdd", "vss"}:
+            extra, v_start, v_stop = ["Vbias vbias 0 DC 0.9"], 0.4, 1.2
+        elif (
+            syms == ["nfet_01v8", "pfet_01v8"]
+            and "in" in nets
+            and "out" in nets
+            and nets <= {"in", "out", "vdd", "vss"}
         ):
+            extra, v_start, v_stop = [], 0.0, 1.8
+        else:
             raise ValueError(
                 f"Schema: no testbench registered for cell {cell_id!r}"
                 f" (symbols={syms}, nets={sorted(nets)})"
@@ -546,41 +603,9 @@ class EngineV01(DesignEngine):
                 f"Schema: measure refused on invalid cell {cell_id!r}: {violations}"
             )
         fragment = self.netlist(cell_id=cell_id)
-        libs = [(_SKY130_LIB, "tt")]
-        self.simulate(
-            netlist=assemble_dc_sweep(
-                fragment, sweep_net="in", v_start=0.0, v_stop=1.8,
-                v_step=0.005, libs=libs,
-            ),
-            seed=_MEASURE_SEED,
+        dc_gain, ac_gain, _trip, ac_wave, dc_job, ac_job = self._transfer_gain(
+            fragment, cell_id, extra_lines=extra, v_start=v_start, v_stop=v_stop
         )
-        dc_job = self.list_jobs()[0]["job_id"]
-        dc_row = self.job_result(job_id=dc_job)
-        try:
-            dc_raw = _load_raw(str(dc_row["result"]), dc_job)
-            vin = [float(v) for v in dc_raw.vectors["in"]]
-            vout = [float(v) for v in dc_raw.vectors["out"]]
-            dc_gain = extract_dc_gain(vin, vout)
-            slopes = [abs((vout[i + 1] - vout[i]) / (vin[i + 1] - vin[i]))
-                      for i in range(len(vin) - 1)]
-            trip = vin[slopes.index(max(slopes))]
-        except (KeyError, IndexError, ZeroDivisionError) as exc:
-            raise SimError(
-                f"SPICE convergence: unusable DC transfer for cell {cell_id!r}: {exc}"
-            ) from exc
-        self.simulate(
-            netlist=assemble_ac(fragment, in_net="in", v_bias=trip, libs=libs),
-            seed=_MEASURE_SEED,
-        )
-        ac_job = self.list_jobs()[0]["job_id"]
-        ac_row = self.job_result(job_id=ac_job)
-        try:
-            ac_wave = parse_ac(_load_raw(str(ac_row["result"]), ac_job))
-            ac_gain = extract_ac_gain(ac_wave, in_node="in", out_node="out")
-        except KeyError as exc:
-            raise SimError(
-                f"SPICE convergence: missing AC trace for cell {cell_id!r}: {exc}"
-            ) from exc
         rel = abs(dc_gain - ac_gain) / dc_gain if dc_gain > 0 else float("inf")
         if rel > 0.10:
             raise SimError(
@@ -603,7 +628,7 @@ class EngineV01(DesignEngine):
             return ac_gain
         # Bandwidth reads off the same in-memory AC sweep (zero extra
         # sims) and fails closed per contract when the stimulus holds no
-        # unity crossing — e.g. the unloaded inverter at 6.5 V/V @10GHz.
+        # unity crossing.
         ugbw = extract_bandwidth(ac_wave, in_node="in", out_node="out")
         with self._lock:
             self._conn.execute(

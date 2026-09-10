@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from analog_ic_design.engine.engine_v01 import EngineV01, SimError
+from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.ngspice import libngspice_available
 from analog_ic_design.store.schema import connect
@@ -31,6 +32,18 @@ def _engine_with_inverter(tmp_path: Path) -> tuple[EngineV01, str]:
     setup = connect(db)
     try:
         cell = build_inverter(setup)
+        setup.commit()
+    finally:
+        setup.close()
+    return eng, cell
+
+
+def _engine_with_cs(tmp_path: Path) -> tuple[EngineV01, str]:
+    db = str(tmp_path / "measure_cs.sqlite")
+    eng = EngineV01(db_path=db)
+    setup = connect(db)
+    try:
+        cell = build_cs_amplifier(setup)
         setup.commit()
     finally:
         setup.close()
@@ -99,6 +112,43 @@ def test_live_inverter_bandwidth_refuses_per_contract(tmp_path: Path) -> None:
     bandwidth fails closed. The first live number needs the cs_amp
     testbench (the contract golden fixture) in R0-4d."""
     eng, cell = _engine_with_inverter(tmp_path)
+    try:
+        with pytest.raises(SimError, match="never crosses unity"):
+            eng.measure(cell_id=cell, metric_id="bandwidth")
+    finally:
+        eng.close()
+
+
+@NEEDS_LIB
+def test_live_cs_gain_agrees_and_persists(tmp_path: Path) -> None:
+    """Common-source with the R0-3a bias recipe (0.9 V gate, 0.4-1.2 V
+    sweep): DC == AC near 9.1 with rail-to-rail swing, both rows kept."""
+    eng, cell = _engine_with_cs(tmp_path)
+    try:
+        dc = eng.measure(cell_id=cell, metric_id="dc_gain")
+        ac = eng.measure(cell_id=cell, metric_id="ac_gain")
+        assert 8.0 < dc < 10.0
+        assert 8.0 < ac < 10.0
+        conn = sqlite3.connect(str(tmp_path / "measure_cs.sqlite"))
+        try:
+            rows = conn.execute(
+                "SELECT metric_id, value, units FROM measurement"
+            ).fetchall()
+        finally:
+            conn.close()
+        by_metric = {r[0]: (r[1], r[2]) for r in rows}
+        assert set(by_metric) == {"dc_gain", "ac_gain"}
+        assert by_metric["dc_gain"][0] == dc
+    finally:
+        eng.close()
+
+
+@NEEDS_LIB
+def test_live_cs_bandwidth_refuses_per_contract(tmp_path: Path) -> None:
+    """Unloaded CS still shows 2.45 V/V at 10 GHz (measured live), so
+    bandwidth fails closed here too; a declared-load testbench earns
+    the first live number in a later slice."""
+    eng, cell = _engine_with_cs(tmp_path)
     try:
         with pytest.raises(SimError, match="never crosses unity"):
             eng.measure(cell_id=cell, metric_id="bandwidth")
