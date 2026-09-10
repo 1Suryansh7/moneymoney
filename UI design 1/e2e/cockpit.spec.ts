@@ -74,8 +74,9 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     const cellInput = page.getByPlaceholder("e.g. my_amp");
     await cellInput.fill("cs_amp_test");
 
-    // 6. Select "common_source" template
-    const templateSelect = page.locator("select");
+    // 6. Select "common_source" template (scoped to the dialog: the
+    // schematic toolbar now hosts its own cell-picker select)
+    const templateSelect = page.getByLabel("Template");
     await templateSelect.selectOption("common_source");
 
     // 7. Click "Create"
@@ -107,5 +108,28 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     await expect(page.getByText("Backend sizing defaults apply.")).toBeVisible({
       timeout: 10000,
     });
+  });
+
+  test("created cell renders live schematic instances on the canvas", async ({
+    page,
+  }) => {
+    // Full 3e loop: dialog -> named cell -> schematic tab shows its real
+    // transistors (m1/m2) with live counts, not the ota_core mock.
+    await page.goto("http://localhost:5173", { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "New Cell View" }).click();
+    await page.getByPlaceholder("e.g. my_amp").fill("schem_live_test");
+    await page.getByLabel("Template").selectOption("common_source");
+    await page.getByRole("button", { name: "Create" }).click();
+    await expect(page.getByText("New Cell View")).not.toBeVisible({ timeout: 10000 });
+
+    const schemTab = page.getByRole("tab", { name: "schem_live_test : schematic" });
+    await expect(schemTab).toBeVisible({ timeout: 10000 });
+    await schemTab.click();
+
+    const canvas = page.locator('svg[aria-label="Schematic canvas"]');
+    await expect(canvas.getByText("m1", { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(canvas.getByText("m2", { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("2 instances")).toBeVisible();
+    await expect(page.getByText("schem_live_test : schematic — sky130 — auto-layout")).toBeVisible();
   });
 });

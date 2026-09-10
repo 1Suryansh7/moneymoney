@@ -14,15 +14,18 @@ import {
   createCell,
   createProject,
   getJob,
+  getSchematic,
   getWaveforms,
   health,
   instantiate,
   listCells,
   listJobs,
+  renameCell,
   runDemo,
   type CellSummary,
   type JobDetail,
   type JobSummary,
+  type Schematic,
   type Waveforms,
 } from "./api";
 
@@ -135,6 +138,8 @@ function useStoreValue() {
   const [console_, setConsole] = useState<ConsoleLine[]>(START_LINES);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [cells, setCells] = useState<CellSummary[]>([]);
+  const [activeCellId, setActiveCellId] = useState<string | null>(null);
+  const [activeSchematic, setActiveSchematic] = useState<Schematic | null>(null);
   const [liveWave, setLiveWave] = useState<Waveforms | null>(null);
   const [lastJobId, setLastJobId] = useState<string | null>(null);
   const [backendUp, setBackendUp] = useState<boolean | null>(null);
@@ -188,17 +193,19 @@ function useStoreValue() {
 
   const notify = useCallback((n: Notif) => setNotifications((x) => [n, ...x].slice(0, 12)), []);
 
-  const refreshCells = useCallback(async () => {
+  const refreshCells = useCallback(async (): Promise<CellSummary[]> => {
     try {
       const rows = await listCells();
       setBackendUp(true);
       setCells(rows);
+      return rows;
     } catch (err) {
       if (err instanceof ApiError && err.status === 0) {
         setBackendUp(false);
       } else {
         log(`Cell refresh failed: ${err instanceof Error ? err.message : String(err)}`, "warn");
       }
+      return [];
     }
   }, [log]);
 
@@ -216,17 +223,42 @@ function useStoreValue() {
     }
   }, [log]);
 
+  /** Select a cell and fetch its live schematic (auto-layout downstream). */
+  const selectCell = useCallback(
+    async (cellId: string | null) => {
+      setActiveCellId(cellId);
+      if (cellId === null) {
+        setActiveSchematic(null);
+        return;
+      }
+      try {
+        const schem = await getSchematic(cellId);
+        setBackendUp(true);
+        setActiveSchematic(schem);
+        setTabs((t) =>
+          t.map((tab) => (tab.id === "schematic" ? { ...tab, label: `${schem.cell_name} : schematic` } : tab)),
+        );
+      } catch (err) {
+        setActiveSchematic(null);
+        log(`Schematic load failed: ${err instanceof Error ? err.message : String(err)}`, "err");
+      }
+    },
+    [log],
+  );
+
   /** Create a project, anchor cell, and template-instantiated cell (backend defaults). */
   const createTemplateCell = useCallback(
     async (projectName: string, cellName: string, templateId: string): Promise<string> => {
       const project = await createProject(projectName);
       const anchor = await createCell(project.project_id, `${cellName}_anchor`);
       const out = await instantiate(anchor.cell_id, templateId, {});
+      await renameCell(out.cell_id, cellName);
       setBackendUp(true);
       await refreshCells();
+      await selectCell(out.cell_id);
       return out.cell_id;
     },
-    [refreshCells],
+    [refreshCells, selectCell],
   );
 
   const runSimulation = useCallback(() => {
@@ -355,13 +387,15 @@ function useStoreValue() {
         setBackendUp(false);
       }
       await refreshJobs();
-      await refreshCells();
+      const rows = await refreshCells();
+      const first = rows.find((c) => !c.cell_name.endsWith("_anchor")) ?? rows[0];
+      if (first) await selectCell(first.cell_id);
     })();
     return () => {
       runToken.current += 1;
       timers.current.forEach(clearTimeout);
     };
-  }, [refreshCells, refreshJobs]);
+  }, [refreshCells, refreshJobs, selectCell]);
 
   const runDrc = useCallback(() => {
     setDrcDone(false);
@@ -416,6 +450,9 @@ function useStoreValue() {
     refreshJobs,
     cells,
     refreshCells,
+    activeCellId,
+    activeSchematic,
+    selectCell,
     createTemplateCell,
     liveWave,
     lastJobId,

@@ -139,6 +139,10 @@ export const createProject = (name: string): Promise<ProjectOut> =>
   post<ProjectOut>("/projects", { name });
 export const createCell = (projectId: string, cellName: string): Promise<CellOut> =>
   post<CellOut>("/cells", { project_id: projectId, cell_name: cellName });
+export const renameCell = (cellId: string, cellName: string): Promise<CellOut & { cell_name: string }> =>
+  post<CellOut & { cell_name: string }>(`/cells/${encodeURIComponent(cellId)}/rename`, {
+    cell_name: cellName,
+  });
 export const instantiate = (
   cellId: string,
   templateId: string,
