@@ -23,6 +23,10 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from analog_ic_design.ai.explainer import explain_failure
+from analog_ic_design.ai.provider import MockProvider
+from analog_ic_design.ai.residency import ProviderGuard
+from analog_ic_design.ai.taxonomy import classify_failure
 from analog_ic_design.circuit.compiler import compile_netlist
 from analog_ic_design.circuit.validator import validate as validate_cell
 from analog_ic_design.engine.design_engine import DesignEngine
@@ -357,6 +361,49 @@ class EngineV01(DesignEngine):
             "instances": instances,
             "nets": sorted(nets.values()),
             "ports": ports,
+        }
+
+    def explain_job(self, *, job_id: str) -> dict[str, Any]:
+        """Grounded copilot explanation for one failed job (mock model only).
+
+        The HTTP service serves deterministic MockProvider explanations:
+        hosted models stay out until a human opt-in flow exists (residency
+        law §9.4). Classification runs on the stored taxonomy-prefixed
+        error with the job itself as evidence; succeeded/pending jobs and
+        unclassifiable errors fail closed. The AIAction row is written by
+        the explainer before anything returns (provenance law §9.3).
+        """
+        row = self.job_result(job_id=job_id)
+        if row["status"] != "failed" or not row["error"]:
+            raise ValueError(
+                f"Schema: job {job_id!r} is {row['status']!r}; nothing to explain"
+            )
+        stored = str(row["error"]).splitlines()[0]
+        message = stored[len("SimError: "):] if stored.startswith("SimError: ") else stored
+        classification = classify_failure(message=message, evidence=(job_id,))
+        provider = MockProvider(
+            default_reply=(
+                f"Mock analysis of {job_id}: classified [{classification.category}]"
+                f" via {classification.trigger}; recorded ledger text stands —"
+                " connect a hosted model for prose."
+            )
+        )
+        with self._lock:
+            explanation = explain_failure(
+                self._conn,
+                classification=classification,
+                provider=provider,
+                guard=ProviderGuard(),
+            )
+        return {
+            "job_id": job_id,
+            "category": classification.category,
+            "trigger": classification.trigger,
+            "prose": explanation.prose,
+            "cited_ids": list(explanation.cited_ids),
+            "action_id": explanation.action_id,
+            "provider": provider.provider_name,
+            "model": provider.model_name,
         }
 
     def check_constraints(self, *, cell_id: str) -> tuple[bool, tuple[str, ...]]:

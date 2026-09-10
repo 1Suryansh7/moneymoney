@@ -174,6 +174,25 @@ class WaveformsOut(BaseModel):
     traces: list[WaveformTrace]
 
 
+class ExplainIn(BaseModel):
+    """Copilot explanation request: one failed job id."""
+
+    job_id: str
+
+
+class ExplainOut(BaseModel):
+    """Grounded explanation plus its provenance handle."""
+
+    job_id: str
+    category: str
+    trigger: str
+    prose: str
+    cited_ids: list[str]
+    action_id: str
+    provider: str
+    model: str
+
+
 def _engine(request: Request) -> EngineV01:
     engine = request.app.state.engine
     assert isinstance(engine, EngineV01)
@@ -280,6 +299,15 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except SimError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.post("/copilot/explain", response_model=ExplainOut)
+    def copilot_explain(body: ExplainIn, request: Request) -> dict[str, Any]:
+        try:
+            return _engine(request).explain_job(job_id=body.job_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/cells", response_model=list[CellSummary])
     def list_cells(request: Request) -> list[dict[str, str]]:
