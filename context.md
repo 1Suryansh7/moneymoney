@@ -95,15 +95,16 @@ Operational code and agent configuration NEVER hardcode model generation names (
 > (ADR-033: close R0-3, wire the shell, B5–B7 stay deferred) → 7B-5 cells/
 > schematic + 7B-6 waveforms + 7B-7 mock-copilot + 7B-8 demo-testbench
 > routes (ADR-034 wire contract; 13 endpoints total).
-> Gates: base 359+39 green; EDA B4 `-k b4` 2 passed + 1 skip, demo file
-> 2 passed + 1 skip (live rail-to-rail inversion). CI Actions status unobserved
-> from here (no gh/token) — verify green in the GitHub tab.
-> Committed but UNPUSHED: `9118bfc` (7B-5), `f88a433` (7B-6), `c325030` (7B-7),
-> `f86e7fa` (7B-8) — push on human go.
-> Next: Step 3 shell binding (`store.tsx` runSimulation + SimulationExplorer
-> de-faking + WaveformAnalyzer live PlotPane; TS unverifiable here — no node
-> binary), then Step 4 `npm run dev` E2E. B5–B7 deferred; no node/tsc/vite
-> verification possible in this environment.
+> Gates: base 361+40 green (incl. human NAND-gate tests); EDA B4 `-k b4`
+> 2 passed + 1 skip, demo file 2 passed + 1 skip, NAND truth table 3 passed.
+> CI Actions status unobserved from here (no gh/token) — verify green in
+> the GitHub tab.
+> Pushed to origin/main through `43599eb` (9 commits: 8 agent + human e2e).
+> Committed locally, UNPUSHED: `edcae3b` (3d cell creation).
+> Next: Step 4 user E2E (uvicorn on app-eda + bun dev, eye-verify), then
+> push `edcae3b`. Follow-ups filed in To-Do (CORS tightening, micron
+> helper debt, golden netlist asserts). B5–B7 deferred; interactive
+> schematic editing is a later stage (no add-instance/connect API yet).
 
 ### Repository File Map
 ```text
