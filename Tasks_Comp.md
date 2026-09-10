@@ -222,6 +222,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 ## 2026-09-10 — Step 3a shell run-loop wiring (tsc + vite build green)
 - New `UI design 1/src/ic/api.ts` (13 typed endpoints, transport-only) + `store.tsx` live loop: demo run, 400ms ledger poll (150-try cap), waveforms into `liveWave`, phase-driven progress (no fake % ticker), token cancellation + `stopSimulation`, `backendUp` flag, mount-time health + job refresh. Host Bun toolchain verifies: `tsc --noEmit` clean, `vite build` green. Only touched shell files tracked; rest of drop stays untracked.
 
+## 2026-09-10 — 7B-9 cell rename (base green)
+- Concrete-only `EngineV01.rename_cell` + POST /cells/{id}/rename; roundtrip/unknown/empty tests. Unblocks dialog naming coherence for 3e without touching the frozen ABC. Base 364+40.
+
 ## 2026-09-10 — 7B-8 demo testbench route (Path B step 2d, base + EDA green)
 - Concrete-only `EngineV01.run_demo_testbench` + POST /testbenches/run; canonical inverter_tran deck from Stage 2 fixture, job/cell/reproducibility handles out. Suite caught SimError-subclasses-ValueError except-ordering. Base 359+39; EDA file 2 passed + 1 skip, live inversion proven.
 

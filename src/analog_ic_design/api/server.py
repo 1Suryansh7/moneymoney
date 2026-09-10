@@ -49,6 +49,19 @@ class CellOut(BaseModel):
     cell_id: str
 
 
+class CellRenameIn(BaseModel):
+    """Cell-rename request."""
+
+    cell_name: str
+
+
+class CellRenameOut(BaseModel):
+    """Renamed cell handle."""
+
+    cell_id: str
+    cell_name: str
+
+
 class InstantiateIn(BaseModel):
     """Template-instantiation request (SI values only)."""
 
@@ -345,6 +358,13 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
     @app.get("/cells", response_model=list[CellSummary])
     def list_cells(request: Request) -> list[dict[str, str]]:
         return _engine(request).list_cells()
+
+    @app.post("/cells/{cell_id}/rename", response_model=CellRenameOut)
+    def rename_cell(cell_id: str, body: CellRenameIn, request: Request) -> dict[str, str]:
+        try:
+            return _engine(request).rename_cell(cell_id=cell_id, cell_name=body.cell_name)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/cells/{cell_id}/schematic", response_model=SchematicOut)
     def get_schematic(cell_id: str, request: Request) -> dict[str, Any]:

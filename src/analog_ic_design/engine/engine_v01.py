@@ -312,6 +312,18 @@ class EngineV01(DesignEngine):
             for row in rows
         ]
 
+    def rename_cell(self, *, cell_id: str, cell_name: str) -> dict[str, str]:
+        """Rename one cell (template instantiation names callers can't pick)."""
+        if not cell_name.strip():
+            raise ValueError("Schema: cell name must be non-empty")
+        self._require_cell(cell_id)
+        with self._lock:
+            self._conn.execute(
+                "UPDATE cell SET name = ? WHERE id = ?", (cell_name, cell_id)
+            )
+            self._conn.commit()
+        return {"cell_id": cell_id, "cell_name": cell_name}
+
     def schematic(self, *, cell_id: str) -> dict[str, Any]:
         """Serialize one cell for schematic rendering.
 
