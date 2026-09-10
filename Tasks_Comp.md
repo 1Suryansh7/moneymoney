@@ -208,6 +208,10 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Re-baseline (`9980521`, ADR-028): 16-trial wide re-run closed nothing (best 214.71); 20-trial focused study (seed 200) winner trial 17 at gain 81.30dB / UGB 16.58MHz / PM 63.64deg adopted as empirical winner; demo now asserts honesty properties only. Full EDA 340 passed.
 - 7A lockdown: `EngineV01` strangler facade (`8f51c90`, EDA engine file 8 passed incl live RC deck) — ABC 11 frozen, v0.1 intact; Law-4 AST boundary guard (`2d25985`); migration v9 checkpoint_registry + design_state (`06669bb`, pin 8→9 acknowledged). Base 325+30. Push gate lifted by 2026-09-09 CONFIRMED verdict.
 
+## 2026-09-10 — Steps 3b + 3c shell de-faking (tsc + vite build green)
+- 3b SimulationExplorer: fake physics deleted, live-run table + NOT RUN metrics + ledger history + inert MC + cancelling Stop + sky130 labels.
+- 3c WaveformAnalyzer: everything derives from `liveWave` (extents, cursors, markers, legend, AC-gated calculator); `waveforms.ts` deleted. No fake water remains in either workspace; `Misc.tsx` "6 pass / 1 fail" noted for a later slice.
+
 ## 2026-09-10 — Step 3a shell run-loop wiring (tsc + vite build green)
 - New `UI design 1/src/ic/api.ts` (13 typed endpoints, transport-only) + `store.tsx` live loop: demo run, 400ms ledger poll (150-try cap), waveforms into `liveWave`, phase-driven progress (no fake % ticker), token cancellation + `stopSimulation`, `backendUp` flag, mount-time health + job refresh. Host Bun toolchain verifies: `tsc --noEmit` clean, `vite build` green. Only touched shell files tracked; rest of drop stays untracked.
 
