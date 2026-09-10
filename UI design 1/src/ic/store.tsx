@@ -11,11 +11,16 @@ import {
 import { LAYERS, OUTPUTS, DRC_VIOLATIONS, type Status } from "./data";
 import {
   ApiError,
+  createCell,
+  createProject,
   getJob,
   getWaveforms,
   health,
+  instantiate,
+  listCells,
   listJobs,
   runDemo,
+  type CellSummary,
   type JobDetail,
   type JobSummary,
   type Waveforms,
@@ -129,6 +134,7 @@ function useStoreValue() {
   const [annotate, setAnnotate] = useState<string>("None");
   const [console_, setConsole] = useState<ConsoleLine[]>(START_LINES);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [cells, setCells] = useState<CellSummary[]>([]);
   const [liveWave, setLiveWave] = useState<Waveforms | null>(null);
   const [lastJobId, setLastJobId] = useState<string | null>(null);
   const [backendUp, setBackendUp] = useState<boolean | null>(null);
@@ -182,6 +188,20 @@ function useStoreValue() {
 
   const notify = useCallback((n: Notif) => setNotifications((x) => [n, ...x].slice(0, 12)), []);
 
+  const refreshCells = useCallback(async () => {
+    try {
+      const rows = await listCells();
+      setBackendUp(true);
+      setCells(rows);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 0) {
+        setBackendUp(false);
+      } else {
+        log(`Cell refresh failed: ${err instanceof Error ? err.message : String(err)}`, "warn");
+      }
+    }
+  }, [log]);
+
   const refreshJobs = useCallback(async () => {
     try {
       const rows = await listJobs();
@@ -195,6 +215,19 @@ function useStoreValue() {
       }
     }
   }, [log]);
+
+  /** Create a project, anchor cell, and template-instantiated cell (backend defaults). */
+  const createTemplateCell = useCallback(
+    async (projectName: string, cellName: string, templateId: string): Promise<string> => {
+      const project = await createProject(projectName);
+      const anchor = await createCell(project.project_id, `${cellName}_anchor`);
+      const out = await instantiate(anchor.cell_id, templateId, {});
+      setBackendUp(true);
+      await refreshCells();
+      return out.cell_id;
+    },
+    [refreshCells],
+  );
 
   const runSimulation = useCallback(() => {
     timers.current.forEach(clearTimeout);
@@ -322,12 +355,13 @@ function useStoreValue() {
         setBackendUp(false);
       }
       await refreshJobs();
+      await refreshCells();
     })();
     return () => {
       runToken.current += 1;
       timers.current.forEach(clearTimeout);
     };
-  }, [refreshJobs]);
+  }, [refreshCells, refreshJobs]);
 
   const runDrc = useCallback(() => {
     setDrcDone(false);
@@ -380,6 +414,9 @@ function useStoreValue() {
     jobs,
     setJobs,
     refreshJobs,
+    cells,
+    refreshCells,
+    createTemplateCell,
     liveWave,
     lastJobId,
     backendUp,
