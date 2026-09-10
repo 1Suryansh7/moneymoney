@@ -13,6 +13,7 @@ import pytest
 
 from analog_ic_design.bench import BENCHES, BenchResult, run_bench
 from analog_ic_design.circuit import validate
+from analog_ic_design.sim.cascode import build_cascode
 from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.diff_pair import build_diff_pair
 from analog_ic_design.sim.mirror import build_mirror
@@ -39,8 +40,8 @@ def test_unknown_bench_fails_closed() -> None:
 
 
 def test_deferred_benches_raise_with_owner(tmp_path: Path) -> None:
-    with pytest.raises(NotImplementedError, match="R0-3"):
-        run_bench("B4", db_path=str(tmp_path / "b.sqlite"))
+    with pytest.raises(NotImplementedError, match="R0-4"):
+        run_bench("B5", db_path=str(tmp_path / "b.sqlite"))
 
 
 def test_b0_without_backend_reports_error(tmp_path: Path) -> None:
@@ -152,4 +153,36 @@ def test_b3_live_passes_with_evidence(tmp_path: Path) -> None:
     rel = abs(result.metrics["dc_gain"] - result.metrics["ac_gain"])
     rel /= result.metrics["dc_gain"]
     assert rel < 0.10
+    assert len(result.evidence) == 1 and len(result.evidence[0]) == 64
+
+
+def test_b4_fixture_validates_without_backend(tmp_path: Path) -> None:
+    """Cascode cell passes the pre-simulation gate with no simulator."""
+    conn = connect(str(tmp_path / "b4fix.sqlite"))
+    try:
+        migrate(conn)
+        cell = build_cascode(conn)
+        report = validate(conn, cell)
+    finally:
+        conn.close()
+    assert report.valid, [v.message for v in report.violations]
+
+
+def test_b4_without_backend_reports_error(tmp_path: Path) -> None:
+    result = run_bench("B4", db_path=str(tmp_path / "b4.sqlite"))
+    assert isinstance(result, BenchResult)
+    if libngspice_available():
+        pytest.skip("backend present; fail-closed path covered on base")
+    assert result.status == "error"
+    assert "Schema" in result.message or "SimError" in result.message
+
+
+@NEEDS_LIB
+def test_b4_live_passes_with_evidence(tmp_path: Path) -> None:
+    result = run_bench("B4", db_path=str(tmp_path / "b4live.sqlite"))
+    assert result.status == "pass", result.message
+    assert result.metrics["ac_gain"] > 10.0
+    assert result.metrics["vout_min_v"] < 0.1
+    assert result.metrics["vout_max_v"] > 1.7
+    assert result.metrics["headroom_v"] > 0.1
     assert len(result.evidence) == 1 and len(result.evidence[0]) == 64

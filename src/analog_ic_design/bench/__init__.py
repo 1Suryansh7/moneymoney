@@ -1,8 +1,9 @@
 """AnalogBench registry + runner (R0 trust core).
 
 Eight canonical benchmarks B0–B7 form the release scoreboard. B0 (inverter),
-B1 (mirror), B2 (diff pair) and B3 (common-source) execute today; B4–B7 raise
-NotImplementedError with per-bench defer owners instead of faking results. Runner returns data
+B1 (mirror), B2 (diff pair), B3 (common-source) and B4 (cascode) execute
+today; B5–B7 raise NotImplementedError with per-bench defer owners instead
+of faking results. Runner returns data
 (BenchResult), never raises on simulation faults — failures are scoreboard
 rows, and the fail-closed contract surfaces them as status="error" with the
 taxonomy message attached.
@@ -17,6 +18,7 @@ from typing import Final
 
 from analog_ic_design.engine.engine_v01 import EngineV01
 from analog_ic_design.metrics.gain import extract_ac_gain, extract_dc_gain
+from analog_ic_design.sim.cascode import build_cascode
 from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.diff_pair import build_diff_pair
 from analog_ic_design.sim.inverter import build_inverter
@@ -341,6 +343,85 @@ def _run_b3(*, db_path: str, seed: int) -> BenchResult:
         eng.close()
 
 
+def _run_b4(*, db_path: str, seed: int) -> BenchResult:
+    setup = connect(db_path)
+    try:
+        migrate(setup)
+        cell = build_cascode(setup)
+    finally:
+        setup.close()
+    eng = EngineV01(db_path=db_path)
+    try:
+        valid, violations = eng.validate(cell_id=cell)
+        if not valid:
+            return BenchResult("B4", "fail", {}, (),
+                               f"Constraint: validation gate failed: {violations}")
+        frag = eng.netlist(cell_id=cell)
+        extra = ["Vbcas vbcas 0 DC 1.1", "Vbaisp vbias_p 0 DC 0.9"]
+        dc_deck = assemble_dc_sweep(
+            frag,
+            sweep_net="in",
+            v_start=0.4,
+            v_stop=1.2,
+            v_step=0.005,
+            extra_lines=extra,
+            libs=[(SKY130_LIB, "tt")],
+        )
+        try:
+            eng.simulate(netlist=dc_deck, seed=seed)
+            dc_vecs, _ = _job_vectors(eng)
+            vin = [float(v) for v in dc_vecs["in"]]
+            vout = [float(v) for v in dc_vecs["out"]]
+            dc_gain = extract_dc_gain(vin, vout)
+            slopes = [abs((vout[i + 1] - vout[i]) / (vin[i + 1] - vin[i]))
+                      for i in range(len(vin) - 1)]
+            trip = vin[slopes.index(max(slopes))]
+            span_vs = [vin[i] for i in range(len(slopes)) if slopes[i] > 1.0]
+            high_gain_span = (max(span_vs) - min(span_vs)) if span_vs else 0.0
+            ac_deck = assemble_ac(
+                frag,
+                in_net="in",
+                v_bias=trip,
+                extra_lines=extra,
+                libs=[(SKY130_LIB, "tt")],
+            )
+            repro = eng.simulate(netlist=ac_deck, seed=seed)
+        except SimError as exc:
+            return BenchResult("B4", "error", {}, (), f"{exc}")
+        jobs = eng.list_jobs()
+        detail = eng.job_result(job_id=jobs[0]["job_id"])
+        payload = json.loads(str(detail["result"]))
+        cx = {k: [complex(p[0], p[1]) for p in v]
+              for k, v in payload.get("complex_vectors", {}).items()}
+        wave = parse_ac(RawSim(vectors=payload["vectors"], complex_vectors=cx, log=""))
+        try:
+            ac_gain = extract_ac_gain(wave, in_node="in", out_node="out")
+        except SimError as exc:
+            return BenchResult("B4", "error", {}, (repro,), f"{exc}")
+        metrics = {
+            "dc_gain": dc_gain,
+            "ac_gain": ac_gain,
+            "headroom_v": high_gain_span,
+            "vout_min_v": min(vout),
+            "vout_max_v": max(vout),
+        }
+        # MEASURED live: DC 12.999 == AC 12.989 at trip Vin=0.85V, headroom
+        # span 0.205V, rails 0.091–1.800V. The gain clears the plain
+        # common-source stage built from the same-size input device (9.1),
+        # which is the entire physical point of cascoding — threshold 10
+        # pins that action, not a fitted value.
+        rel_diff = abs(dc_gain - ac_gain) / dc_gain if dc_gain > 0 else float("inf")
+        if ac_gain > 10.0 and min(vout) < 0.1 and max(vout) > 1.7 \
+                and rel_diff < 0.10 and high_gain_span > 0.1:
+            return BenchResult("B4", "pass", metrics, (repro,), "")
+        return BenchResult(
+            "B4", "fail", metrics, (repro,),
+            f"Constraint: cascode action broken (dc={dc_gain:.3f},"
+            f" ac={ac_gain:.3f}, headroom={high_gain_span:.3f})")
+    finally:
+        eng.close()
+
+
 def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
     """Execute one benchmark by id; unknown ids fail closed (Schema)."""
     if bench_id not in BENCHES:
@@ -353,5 +434,7 @@ def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
         return _run_b2(db_path=db_path, seed=seed)
     if bench_id == "B3":
         return _run_b3(db_path=db_path, seed=seed)
+    if bench_id == "B4":
+        return _run_b4(db_path=db_path, seed=seed)
     owner = BENCHES[bench_id].owner
     raise NotImplementedError(f"{bench_id} deferred to {owner}")

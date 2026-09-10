@@ -94,8 +94,10 @@ Operational code and agent configuration NEVER hardcode model generation names (
 > over HTTP ADR-032) → 7B-4 job observability routes for Run Center.
 > Gates: base 338+33, EDA 370 passed + 1 legit skip (tallies reconcile at 371). CI Actions status unobserved from
 > here (no gh/token) — verify green in the GitHub tab.
-> Next: R0 trust core (AnalogBench suite first: R0-1 registry+runner+B0
-> committed `ca588c7`, base 338+33), then Lovable-shell wiring.
+> Next: R0 trust core (AnalogBench: R0-1 registry+B0 `ca588c7`, R0-2a B1
+> `1695af6`, R0-2b B2 `0e74696`, R0-3a B3 `28be619`, R0-3b B4 pending commit
+> with base 346+37 green and EDA bench-file proof still to run),
+> then R0-3c B5 diff-pair-with-active-load, then Lovable-shell wiring.
 
 ### Repository File Map
 ```text
