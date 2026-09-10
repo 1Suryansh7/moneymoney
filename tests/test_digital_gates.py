@@ -21,6 +21,7 @@ from analog_ic_design.circuit.validator import validate
 from analog_ic_design.sim.digital_gates import build_nand_gate, build_not_gate
 from analog_ic_design.sim.jobs import JobRunner
 from analog_ic_design.sim.ngspice import RawSim, libngspice_available
+from analog_ic_design.sim.testbench import assemble_transient
 from analog_ic_design.sim.waveform import parse_transient
 from analog_ic_design.store import connect, migrate
 
@@ -116,36 +117,18 @@ def test_nand_gate_live_truth_table(runner: JobRunner) -> None:
     finally:
         conn.close()
 
-    body = fragment.splitlines()
-    while body and not body[-1].strip():
-        body.pop()
-    if body and body[-1].strip().lower() == ".end":
-        body.pop()
-
-    title, rest = body[0], body[1:]
-    deck_lines = [
-        title,
-        f".lib '{SKY130_LIB}' tt",
-        ".param mc_mm_switch=0",
-        ".option scale=1e-6",
-    ]
-    # Convert W/L from meters to microns for Sky130 deck
-    for line in rest:
-        line = line.replace("W=0.000001", "W=1.0").replace("W=0.000002", "W=2.0")
-        line = line.replace("W=1e-06", "W=1.0").replace("W=2e-06", "W=2.0")
-        line = line.replace("L=1.5e-07", "L=0.15")
-        deck_lines.append(line)
-
-    deck_lines += [
-        "VDD vdd 0 DC 1.8",
-        "VSS vss 0 DC 0",
-        "Va a 0 DC 0 PULSE(0 1.8 10n 0.1n 0.1n 10n 20n)",
-        "Vb b 0 DC 0 PULSE(0 1.8 5n 0.1n 0.1n 5n 10n)",
-        ".tran 0.1n 25n",
-        ".end",
-        "",
-    ]
-    deck = "\n".join(deck_lines)
+    # Canonical deck assembly: micron conversion, supplies, and .lib come
+    # from the helper; only the second staggered source is extra. Va uses
+    # the helper default PULSE (delay 1n, width 10n, period 20n), so the
+    # sample map below follows the new edges, not the old hand-rolled ones.
+    deck = assemble_transient(
+        fragment,
+        pulse_net="a",
+        pulse_volts=1.8,
+        tstop_s=25e-9,
+        libs=[(SKY130_LIB, "tt")],
+        extra_lines=["Vb b 0 DC 0 PULSE(0 1.8 5n 0.1n 0.1n 5n 10n)"],
+    )
 
     res = runner.wait(runner.submit_simulation(netlist=deck, seed=42), timeout=120)
     assert res.status == "succeeded", res.error
@@ -161,11 +144,12 @@ def test_nand_gate_live_truth_table(runner: JobRunner) -> None:
         idx = min(range(len(time_pts)), key=lambda i: abs(time_pts[i] - target_t))
         return out_pts[idx]
 
-    # Sample each logic state:
-    v_00 = sample_out(3.0e-9)   # a=0, b=0 -> out=1.8V
-    v_01 = sample_out(8.0e-9)   # a=0, b=1 -> out=1.8V
-    v_10 = sample_out(13.0e-9)  # a=1, b=0 -> out=1.8V
-    v_11 = sample_out(18.0e-9)  # a=1, b=1 -> out=0V
+    # Sample each logic state under the new Va edges (high 1-11ns and
+    # 21ns+, low 11-21ns; Vb high 5-10ns, 15-20ns):
+    v_10 = sample_out(3.0e-9)   # a=1, b=0 -> out=1.8V
+    v_11 = sample_out(8.0e-9)   # a=1, b=1 -> out=0V
+    v_00 = sample_out(13.0e-9)  # a=0, b=0 -> out=1.8V
+    v_01 = sample_out(18.0e-9)  # a=0, b=1 -> out=1.8V
 
     # Assert truth table:
     assert v_00 > 1.7, f"Expected out=1.8V for (0,0), got {v_00:.3f}V"

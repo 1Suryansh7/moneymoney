@@ -65,6 +65,7 @@ def assemble_transient(
     pulse_net: str = "in",
     pulse_volts: float = 1.8,
     tstop_s: float = 30e-9,
+    extra_lines: Sequence[str] = (),
     includes: Sequence[str] = (),
     libs: Sequence[tuple[str, str]] = (),
     corner: Corner | None = None,
@@ -97,6 +98,7 @@ def assemble_transient(
     lines.append(
         f"Vin {pulse_net} 0 DC 0 PULSE(0 {pulse_volts} 1n 1n 1n 10n 20n)"
     )
+    lines += list(extra_lines)
     lines.append(f".tran 0.1n {tstop_s}")
     lines.append(".end")
     return "\n".join(lines) + "\n"

@@ -263,9 +263,11 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
     app = FastAPI(title="OpenVirtuoso API", version=ENGINE_API_VERSION, lifespan=lifespan)
     app.state.db_path = resolved
 
+    # Local-dev origins only: wildcard + credentials is rejected by
+    # browsers, so the two loopback spellings are listed explicitly.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
