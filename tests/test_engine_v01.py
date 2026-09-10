@@ -110,7 +110,10 @@ def test_deferred_surfaces_raise(engine: EngineV01) -> None:
         engine.run_drc(cell_name="c")
     with pytest.raises(NotImplementedError):
         engine.extract(cell_name="c")
-    with pytest.raises(NotImplementedError):
+    # R0-4a lifted the measure deferral: unknown metrics fail closed with
+    # ValueError (Schema), not NotImplementedError. Full contract lives in
+    # tests/test_measure.py.
+    with pytest.raises(ValueError, match="Schema"):
         engine.measure(cell_id=cid, metric_id="gain")
     with pytest.raises(NotImplementedError):
         engine.run_erc(cell_name="c")

@@ -7,12 +7,15 @@ simulation, or storage logic lives here.
 Surface note: the `DesignEngine` ABC freezes exactly 11 methods (pinned by
 `tests/test_engine_api.py`; ENGINE_API_VERSION stays "0.1"). The extra
 methods here (`connect`, `measure`, `run_erc`, `run_lvs`, `list_jobs`,
-`job_result`, `list_cells`, `schematic`) exist ONLY on this concrete class
-as additive extensions. Deferred methods raise
-`NotImplementedError` with a `[defer]` owner instead of faking behavior:
-`measure` needs the R0 Testbench Manager, `check_constraints`/`compare` need
-measurement orchestration, `optimize` needs spec-to-target mapping,
+`job_result`, `list_cells`, `schematic`, `job_waveforms`, `explain_job`,
+`run_demo_testbench`, `rename_cell`)
+exist ONLY on this concrete class as additive extensions. Deferred methods
+raise `NotImplementedError` with a `[defer]` owner instead of faking
+behavior: `check_constraints`/`compare` need measurement orchestration,
+`optimize` needs spec-to-target mapping,
 `run_drc`/`run_erc`/`run_lvs`/`extract` need Stage 8/9 backends.
+`measure` is implemented for dc_gain/ac_gain on inverter-shape cells;
+every other metric_id fails closed until its testbench lands.
 """
 
 from __future__ import annotations
@@ -30,10 +33,11 @@ from analog_ic_design.ai.taxonomy import classify_failure
 from analog_ic_design.circuit.compiler import compile_netlist
 from analog_ic_design.circuit.validator import validate as validate_cell
 from analog_ic_design.engine.design_engine import DesignEngine
+from analog_ic_design.metrics.gain import extract_ac_gain, extract_dc_gain
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.jobs import JobRunner
 from analog_ic_design.sim.ngspice import RawSim, SimError, libngspice_available
-from analog_ic_design.sim.testbench import assemble_transient
+from analog_ic_design.sim.testbench import assemble_ac, assemble_dc_sweep, assemble_transient
 from analog_ic_design.sim.waveform import parse_ac, parse_transient
 from analog_ic_design.store.schema import connect, migrate, new_id, utcnow_iso
 from analog_ic_design.topology.templates import get_template, instantiate_template
@@ -41,6 +45,8 @@ from analog_ic_design.topology.templates import get_template, instantiate_templa
 _DEFAULT_LIB: str = "libngspice.so"
 _DEFAULT_LIBRARY_NAME: str = "analog_lib"
 _SIM_TIMEOUT_S: float = 300.0
+# Fixed seed for measure() runs; recorded in each job payload row.
+_MEASURE_SEED: int = 21
 # Container PDK path. Debt note: this literal is copy-pasted across bench,
 # examples, and tests (15 copies); normalizing them is out of scope here —
 # this copy serves the demo-testbench path only.
@@ -54,6 +60,21 @@ _DEMO_TESTBENCHES: tuple[str, ...] = ("inverter_tran",)
 # Engine surface: the facade plus its error contract (callers import
 # SimError here, never from the simulator backend directly).
 __all__ = ["EngineV01", "SimError"]
+
+
+def _load_raw(result: str, job_id: str) -> RawSim:
+    """Rebuild a RawSim from a stored ledger payload (complex pairs → complex)."""
+    try:
+        payload = json.loads(result)
+        vectors = {k: [float(v) for v in vals]
+                   for k, vals in payload["vectors"].items()}
+        complex_vectors = {k: [complex(p[0], p[1]) for p in vals]
+                           for k, vals in payload.get("complex_vectors", {}).items()}
+    except (ValueError, KeyError, TypeError, IndexError) as exc:
+        raise SimError(
+            f"Schema: malformed ledger payload for job {job_id!r}: {exc}"
+        ) from exc
+    return RawSim(vectors=vectors, complex_vectors=complex_vectors, log="")
 
 
 class EngineV01(DesignEngine):
@@ -222,18 +243,8 @@ class EngineV01(DesignEngine):
         if row["status"] != "succeeded" or not row["result"]:
             stored = row["error"] or f"Schema: job {job_id!r} is {row['status']!r}"
             raise SimError(str(stored))
-        try:
-            payload = json.loads(str(row["result"]))
-            vectors = {k: [float(v) for v in vals]
-                       for k, vals in payload["vectors"].items()}
-            complex_vectors = {k: [complex(p[0], p[1]) for p in vals]
-                               for k, vals in payload.get("complex_vectors", {}).items()}
-        except (ValueError, KeyError, TypeError, IndexError) as exc:
-            raise SimError(
-                f"Schema: malformed ledger payload for job {job_id!r}: {exc}"
-            ) from exc
-        raw = RawSim(vectors=vectors, complex_vectors=complex_vectors, log="")
-        if complex_vectors:
+        raw = _load_raw(str(row["result"]), job_id)
+        if raw.complex_vectors:
             wave = parse_ac(raw)
             return {
                 "job_id": job_id,
@@ -482,8 +493,108 @@ class EngineV01(DesignEngine):
         raise NotImplementedError("compare deferred to R0 comparison policies")
 
     def measure(self, *, cell_id: str, metric_id: str) -> float:
-        """[defer R0] Needs per-metric testbench selection + simulation."""
-        raise NotImplementedError("measure deferred to R0 Testbench Manager")
+        """Measure one metric on inverter-shape cells (R0 Testbench Manager seed).
+
+        Supported metric_ids: dc_gain, ac_gain. Structural allowlist:
+        exactly one nfet_01v8 plus one pfet_01v8 instance with nets drawn
+        from {in, out, vdd, vss} — no bias ports, so no hidden bias
+        assumptions. Anything else fails closed: each new structure earns
+        its testbench with its own EDA proof. Both analyses always run
+        and must agree within 10% (single-analysis gain lies, observed
+        live in R0-3b); both Measurement rows persist in V/V.
+        """
+        if metric_id not in ("dc_gain", "ac_gain"):
+            raise ValueError(
+                f"Schema: unknown metric_id {metric_id!r} (measured: dc_gain, ac_gain)"
+            )
+        self._require_cell(cell_id)
+        with self._lock:
+            syms = sorted(
+                str(r[0])
+                for r in self._conn.execute(
+                    "SELECT symbol.name FROM instance"
+                    " JOIN symbol ON symbol.id = instance.symbol_id"
+                    " WHERE instance.cell_id = ?",
+                    (cell_id,),
+                ).fetchall()
+            )
+            nets = {
+                str(r[0])
+                for r in self._conn.execute(
+                    "SELECT name FROM net WHERE cell_id = ?", (cell_id,)
+                ).fetchall()
+            }
+        if (
+            syms != ["nfet_01v8", "pfet_01v8"]
+            or "in" not in nets
+            or "out" not in nets
+            or not nets <= {"in", "out", "vdd", "vss"}
+        ):
+            raise ValueError(
+                f"Schema: no testbench registered for cell {cell_id!r}"
+                f" (symbols={syms}, nets={sorted(nets)})"
+            )
+        valid, violations = self.validate(cell_id=cell_id)
+        if not valid:
+            raise ValueError(
+                f"Schema: measure refused on invalid cell {cell_id!r}: {violations}"
+            )
+        fragment = self.netlist(cell_id=cell_id)
+        libs = [(_SKY130_LIB, "tt")]
+        self.simulate(
+            netlist=assemble_dc_sweep(
+                fragment, sweep_net="in", v_start=0.0, v_stop=1.8,
+                v_step=0.005, libs=libs,
+            ),
+            seed=_MEASURE_SEED,
+        )
+        dc_job = self.list_jobs()[0]["job_id"]
+        dc_row = self.job_result(job_id=dc_job)
+        try:
+            dc_raw = _load_raw(str(dc_row["result"]), dc_job)
+            vin = [float(v) for v in dc_raw.vectors["in"]]
+            vout = [float(v) for v in dc_raw.vectors["out"]]
+            dc_gain = extract_dc_gain(vin, vout)
+            slopes = [abs((vout[i + 1] - vout[i]) / (vin[i + 1] - vin[i]))
+                      for i in range(len(vin) - 1)]
+            trip = vin[slopes.index(max(slopes))]
+        except (KeyError, IndexError, ZeroDivisionError) as exc:
+            raise SimError(
+                f"SPICE convergence: unusable DC transfer for cell {cell_id!r}: {exc}"
+            ) from exc
+        self.simulate(
+            netlist=assemble_ac(fragment, in_net="in", v_bias=trip, libs=libs),
+            seed=_MEASURE_SEED,
+        )
+        ac_job = self.list_jobs()[0]["job_id"]
+        ac_row = self.job_result(job_id=ac_job)
+        try:
+            ac_gain = extract_ac_gain(
+                parse_ac(_load_raw(str(ac_row["result"]), ac_job)),
+                in_node="in",
+                out_node="out",
+            )
+        except KeyError as exc:
+            raise SimError(
+                f"SPICE convergence: missing AC trace for cell {cell_id!r}: {exc}"
+            ) from exc
+        rel = abs(dc_gain - ac_gain) / dc_gain if dc_gain > 0 else float("inf")
+        if rel > 0.10:
+            raise SimError(
+                f"SPICE convergence: dc/ac gain disagree ({dc_gain:.3f} vs"
+                f" {ac_gain:.3f}); no trustworthy gain for cell {cell_id!r}"
+            )
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO measurement VALUES (?, ?, ?, ?, ?, ?)",
+                (new_id(), dc_job, "dc_gain", dc_gain, "V/V", utcnow_iso()),
+            )
+            self._conn.execute(
+                "INSERT INTO measurement VALUES (?, ?, ?, ?, ?, ?)",
+                (new_id(), ac_job, "ac_gain", ac_gain, "V/V", utcnow_iso()),
+            )
+            self._conn.commit()
+        return dc_gain if metric_id == "dc_gain" else ac_gain
 
     def run_erc(self, *, cell_name: str) -> tuple[bool, tuple[str, ...]]:
         """[defer Stage 8] Needs a LayoutBackend ERC adapter."""
