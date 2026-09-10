@@ -8,7 +8,7 @@ Surface note: the `DesignEngine` ABC freezes exactly 11 methods (pinned by
 `tests/test_engine_api.py`; ENGINE_API_VERSION stays "0.1"). The extra
 methods here (`connect`, `measure`, `run_erc`, `run_lvs`, `list_jobs`,
 `job_result`, `list_cells`, `schematic`, `job_waveforms`, `explain_job`,
-`run_demo_testbench`, `rename_cell`)
+`run_demo_testbench`, `rename_cell`, `measure_with_unit`)
 exist ONLY on this concrete class as additive extensions. Deferred methods
 raise `NotImplementedError` with a `[defer]` owner instead of faking
 behavior: `check_constraints`/`compare` need measurement orchestration,
@@ -33,6 +33,7 @@ from analog_ic_design.ai.taxonomy import classify_failure
 from analog_ic_design.circuit.compiler import compile_netlist
 from analog_ic_design.circuit.validator import validate as validate_cell
 from analog_ic_design.engine.design_engine import DesignEngine
+from analog_ic_design.metrics.contract import METRIC_BY_ID
 from analog_ic_design.metrics.gain import extract_ac_gain, extract_dc_gain
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.jobs import JobRunner
@@ -595,6 +596,13 @@ class EngineV01(DesignEngine):
             )
             self._conn.commit()
         return dc_gain if metric_id == "dc_gain" else ac_gain
+
+    def measure_with_unit(self, *, cell_id: str, metric_id: str) -> dict[str, object]:
+        """Measure plus the canonical contract unit symbol (wire-ready)."""
+        value = self.measure(cell_id=cell_id, metric_id=metric_id)
+        contract = METRIC_BY_ID.get(metric_id)
+        unit = contract.units if contract is not None else ""
+        return {"metric_id": metric_id, "value": value, "unit": unit}
 
     def run_erc(self, *, cell_name: str) -> tuple[bool, tuple[str, ...]]:
         """[defer Stage 8] Needs a LayoutBackend ERC adapter."""

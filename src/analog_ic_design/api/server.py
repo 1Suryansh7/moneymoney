@@ -222,6 +222,21 @@ class DemoRunOut(BaseModel):
     reproducibility_id: str
 
 
+class MeasureIn(BaseModel):
+    """Measurement request: one registered metric on one cell."""
+
+    cell_id: str
+    metric_id: str
+
+
+class MeasureOut(BaseModel):
+    """Measured SI value plus its unit symbol for display."""
+
+    metric_id: str
+    value: float
+    unit: str
+
+
 def _engine(request: Request) -> EngineV01:
     engine = request.app.state.engine
     assert isinstance(engine, EngineV01)
@@ -350,6 +365,17 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
     def run_demo_testbench(body: DemoRunIn, request: Request) -> dict[str, str]:
         try:
             return _engine(request).run_demo_testbench(name=body.name, seed=body.seed)
+        except SimError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/measure", response_model=MeasureOut)
+    def measure(body: MeasureIn, request: Request) -> dict[str, object]:
+        try:
+            return _engine(request).measure_with_unit(
+                cell_id=body.cell_id, metric_id=body.metric_id
+            )
         except SimError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
         except ValueError as exc:

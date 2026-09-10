@@ -20,6 +20,7 @@ import {
   instantiate,
   listCells,
   listJobs,
+  measure,
   renameCell,
   runDemo,
   type CellSummary,
@@ -142,6 +143,8 @@ function useStoreValue() {
   const [activeSchematic, setActiveSchematic] = useState<Schematic | null>(null);
   const [liveWave, setLiveWave] = useState<Waveforms | null>(null);
   const [lastJobId, setLastJobId] = useState<string | null>(null);
+  const [demoCellId, setDemoCellId] = useState<string | null>(null);
+  const [measuredGain, setMeasuredGain] = useState<{ value: number; unit: string } | null>(null);
   const [backendUp, setBackendUp] = useState<boolean | null>(null);
   const [simPhase, setSimPhase] = useState<SimPhase>("READY");
   const [simProgress, setSimProgress] = useState(0);
@@ -267,15 +270,19 @@ function useStoreValue() {
     runToken.current += 1;
     const token = runToken.current;
     setLiveWave(null);
+    setMeasuredGain(null);
     setSimPhase("NETLISTING");
     setSimProgress(5);
     log("Run: POST /testbenches/run inverter_tran");
     void (async () => {
       let jobId: string;
+      let demoCell: string;
       try {
         const out = await runDemo("inverter_tran", 21);
         setBackendUp(true);
         jobId = out.job_id;
+        demoCell = out.cell_id;
+        setDemoCellId(demoCell);
       } catch (err) {
         if (token !== runToken.current) return;
         setSimPhase("READY");
@@ -338,6 +345,18 @@ function useStoreValue() {
               time: now().slice(0, 5),
               kind: "PASS",
             });
+            try {
+              const m = await measure(demoCell, "dc_gain");
+              if (token !== runToken.current) return;
+              setMeasuredGain({ value: m.value, unit: m.unit });
+              log(`Measured DC gain: ${m.value.toFixed(2)} ${m.unit}`);
+            } catch (merr) {
+              if (token !== runToken.current) return;
+              log(
+                `Gain measure skipped: ${merr instanceof Error ? merr.message : String(merr)}`,
+                "warn",
+              );
+            }
           } catch (err) {
             if (token !== runToken.current) return;
             setSimPhase("READY");
@@ -456,6 +475,8 @@ function useStoreValue() {
     createTemplateCell,
     liveWave,
     lastJobId,
+    demoCellId,
+    measuredGain,
     backendUp,
     simPhase,
     setSimPhase,

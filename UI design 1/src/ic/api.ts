@@ -121,6 +121,7 @@ export type ExplainOut = {
   model: string;
 };
 export type DemoRunOut = { job_id: string; cell_id: string; reproducibility_id: string };
+export type MeasureOut = { metric_id: string; value: number; unit: string };
 
 export const health = (): Promise<Health> => request<Health>("/health");
 export const listJobs = (): Promise<JobSummary[]> => request<JobSummary[]>("/jobs");
@@ -133,6 +134,8 @@ export const getSchematic = (cellId: string): Promise<Schematic> =>
   request<Schematic>(`/cells/${encodeURIComponent(cellId)}/schematic`);
 export const runDemo = (name: string, seed = 21): Promise<DemoRunOut> =>
   post<DemoRunOut>("/testbenches/run", { name, seed });
+export const measure = (cellId: string, metricId: string): Promise<MeasureOut> =>
+  post<MeasureOut>("/measure", { cell_id: cellId, metric_id: metricId });
 export const explainJob = (jobId: string): Promise<ExplainOut> =>
   post<ExplainOut>("/copilot/explain", { job_id: jobId });
 export const createProject = (name: string): Promise<ProjectOut> =>

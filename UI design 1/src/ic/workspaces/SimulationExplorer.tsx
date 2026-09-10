@@ -249,8 +249,8 @@ export function SimulationExplorer({ dense = false }: { dense?: boolean }) {
 
             <SectionTitle>Outputs / Specifications</SectionTitle>
             <div className="num px-2 pb-1 text-[10px] text-subtle">
-              Measured metrics pending the R0 Testbench Manager (no measure endpoint yet) — no numbers shown
-              rather than invented ones.
+              DC gain measures live on inverter-shape cells; remaining metrics pending the next testbenches —
+              no numbers shown rather than invented ones.
             </div>
             <table className="w-full border-collapse">
               <thead>
@@ -263,27 +263,35 @@ export function SimulationExplorer({ dense = false }: { dense?: boolean }) {
                 </tr>
               </thead>
               <tbody>
-                {PENDING_METRICS.map((r) => (
-                  <tr key={r.name} className="cursor-default hover:bg-raised/60">
-                    <td className={cn(td, "text-foreground")}>{r.name}</td>
-                    <td className={cn(td, "num text-subtle")}>{r.expr}</td>
-                    <td className={cn(td, "num text-right")}>—</td>
-                    <td className={cn(td, "num text-right text-muted-foreground")}>{r.spec}</td>
-                    <td className={td}>
-                      <StatusCell status="NOT RUN" />
-                    </td>
-                    <td className={td}>
-                      <button
-                        onClick={() => {
-                          s.openTab({ id: "waveforms", label: "Waveform Analyzer" });
-                        }}
-                        className="rounded-[2px] border border-border px-1.5 text-[10px] text-muted-foreground hover:bg-raised"
-                      >
-                        Plot
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {PENDING_METRICS.map((r) => {
+                  const live = r.name === "DC Gain" ? s.measuredGain : null;
+                  const db = live ? 20 * Math.log10(live.value) : null;
+                  return (
+                    <tr key={r.name} className="cursor-default hover:bg-raised/60">
+                      <td className={cn(td, "text-foreground")}>{r.name}</td>
+                      <td className={cn(td, "num text-subtle")}>{r.expr}</td>
+                      <td className={cn(td, "num text-right")}>
+                        {live && db !== null
+                          ? `${live.value.toFixed(2)} ${live.unit} (${db.toFixed(2)} dB)`
+                          : "—"}
+                      </td>
+                      <td className={cn(td, "num text-right text-muted-foreground")}>{r.spec}</td>
+                      <td className={td}>
+                        <StatusCell status={live ? "MEASURED" : "NOT RUN"} />
+                      </td>
+                      <td className={td}>
+                        <button
+                          onClick={() => {
+                            s.openTab({ id: "waveforms", label: "Waveform Analyzer" });
+                          }}
+                          className="rounded-[2px] border border-border px-1.5 text-[10px] text-muted-foreground hover:bg-raised"
+                        >
+                          Plot
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 

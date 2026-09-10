@@ -4,6 +4,9 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
   test("loads cockpit, runs CMOS inverter simulation, and verifies waveform rendering", async ({
     page,
   }) => {
+    test.slow(); // real ngspice sims behind Run + measure: ~2min on shared hardware
+    page.on("console", (msg) => console.log(`BROWSER ${msg.type()}: ${msg.text()}`));
+    page.on("pageerror", (err) => console.log(`BROWSER PAGEERROR: ${err}`));
     // 1. Open the UI
     await page.goto("http://localhost:5173", { waitUntil: "networkidle" });
 
@@ -26,6 +29,14 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     await expect(pointsCell).not.toHaveText("—");
     const pointsCount = await pointsCell.innerText();
     console.log("Simulation complete with data points:", pointsCount);
+
+    // 4b. Outputs table shows the measured DC gain (R0-4b: live measure,
+    // not NOT RUN). Measure runs two sims behind the route on shared
+    // hardware: allow 300s.
+    const gainRow = page.locator("tr:has(td:text-is('DC Gain'))");
+    await expect(gainRow).toContainText("V/V", { timeout: 300000 });
+    await expect(gainRow).toContainText("MEASURED", { timeout: 5000 });
+    console.log("Measured gain row:", await gainRow.innerText());
 
     // 5. Navigate to Waveform Analyzer
     const waveTab = page.getByRole("tab", { name: "Waveform Analyzer" });

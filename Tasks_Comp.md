@@ -208,6 +208,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Re-baseline (`9980521`, ADR-028): 16-trial wide re-run closed nothing (best 214.71); 20-trial focused study (seed 200) winner trial 17 at gain 81.30dB / UGB 16.58MHz / PM 63.64deg adopted as empirical winner; demo now asserts honesty properties only. Full EDA 340 passed.
 - 7A lockdown: `EngineV01` strangler facade (`8f51c90`, EDA engine file 8 passed incl live RC deck) — ABC 11 frozen, v0.1 intact; Law-4 AST boundary guard (`2d25985`); migration v9 checkpoint_registry + design_state (`06669bb`, pin 8→9 acknowledged). Base 325+30. Push gate lifted by 2026-09-09 CONFIRMED verdict.
 
+## 2026-09-10 — R0-4b measure route + live gain row (base + EDA + e2e green)
+- POST /measure via `measure_with_unit` (contract-registry units); frontend measures post-waveforms, Explorer shows 15.24 V/V (23.66 dB) MEASURED. Base 371+42; EDA 4+1; Playwright 4/4. Two red runs root-caused to Playwright's 60s test timeout vs ~90s measure latency (test.slow(); CORS/slowness theories falsified with evidence).
+
 ## 2026-09-10 — R0-4a measure dc/ac gain (base + EDA green)
 - `EngineV01.measure` for dc_gain/ac_gain on inverter-shape cells (allowlist + dual-analysis cross-check + V/V Measurement rows); shared `_load_raw`; deferral test transparently flipped. MEASURED inverter 15.240/15.244. Base 367+41; EDA 8+1.
 
