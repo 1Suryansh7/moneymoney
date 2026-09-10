@@ -208,6 +208,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Re-baseline (`9980521`, ADR-028): 16-trial wide re-run closed nothing (best 214.71); 20-trial focused study (seed 200) winner trial 17 at gain 81.30dB / UGB 16.58MHz / PM 63.64deg adopted as empirical winner; demo now asserts honesty properties only. Full EDA 340 passed.
 - 7A lockdown: `EngineV01` strangler facade (`8f51c90`, EDA engine file 8 passed incl live RC deck) — ABC 11 frozen, v0.1 intact; Law-4 AST boundary guard (`2d25985`); migration v9 checkpoint_registry + design_state (`06669bb`, pin 8→9 acknowledged). Base 325+30. Push gate lifted by 2026-09-09 CONFIRMED verdict.
 
+## 2026-09-10 — 7B-5 cell browser + schematic routes (Path B step 2a, base green)
+- Concrete-only `EngineV01.list_cells`/`schematic` + GET /cells + GET /cells/{id}/schematic; instances with symbol names + SI parameter floats, terminal hookups resolved to net names, unknowns 422. Test builds cells through POST /instantiate (real template rows); symbol-master cells honestly listed (membership, not count). Base 349+37.
+
 ## 2026-09-09 — Stage 7B HTTP service + thin slice (base green, EDA spot green)
 - Pins (`03635a8`): fastapi 0.141.1 + uvicorn 0.52.4 runtime, httpx2 2.12.0 dev — plain httpx rejected live (starlette TestClient raises deprecation-as-error under filterwarnings gate); image rebuild evidence green both images.
 - Threading found by the suite, fixed at root (`1cc858f`): uvicorn worker threads vs same-thread sqlite conns surfaced as ProgrammingError in teardown; RLock serialization over check_same_thread=False in engine + job ledger (store.connect additive kwarg, default untouched). Documented limit: one in-flight sim per engine binding until R0.
@@ -218,7 +221,7 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - `sim/cs_amp.py` fixture + `BiasSearch` (28 lines fixture): missionary M1-off trap hit live and fixed by Vg sweep-load-line search; dc-then-ac at measured trip. MEASURED DC 9.102 == AC 9.087, trip 0.85V. EDA bench file 10 passed + 4 skips. Commit `28be619`.
 
 ## 2026-09-10 — R0-3b B4 cascode bench (base green, EDA proof pending)
-- `sim/cascode.py` fixture (31 lines): Vbcas search reversed live (1.1 beats 0.9 by +4, physically correct); dual DC+AC assertions required (AC-only lies through Rd). MEASURED DC 12.999 == AC 12.989 at trip 0.85V, clears same-size plain-CS 9.1 (threshold 10), headroom 0.205V. Base 346+37 green. EDA bench-file proof still to run.
+- `sim/cascode.py` fixture (31 lines): Vbcas search reversed live (1.1 beats 0.9 by +4, physically correct); dual DC+AC assertions required (AC-only lies through Rd). MEASURED DC 12.999 == AC 12.989 at trip 0.85V, clears same-size plain-CS 9.1 (threshold 10), headroom 0.205V. Base 346+37 green. EDA `-k b4` proof 2 passed + 1 legit conditional skip in 75s; `28be619` + `a9f8e07` pushed to origin/main. R0-3 CLOSED per Path-B strategic plan; B5–B7 remain deferred (clean NotImplementedError owners).
 
 ## 2026-09-09 — R0-2 mirror + diff-pair benches (base green, EDA file green)
 - B1 (`1695af6`): matched-pair fixture with bias-direction lesson recorded in code (push-into-diode, not pull-to-ground); sweep-branch identification fail-closed; saturation ratio + triode ordering acceptance. MEASURED ratio 1.025 @0.9V, Early slope to 1.18, KCL-closed return.

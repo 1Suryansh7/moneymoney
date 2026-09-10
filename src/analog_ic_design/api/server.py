@@ -111,6 +111,41 @@ class JobDetail(JobSummary):
     error: str | None
 
 
+class CellSummary(BaseModel):
+    """Design-browser row (no payloads, mirrors /jobs summaries)."""
+
+    cell_id: str
+    cell_name: str
+    library_name: str
+
+
+class SchematicInstance(BaseModel):
+    """One placed device with SI parameter floats."""
+
+    instance_id: str
+    instance_name: str
+    symbol_name: str
+    parameters: dict[str, float]
+
+
+class SchematicPort(BaseModel):
+    """One terminal hookup; null instance means a cell-level port."""
+
+    port_name: str
+    net_name: str
+    instance_name: str | None
+
+
+class SchematicOut(BaseModel):
+    """Render-ready cell connectivity (empty string net = unconnected)."""
+
+    cell_id: str
+    cell_name: str
+    instances: list[SchematicInstance]
+    nets: list[str]
+    ports: list[SchematicPort]
+
+
 class HealthOut(BaseModel):
     """Service + engine contract identity."""
 
@@ -215,6 +250,17 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
             return _engine(request).job_result(job_id=job_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/cells", response_model=list[CellSummary])
+    def list_cells(request: Request) -> list[dict[str, str]]:
+        return _engine(request).list_cells()
+
+    @app.get("/cells/{cell_id}/schematic", response_model=SchematicOut)
+    def get_schematic(cell_id: str, request: Request) -> dict[str, Any]:
+        try:
+            return _engine(request).schematic(cell_id=cell_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return app
 

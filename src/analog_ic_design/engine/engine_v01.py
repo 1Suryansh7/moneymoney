@@ -5,9 +5,10 @@ calls one existing module entry point; no validation, compilation,
 simulation, or storage logic lives here.
 
 Surface note: the `DesignEngine` ABC freezes exactly 11 methods (pinned by
-`tests/test_engine_api.py`; ENGINE_API_VERSION stays "0.1"). The four extra
-methods here (`connect`, `measure`, `run_erc`, `run_lvs`) exist ONLY on this
-concrete class as additive extensions. Deferred methods raise
+`tests/test_engine_api.py`; ENGINE_API_VERSION stays "0.1"). The extra
+methods here (`connect`, `measure`, `run_erc`, `run_lvs`, `list_jobs`,
+`job_result`, `list_cells`, `schematic`) exist ONLY on this concrete class
+as additive extensions. Deferred methods raise
 `NotImplementedError` with a `[defer]` owner instead of faking behavior:
 `measure` needs the R0 Testbench Manager, `check_constraints`/`compare` need
 measurement orchestration, `optimize` needs spec-to-target mapping,
@@ -20,6 +21,7 @@ import json
 import threading
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from analog_ic_design.circuit.compiler import compile_netlist
 from analog_ic_design.circuit.validator import validate as validate_cell
@@ -216,6 +218,82 @@ class EngineV01(DesignEngine):
             raise SimError(
                 f"Schema: malformed worker payload for job {job_id!r}: {exc}"
             ) from exc
+
+    def list_cells(self) -> list[dict[str, str]]:
+        """All cells across libraries for the design browser (no payloads)."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT cell.id, cell.name, library.name FROM cell"
+                " JOIN library ON library.id = cell.library_id"
+                " ORDER BY library.name, cell.name, cell.id"
+            ).fetchall()
+        return [
+            {"cell_id": str(row[0]), "cell_name": str(row[1]),
+             "library_name": str(row[2])}
+            for row in rows
+        ]
+
+    def schematic(self, *, cell_id: str) -> dict[str, Any]:
+        """Serialize one cell for schematic rendering.
+
+        Instances carry their symbol name plus SI parameter floats;
+        ports resolve to net names (cell-level ports have no instance).
+        Unknown cells fail closed via _require_cell (Schema).
+        """
+        cell_name, _ = self._require_cell(cell_id)
+        with self._lock:
+            inst_rows = self._conn.execute(
+                "SELECT instance.id, instance.name, symbol.name FROM instance"
+                " JOIN symbol ON symbol.id = instance.symbol_id"
+                " WHERE instance.cell_id = ? ORDER BY instance.name, instance.id",
+                (cell_id,),
+            ).fetchall()
+            param_rows = self._conn.execute(
+                "SELECT parameter.instance_id, parameter.name, parameter.value"
+                " FROM parameter JOIN instance ON instance.id = parameter.instance_id"
+                " WHERE instance.cell_id = ?",
+                (cell_id,),
+            ).fetchall()
+            net_rows = self._conn.execute(
+                "SELECT id, name FROM net WHERE cell_id = ? ORDER BY name, id",
+                (cell_id,),
+            ).fetchall()
+            port_rows = self._conn.execute(
+                "SELECT port.name, port.net_id, instance.name FROM port"
+                " LEFT JOIN instance ON instance.id = port.instance_id"
+                " LEFT JOIN net ON net.id = port.net_id"
+                " WHERE port.cell_id = ? OR instance.cell_id = ?"
+                " ORDER BY port.name",
+                (cell_id, cell_id),
+            ).fetchall()
+        nets = {str(row[0]): str(row[1]) for row in net_rows}
+        params: dict[str, dict[str, float]] = {}
+        for iid, pname, value in param_rows:
+            params.setdefault(str(iid), {})[str(pname)] = float(value)
+        instances: list[dict[str, Any]] = [
+            {
+                "instance_id": str(row[0]),
+                "instance_name": str(row[1]),
+                "symbol_name": str(row[2]),
+                "parameters": params.get(str(row[0]), {}),
+            }
+            for row in inst_rows
+        ]
+        ports: list[dict[str, Any]] = [
+            {
+                "port_name": str(row[0]),
+                "net_name": nets.get(str(row[1]), "") if row[1] is not None else "",
+                "instance_name": None if row[2] is None else str(row[2]),
+            }
+            for row in port_rows
+        ]
+        return {
+            "cell_id": cell_id,
+            "cell_name": cell_name,
+            "instances": instances,
+            "nets": sorted(nets.values()),
+            "ports": ports,
+        }
 
     def check_constraints(self, *, cell_id: str) -> tuple[bool, tuple[str, ...]]:
         """[defer R0] Needs measurement orchestration (Testbench Manager)."""
