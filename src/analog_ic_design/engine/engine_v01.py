@@ -502,12 +502,15 @@ class EngineV01(DesignEngine):
         extra_lines: list[str],
         v_start: float,
         v_stop: float,
+        sweep_net: str = "in",
+        ac_in: str = "in",
+        ac_out: str = "out",
     ) -> tuple[float, float, float, ACWaveform, str, str]:
         """DC sweep trip discovery plus AC at trip; returns gains, trip, wave, jobs."""
         libs = [(_SKY130_LIB, "tt")]
         self.simulate(
             netlist=assemble_dc_sweep(
-                fragment, sweep_net="in", v_start=v_start, v_stop=v_stop,
+                fragment, sweep_net=sweep_net, v_start=v_start, v_stop=v_stop,
                 v_step=0.005, extra_lines=extra_lines, libs=libs,
             ),
             seed=_MEASURE_SEED,
@@ -516,8 +519,8 @@ class EngineV01(DesignEngine):
         dc_row = self.job_result(job_id=dc_job)
         try:
             dc_raw = _load_raw(str(dc_row["result"]), dc_job)
-            vin = [float(v) for v in dc_raw.vectors["in"]]
-            vout = [float(v) for v in dc_raw.vectors["out"]]
+            vin = [float(v) for v in dc_raw.vectors[sweep_net]]
+            vout = [float(v) for v in dc_raw.vectors[ac_out]]
             dc_gain = extract_dc_gain(vin, vout)
             slopes = [abs((vout[i + 1] - vout[i]) / (vin[i + 1] - vin[i]))
                       for i in range(len(vin) - 1)]
@@ -528,7 +531,7 @@ class EngineV01(DesignEngine):
             ) from exc
         self.simulate(
             netlist=assemble_ac(
-                fragment, in_net="in", v_bias=trip,
+                fragment, in_net=ac_in, v_bias=trip,
                 extra_lines=extra_lines, libs=libs,
             ),
             seed=_MEASURE_SEED,
@@ -537,7 +540,7 @@ class EngineV01(DesignEngine):
         ac_row = self.job_result(job_id=ac_job)
         try:
             ac_wave = parse_ac(_load_raw(str(ac_row["result"]), ac_job))
-            ac_gain = extract_ac_gain(ac_wave, in_node="in", out_node="out")
+            ac_gain = extract_ac_gain(ac_wave, in_node=ac_in, out_node=ac_out)
         except KeyError as exc:
             raise SimError(
                 f"SPICE convergence: missing AC trace for cell {cell_id!r}: {exc}"
@@ -554,6 +557,9 @@ class EngineV01(DesignEngine):
         - common_source: same pair plus a vbias net; fixed 0.9 V PMOS-gate
           bias (R0-3a recipe) with the 0.4-1.2 V sweep that avoids the
           M1-off trap below and rail parking above.
+        - diff_pair: three nfet + two pfet with the eight-net mirror-load
+          structure; single-ended 0.7-1.1 V sweep on inp (inn/vbias fixed
+          0.9 V, R0-2b recipe) with the mirror/diode split as second anchor.
         Anything else fails closed. Gain needs DC/AC agreement within 10%
         (single-analysis gain lies, observed live in R0-3b); both gain rows
         persist. Bandwidth reads the same in-memory AC sweep — zero extra
@@ -583,8 +589,13 @@ class EngineV01(DesignEngine):
                     "SELECT name FROM net WHERE cell_id = ?", (cell_id,)
                 ).fetchall()
             }
+        # Shape dispatch: each branch binds deck bias knowledge earned with
+        # its own EDA proof. split_limit names a second output that must
+        # stay attenuated (differential-split trust anchor).
+        split_limit: tuple[str, float] | None
         if syms == ["nfet_01v8", "pfet_01v8"] and nets == {"in", "out", "vbias", "vdd", "vss"}:
             extra, v_start, v_stop = ["Vbias vbias 0 DC 0.9"], 0.4, 1.2
+            sweep_net, ac_in, ac_out, split_limit = "in", "in", "out", None
         elif (
             syms == ["nfet_01v8", "pfet_01v8"]
             and "in" in nets
@@ -592,6 +603,15 @@ class EngineV01(DesignEngine):
             and nets <= {"in", "out", "vdd", "vss"}
         ):
             extra, v_start, v_stop = [], 0.0, 1.8
+            sweep_net, ac_in, ac_out, split_limit = "in", "in", "out", None
+        elif (
+            syms == ["nfet_01v8"] * 3 + ["pfet_01v8"] * 2
+            and nets == {"inp", "inn", "outp", "outn", "tail", "vbias", "vdd", "vss"}
+        ):
+            extra = ["Vinn inn 0 DC 0.9", "Vbias vbias 0 DC 0.9"]
+            v_start, v_stop = 0.7, 1.1
+            sweep_net, ac_in, ac_out = "inp", "inp", "outn"
+            split_limit = ("outp", 2.0)
         else:
             raise ValueError(
                 f"Schema: no testbench registered for cell {cell_id!r}"
@@ -604,8 +624,24 @@ class EngineV01(DesignEngine):
             )
         fragment = self.netlist(cell_id=cell_id)
         dc_gain, ac_gain, _trip, ac_wave, dc_job, ac_job = self._transfer_gain(
-            fragment, cell_id, extra_lines=extra, v_start=v_start, v_stop=v_stop
+            fragment, cell_id, extra_lines=extra, v_start=v_start,
+            v_stop=v_stop, sweep_net=sweep_net, ac_in=ac_in, ac_out=ac_out,
         )
+        if split_limit is not None:
+            try:
+                split_gain = extract_ac_gain(
+                    ac_wave, in_node=ac_in, out_node=split_limit[0]
+                )
+            except KeyError as exc:
+                raise SimError(
+                    f"SPICE convergence: missing split trace for cell {cell_id!r}: {exc}"
+                ) from exc
+            if not split_gain < split_limit[1]:
+                raise SimError(
+                    f"SPICE convergence: differential split broken"
+                    f" ({split_limit[0]}={split_gain:.3f} V/V); no trust anchor"
+                    f" for cell {cell_id!r}"
+                )
         rel = abs(dc_gain - ac_gain) / dc_gain if dc_gain > 0 else float("inf")
         if rel > 0.10:
             raise SimError(

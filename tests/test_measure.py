@@ -16,6 +16,7 @@ import pytest
 
 from analog_ic_design.engine.engine_v01 import EngineV01, SimError
 from analog_ic_design.sim.cs_amp import build_cs_amplifier
+from analog_ic_design.sim.diff_pair import build_diff_pair
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.ngspice import libngspice_available
 from analog_ic_design.store.schema import connect
@@ -44,6 +45,18 @@ def _engine_with_cs(tmp_path: Path) -> tuple[EngineV01, str]:
     setup = connect(db)
     try:
         cell = build_cs_amplifier(setup)
+        setup.commit()
+    finally:
+        setup.close()
+    return eng, cell
+
+
+def _engine_with_diff(tmp_path: Path) -> tuple[EngineV01, str]:
+    db = str(tmp_path / "measure_diff.sqlite")
+    eng = EngineV01(db_path=db)
+    setup = connect(db)
+    try:
+        cell = build_diff_pair(setup)
         setup.commit()
     finally:
         setup.close()
@@ -152,5 +165,40 @@ def test_live_cs_bandwidth_refuses_per_contract(tmp_path: Path) -> None:
     try:
         with pytest.raises(SimError, match="never crosses unity"):
             eng.measure(cell_id=cell, metric_id="bandwidth")
+    finally:
+        eng.close()
+
+
+def test_diff_without_backend_reports_taxonomy(tmp_path: Path) -> None:
+    if libngspice_available():
+        pytest.skip("backend present; the taxonomy path is base-only")
+    eng, cell = _engine_with_diff(tmp_path)
+    try:
+        with pytest.raises(SimError, match="Schema: simulate requires libngspice"):
+            eng.measure(cell_id=cell, metric_id="dc_gain")
+    finally:
+        eng.close()
+
+
+@NEEDS_LIB
+def test_live_diff_gain_agrees_split_holds_and_persists(tmp_path: Path) -> None:
+    """Diff-pair with single-ended drive: DC slope == AC mirror-side gain
+    near 8.1 with the diode side attenuated, both rows kept."""
+    eng, cell = _engine_with_diff(tmp_path)
+    try:
+        dc = eng.measure(cell_id=cell, metric_id="dc_gain")
+        ac = eng.measure(cell_id=cell, metric_id="ac_gain")
+        assert 5.0 < dc < 15.0
+        assert 5.0 < ac < 15.0
+        conn = sqlite3.connect(str(tmp_path / "measure_diff.sqlite"))
+        try:
+            rows = conn.execute(
+                "SELECT metric_id, value, units FROM measurement"
+            ).fetchall()
+        finally:
+            conn.close()
+        by_metric = {r[0]: (r[1], r[2]) for r in rows}
+        assert set(by_metric) == {"dc_gain", "ac_gain"}
+        assert by_metric["dc_gain"][0] == dc
     finally:
         eng.close()

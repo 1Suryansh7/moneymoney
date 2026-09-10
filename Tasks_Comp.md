@@ -211,6 +211,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 ## 2026-09-10 — Quick-wins debt batch (base + EDA + tsc + build green)
 - CORS loopback-only; Misc signoff/metrics fiction → run-state truth; gates deck via assemble_transient (additive extra_lines; remapped samples EDA-proven). Base 371+42; EDA 8 passed.
 
+## 2026-09-10 — R0-4d-2 diff-pair testbench (base + EDA green)
+- Third fingerprint with R0-2b bias recipe; DC/AC cross-check + split anchor; rows persist. Probe DC 8.31 pre-commit. Base 372+46; EDA 7+2. Trinity complete (survived a host crash mid-proof; resumed clean).
+
 ## 2026-09-10 — R0-4d common-source testbench (base + EDA green)
 - Second fingerprint (pair + vbias) with R0-3a bias recipe; shared helper; MEASURED 9.106/9.106, rails clean; bandwidth refuses (2.45 @10GHz). Base 371+45; EDA 6+1. Real analog now measurable; diff-pair next.
 
