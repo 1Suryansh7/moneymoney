@@ -153,6 +153,27 @@ class HealthOut(BaseModel):
     engine_api_version: str
 
 
+class WaveformTrace(BaseModel):
+    """One display trace: tran carries unit+y, AC carries magnitude/phase."""
+
+    name: str
+    unit: str | None = None
+    y: list[float] | None = None
+    magnitude_db: list[float] | None = None
+    phase_deg: list[float] | None = None
+
+
+class WaveformsOut(BaseModel):
+    """PlotPane-ready vectors; SI floats, formatting lives in the frontend."""
+
+    job_id: str
+    analysis: str
+    x_name: str
+    x_unit: str
+    x: list[float]
+    traces: list[WaveformTrace]
+
+
 def _engine(request: Request) -> EngineV01:
     engine = request.app.state.engine
     assert isinstance(engine, EngineV01)
@@ -250,6 +271,15 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
             return _engine(request).job_result(job_id=job_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/jobs/{job_id}/waveforms", response_model=WaveformsOut)
+    def get_waveforms(job_id: str, request: Request) -> dict[str, Any]:
+        try:
+            return _engine(request).job_waveforms(job_id=job_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except SimError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     @app.get("/cells", response_model=list[CellSummary])
     def list_cells(request: Request) -> list[dict[str, str]]:

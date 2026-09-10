@@ -208,6 +208,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Re-baseline (`9980521`, ADR-028): 16-trial wide re-run closed nothing (best 214.71); 20-trial focused study (seed 200) winner trial 17 at gain 81.30dB / UGB 16.58MHz / PM 63.64deg adopted as empirical winner; demo now asserts honesty properties only. Full EDA 340 passed.
 - 7A lockdown: `EngineV01` strangler facade (`8f51c90`, EDA engine file 8 passed incl live RC deck) — ABC 11 frozen, v0.1 intact; Law-4 AST boundary guard (`2d25985`); migration v9 checkpoint_registry + design_state (`06669bb`, pin 8→9 acknowledged). Base 325+30. Push gate lifted by 2026-09-09 CONFIRMED verdict.
 
+## 2026-09-10 — 7B-6 waveforms route (Path B step 2b, base green)
+- Concrete-only `EngineV01.job_waveforms` + GET /jobs/{id}/waveforms; ledger payload re-parsed through Stage 2/3 extractors (parse_transient/parse_ac), units from Quantity symbols. Base seeds exact tran + AC payloads (0dB/0deg and 0dB/90deg hand-computed); live RC charging shape asserted EDA-only. Base 353+38.
+
 ## 2026-09-10 — 7B-5 cell browser + schematic routes (Path B step 2a, base green)
 - Concrete-only `EngineV01.list_cells`/`schematic` + GET /cells + GET /cells/{id}/schematic; instances with symbol names + SI parameter floats, terminal hookups resolved to net names, unknowns 422. Test builds cells through POST /instantiate (real template rows); symbol-master cells honestly listed (membership, not count). Base 349+37.
 

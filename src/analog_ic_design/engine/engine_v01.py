@@ -27,7 +27,8 @@ from analog_ic_design.circuit.compiler import compile_netlist
 from analog_ic_design.circuit.validator import validate as validate_cell
 from analog_ic_design.engine.design_engine import DesignEngine
 from analog_ic_design.sim.jobs import JobRunner
-from analog_ic_design.sim.ngspice import SimError, libngspice_available
+from analog_ic_design.sim.ngspice import RawSim, SimError, libngspice_available
+from analog_ic_design.sim.waveform import parse_ac, parse_transient
 from analog_ic_design.store.schema import connect, migrate, new_id, utcnow_iso
 from analog_ic_design.topology.templates import get_template, instantiate_template
 
@@ -190,6 +191,69 @@ class EngineV01(DesignEngine):
             "error": None if row[4] is None else str(row[4]),
             "created_at": str(row[5]),
             "updated_at": str(row[6]),
+        }
+
+    def job_waveforms(self, *, job_id: str) -> dict[str, Any]:
+        """Render-ready vectors for one succeeded job (PlotPane wire format).
+
+        Transient jobs yield SI time + per-trace SI samples with unit
+        symbols; AC jobs yield SI frequency + magnitude_db/phase_deg per
+        trace (wrapped phase, exactly as the parser returns — unwrapping
+        is a metric concern, not a display one). Unknown jobs fail closed
+        via job_result (KeyError); non-succeeded jobs surface the stored
+        taxonomy error verbatim instead of inventing vectors.
+        """
+        row = self.job_result(job_id=job_id)
+        if row["status"] != "succeeded" or not row["result"]:
+            stored = row["error"] or f"Schema: job {job_id!r} is {row['status']!r}"
+            raise SimError(str(stored))
+        try:
+            payload = json.loads(str(row["result"]))
+            vectors = {k: [float(v) for v in vals]
+                       for k, vals in payload["vectors"].items()}
+            complex_vectors = {k: [complex(p[0], p[1]) for p in vals]
+                               for k, vals in payload.get("complex_vectors", {}).items()}
+        except (ValueError, KeyError, TypeError, IndexError) as exc:
+            raise SimError(
+                f"Schema: malformed ledger payload for job {job_id!r}: {exc}"
+            ) from exc
+        raw = RawSim(vectors=vectors, complex_vectors=complex_vectors, log="")
+        if complex_vectors:
+            wave = parse_ac(raw)
+            return {
+                "job_id": job_id,
+                "analysis": "ac",
+                "x_name": "frequency",
+                "x_unit": "Hz",
+                "x": [float(f) for f in wave.frequency],
+                "traces": [
+                    {
+                        "name": t.name,
+                        "unit": None,
+                        "y": None,
+                        "magnitude_db": list(t.magnitude_db()),
+                        "phase_deg": list(t.phase_deg()),
+                    }
+                    for t in wave.traces
+                ],
+            }
+        wave_t = parse_transient(raw)
+        return {
+            "job_id": job_id,
+            "analysis": "tran",
+            "x_name": "time",
+            "x_unit": "s",
+            "x": [float(t) for t in wave_t.time],
+            "traces": [
+                {
+                    "name": t.name,
+                    "unit": t.values[0].symbol if t.values else "V",
+                    "y": [float(v) for v in t.values],
+                    "magnitude_db": None,
+                    "phase_deg": None,
+                }
+                for t in wave_t.traces
+            ],
         }
 
     def simulate(self, *, netlist: str, seed: int) -> str:
