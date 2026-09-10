@@ -94,4 +94,18 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     await page.screenshot({ path: "cockpit_cell_created.png", fullPage: true });
     console.log("Screenshot saved to cockpit_cell_created.png");
   });
+
+  test("toolbar New Cell button opens the dialog (dead-button regression)", async ({
+    page,
+  }) => {
+    // The toolbar icon shipped without an onClick: clicks fell into the
+    // void. This pins the wire: toolbar button -> NewCellDialog visible.
+    await page.goto("http://localhost:5173", { waitUntil: "networkidle" });
+    const toolBtn = page.getByRole("button", { name: "New Cell View" });
+    await expect(toolBtn).toBeVisible({ timeout: 10000 });
+    await toolBtn.click();
+    await expect(page.getByText("Backend sizing defaults apply.")).toBeVisible({
+      timeout: 10000,
+    });
+  });
 });

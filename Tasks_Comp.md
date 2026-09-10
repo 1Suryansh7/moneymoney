@@ -208,6 +208,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Re-baseline (`9980521`, ADR-028): 16-trial wide re-run closed nothing (best 214.71); 20-trial focused study (seed 200) winner trial 17 at gain 81.30dB / UGB 16.58MHz / PM 63.64deg adopted as empirical winner; demo now asserts honesty properties only. Full EDA 340 passed.
 - 7A lockdown: `EngineV01` strangler facade (`8f51c90`, EDA engine file 8 passed incl live RC deck) — ABC 11 frozen, v0.1 intact; Law-4 AST boundary guard (`2d25985`); migration v9 checkpoint_registry + design_state (`06669bb`, pin 8→9 acknowledged). Base 325+30. Push gate lifted by 2026-09-09 CONFIRMED verdict.
 
+## 2026-09-10 — 3d-fix dead toolbar button (Playwright 3/3 green)
+- Root cause: toolbar icon had no onClick (only the File menu opened the dialog). Wired via `onNewCell` prop; removed unbindable Ctrl+N hints. New regression test clicks the real toolbar button and asserts the dialog. Full e2e in live Chromium vs user backend: sim COMPLETE (326 pts, 13 polylines), cell create logged, dialog opens. Evidence screenshots refreshed.
+
 ## 2026-09-10 — Push 9 commits + 3d cell creation (tsc + vite green)
 - Push `a9f8e07..43599eb`: 8 agent commits + human's own `43599eb` (Playwright e2e with verified screenshot, NOT/NAND fixtures, live truth-table test). Pre-push review: SI clean, schema-legal, EDA truth table 3 passed; non-blocking follow-ups (CORS wildcard+credentials, micron string-replace debt, substring netlist asserts).
 - 3d: NewCellDialog creates real cells (project → anchor → instantiate, backend defaults); store gains live `cells`/`refreshCells`; errors surfaced verbatim; no physics duplicated in TS.
