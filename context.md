@@ -82,22 +82,28 @@ Operational code and agent configuration NEVER hardcode model generation names (
 
 ## 5. Current Project Status & File Inventory
 
-### Active Status: STAGES 0–6 + PHASE 0 + 7A + 7B COMMITTED & PUSHED (`origin/main`)
+### Active Status: STAGES 0–6 + PHASE 0 + 7A + 7B-1→7B-8 + R0-1→R0-3 COMMITTED (push due)
 > 6E sim-grounded Miller → 6F sizing (winner invalidated) → Phase 0 Steps 1–2
 > (PM unwrap fix ADR-027, re-baseline ADR-028, empirical winner trial 17:
 > gain 81.30dB / UGB 16.58MHz / PM 63.64°).
 > Step-2 re-close verdict CONFIRMED by human 2026-09-09 (accept Trial-17,
-> UGB shortfall recorded) — push gate lifted, all commits pushed.
+> UGB shortfall recorded) — push gate lifted, R0-1→R0-3 pushed to origin/main.
 > 7A lockdown (EngineV01 strangler facade ADR-030, Law-4 AST guard, schema v9
 > checkpoint_registry + design_state) → 7B HTTP service (pinned
 > fastapi/uvicorn/httpx2, threaded-server tests, thin-slice inverter wave
-> over HTTP ADR-032) → 7B-4 job observability routes for Run Center.
-> Gates: base 338+33, EDA 370 passed + 1 legit skip (tallies reconcile at 371). CI Actions status unobserved from
-> here (no gh/token) — verify green in the GitHub tab.
-> Next: R0 trust core (AnalogBench: R0-1 registry+B0 `ca588c7`, R0-2a B1
-> `1695af6`, R0-2b B2 `0e74696`, R0-3a B3 `28be619`, R0-3b B4 pending commit
-> with base 346+37 green and EDA bench-file proof still to run),
-> then R0-3c B5 diff-pair-with-active-load, then Lovable-shell wiring.
+> over HTTP ADR-032) → 7B-4 job observability → Path B adopted 2026-09-10
+> (ADR-033: close R0-3, wire the shell, B5–B7 stay deferred) → 7B-5 cells/
+> schematic + 7B-6 waveforms + 7B-7 mock-copilot + 7B-8 demo-testbench
+> routes (ADR-034 wire contract; 13 endpoints total).
+> Gates: base 359+39 green; EDA B4 `-k b4` 2 passed + 1 skip, demo file
+> 2 passed + 1 skip (live rail-to-rail inversion). CI Actions status unobserved
+> from here (no gh/token) — verify green in the GitHub tab.
+> Committed but UNPUSHED: `9118bfc` (7B-5), `f88a433` (7B-6), `c325030` (7B-7),
+> `f86e7fa` (7B-8) — push on human go.
+> Next: Step 3 shell binding (`store.tsx` runSimulation + SimulationExplorer
+> de-faking + WaveformAnalyzer live PlotPane; TS unverifiable here — no node
+> binary), then Step 4 `npm run dev` E2E. B5–B7 deferred; no node/tsc/vite
+> verification possible in this environment.
 
 ### Repository File Map
 ```text
@@ -108,7 +114,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── AGENTS.md               # Layer 1 Global Rules (The 4 laws, checkpoints, units, safety)
 ├── context.md              # [THIS FILE] System continuity handbook and state memory
 ├── To-Do.md                # Granular task tracker (updated before and after every step)
-├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-022)
+├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-034)
 ├── PREREQUISITES.md        # Complete Stage 0 prerequisite specifications & verification
 ├── Dockerfile              # Layered build: base verified / eda GREEN (ADR-015/017)
 ├── docker-compose.yml      # app (base) + app-eda (eda profile) services
@@ -133,17 +139,18 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── tests/test_schema.py (v9 checkpoint_registry + design_state)  # migrations incl v9
 ├── tests/test_optimize.py, test_optimize_demo.py  # Stage 4 tests (ledger, optimizer, demo)
 ├── tests/test_engine_v01.py + test_api_service.py + test_api_thin_slice.py + test_api_jobs.py  # 7A/7B engine, API, slice, jobs
+├── tests/test_api_schematic.py + test_api_waveforms.py + test_api_copilot.py + test_api_testbench.py  # 7B-5→7B-8 wire-contract routes
 ├── tests/test_design_state.py + test_architecture_boundary.py  # v9 tables, Law-4 AST guard
-├── tests/test_bench.py  # R0 AnalogBench registry + B0 (others deferred per-bench)
+├── tests/test_bench.py  # R0 AnalogBench registry + B0–B4 executable (B5–B7 deferred per ADR-033)
 ├── src/analog_ic_design/     # ENGINE_API_VERSION=0.1; interfaces/, engine/ (ABC + EngineV01), api/ (FastAPI service),
 │                             # units/ (quantity, display), store/ (schema v9),
 │                             # circuit/ (graph, canonical, compiler, validator, pdk_limits),
-│                             # sim/ (backend, ngspice, jobs, reproduce, waveform, testbench, inverter, cs_amp, diff_pair),
+│                             # sim/ (backend, ngspice, jobs, reproduce, waveform, testbench, inverter, mirror, diff_pair, cs_amp, cascode),
 │                             # metrics/ (contract matrix, gain, bandwidth, phase_margin, slew_rate, power, offset, settling_time, evaluator),
 │                             # optimize/ (optimizer interface, ledger, optuna TPE),
 │                             # robust/ (corners, MC sampler, statistical protocol),
 │                             # ai/ (taxonomy, provenance, provider, residency, explainer),
-│                             # bench/ (AnalogBench registry + runner; B0 executable, B1–B7 deferred),
+│                             # bench/ (AnalogBench registry + runner; B0–B4 executable, B5–B7 deferred per ADR-033),
 │                             # topology/ (templates, KB, retriever, proposals),
 ├── AGENT2.md             # v1.0-frozen implementation constitution + §19 UI adoption contract
 ├── mockups/              # static selection artifacts (NOT product code): midnight-lab HTML, lovable showcase HTML
@@ -154,7 +161,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── src/analog_ic_design/     # ENGINE_API_VERSION=0.1; interfaces/, engine/,
 │                             # units/ (quantity, display), store/ (schema v8),
 │                             # circuit/ (graph, canonical, compiler, validator, pdk_limits),
-│                             # sim/ (backend, ngspice, jobs, reproduce, waveform, testbench, inverter, cs_amp, diff_pair),
+│                             # sim/ (backend, ngspice, jobs, reproduce, waveform, testbench, inverter, mirror, diff_pair, cs_amp, cascode),
 │                             # metrics/ (contract matrix, gain, bandwidth, phase_margin, slew_rate, power, offset, settling_time, evaluator),
 │                             # optimize/ (optimizer interface, ledger, optuna TPE),
 │                             # robust/ (corners, MC sampler, statistical protocol),

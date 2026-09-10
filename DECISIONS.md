@@ -29,6 +29,8 @@
 - [ADR-021: Failing-Decks Execute Only in Workers (In-Process Error Paths Segfault)](#adr-021-failing-decks-execute-only-in-workers-in-process-error-paths-segfault)
 - [ADR-022: Stage 3 Measurement Conventions (Tian Loop, Declared Loads, Branch Sign)](#adr-022-stage-3-measurement-conventions-tian-loop-declared-loads-branch-sign)
 - [ADR-023: Stage 5 Grounded-AI Rules (Substring Citations, Session Opt-In, Zero-Dep Transport)](#adr-023-stage-5-grounded-ai-rules-substring-citations-session-opt-in-zero-dep-transport)
+- [ADR-033: Path B Product-First Vertical Slice (close R0-3, wire the shell, defer B5–B7)](#adr-033-path-b-product-first-vertical-slice-close-r0-3-wire-the-shell-defer-b5b7)
+- [ADR-034: UI Wire Contract — Dumb Frontend, Concrete-Only Engine Growth, Mock Copilot](#adr-034-ui-wire-contract--dumb-frontend-concrete-only-engine-growth-mock-copilot)
 
 ---
 
@@ -397,4 +399,26 @@
 - **Rationale**: Every integration risk (pins, threads, error mapping, live sims) is now retired behind green gates before any Lovable-shell wiring begins; the shell work becomes pure binding against a proven contract.
 - **Alternatives Considered**: stdlib-http server (rejected: React + Playwright need real HTTP; approval properly granted); TestClient/httpx (rejected live: deprecation-as-error); per-thread engine connections (rejected: RLock serialization is simpler and matches single-binding semantics).
 - **Consequences**: Next is workspace-by-workspace shell binding + Playwright with the first UI action. Push of everything since `9980521` still gated on the open Step-2 re-close verdict.
+
+---
+
+### ADR-033: Path B Product-First Vertical Slice (close R0-3, wire the shell, defer B5–B7)
+- **Date**: 2026-09-10
+- **Status**: Accepted (human-directed strategic plan; Step 1 executed same day)
+- **Context**: After the 7B-3 thin slice proved HTTP simulation, development branched into the 8-benchmark AnalogBench suite and stalled on bias-point yak-shaving (B1–B4 terminal scripts) while the adopted Lovable shell stayed 100% mock data (fake JS waveforms, setTimeout progress). No clickable product existed.
+- **Decision**: (1) Close R0-3 immediately: B4 EDA proof (`-k b4`, 2 passed + 1 legit skip) then push `28be619` + `a9f8e07`. (2) Halt benchmark expansion: B5–B7 stay deferred behind clean NotImplementedError owners; no Xyce/second-solver work before the UI lives. (3) Four wire-up steps: extend FastAPI for frontend needs → bind shell workspaces → E2E demo with real Sky130 waves in the browser.
+- **Rationale**: A living vertical slice (real sims, clickable UI) beats terminal pytest reports for momentum and commercial viability (zero-install web UX + physics copilot for open-node users); benches resume after the slice lands.
+- **Alternatives Considered**: Path A purist (finish B5/B6/B7 + Xyce first; rejected: another 4–7 days with nothing clickable, stagnation risk).
+- **Consequences**: R0-3 closed and pushed; backend grew 7B-5→7B-8 under ADR-034; Step 3 shell binding in progress.
+
+---
+
+### ADR-034: UI Wire Contract — Dumb Frontend, Concrete-Only Engine Growth, Mock Copilot
+- **Date**: 2026-09-10
+- **Status**: Accepted (7B-5 `9118bfc`, 7B-6 `f88a433`, 7B-7 `c325030`, 7B-8 `f86e7fa`; base 359+39)
+- **Context**: The shell needs cells, schematics, waveform vectors, explanations, and one-click sims, but Law 4 forbids `api/` importing anything engine-side except `engine/*`, and ADR-031 forbids physics/metric math in TypeScript.
+- **Decision**: (1) All five needs land as concrete-only `EngineV01` methods (ABC frozen, `ENGINE_API_VERSION` stays `0.1`): `list_cells`/`schematic`, `job_waveforms` (re-parse via Stage 2/3 extractors; AC phase served wrapped, unwrapping stays a metric concern), `explain_job` (MockProvider ONLY — hosted models refused until a human opt-in flow exists; AIAction id on the wire), `run_demo_testbench` (single `inverter_tran` deck assembled server-side). (2) SI floats on the wire; NULL-net terminals survive as empty-string nets; unknown names 422, unknown jobs 404, sim faults 500 with taxonomy verbatim. (3) Except-ordering law: `SimError` subclasses `ValueError`, so `except SimError` must precede `except ValueError` — caught live by the 7B-8 suite, now a review checklist item. (4) Frontend `PlotPane` stays pure display (x/y → SVG pixels); fabricated spec numbers (`gain 67.41 dB`, `scaled()` physics, fake MC yield) are deleted, not rewired — metric rows read NOT RUN until the R0 Testbench Manager lands `measure`.
+- **Rationale**: The 7B-4 precedent (concrete-only `list_jobs`/`job_result`) scales to every UI need without ABC churn; mock-copilot keeps residency law §9.4 satisfiable over HTTP today.
+- **Alternatives Considered**: Frontend-parsed raw SPICE vectors (rejected: EDA physics in React, violates ADR-031 + Law 4 intent); hosted-model copilot now (rejected: no opt-in flow over HTTP; secrets/residency unsatisfiable).
+- **Consequences**: 13 live endpoints; Step 3 binds `store.tsx`/`SimulationExplorer`/`WaveformAnalyzer` against them; TS changes unverifiable in this environment (no node binary) — flagged per-file until the Step 4 `npm run dev` proof.
 
