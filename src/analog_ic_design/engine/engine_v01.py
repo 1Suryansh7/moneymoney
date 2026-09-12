@@ -8,7 +8,8 @@ Surface note: the `DesignEngine` ABC freezes exactly 11 methods (pinned by
 `tests/test_engine_api.py`; ENGINE_API_VERSION stays "0.1"). The extra
 methods here (`connect`, `measure`, `run_erc`, `run_lvs`, `list_jobs`,
 `job_result`, `list_cells`, `schematic`, `job_waveforms`, `explain_job`,
-`run_demo_testbench`, `rename_cell`, `measure_with_unit`)
+`run_demo_testbench`, `rename_cell`, `measure_with_unit`, `submit_study`,
+`cancel_job`, `list_trials`)
 exist ONLY on this concrete class as additive extensions. Deferred methods
 raise `NotImplementedError` with a `[defer]` owner instead of faking
 behavior: `check_constraints`/`compare` need measurement orchestration,
@@ -21,6 +22,7 @@ every other metric_id fails closed until its testbench lands.
 from __future__ import annotations
 
 import json
+import multiprocessing as mp
 import threading
 from collections.abc import Mapping
 from pathlib import Path
@@ -36,9 +38,18 @@ from analog_ic_design.engine.design_engine import DesignEngine
 from analog_ic_design.metrics.bandwidth import extract_bandwidth
 from analog_ic_design.metrics.contract import METRIC_BY_ID
 from analog_ic_design.metrics.gain import extract_ac_gain, extract_dc_gain
+from analog_ic_design.optimize.scalarizer import TIMEOUT_PENALTY
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.jobs import JobRunner
 from analog_ic_design.sim.ngspice import RawSim, SimError, libngspice_available
+from analog_ic_design.sim.study import (
+    OBJECTIVES,
+    ORPHAN_AFTER_S,
+    SPEC_OBJECTIVE,
+    STUDY_KIND,
+    _study_worker,
+    load_spec_rules,
+)
 from analog_ic_design.sim.testbench import assemble_ac, assemble_dc_sweep, assemble_transient
 from analog_ic_design.sim.waveform import ACWaveform, parse_ac, parse_transient
 from analog_ic_design.store.schema import connect, migrate, new_id, utcnow_iso
@@ -95,11 +106,54 @@ class EngineV01(DesignEngine):
         self._lock = threading.RLock()
         self._conn = connect(self._db_path, check_same_thread=False)
         migrate(self._conn)
+        self._reconcile_orphaned_studies()
         self._lib_path = _DEFAULT_LIB
         self._runner: JobRunner | None = None
+        self._study_live: dict[str, mp.process.BaseProcess] = {}
+
+    def _reconcile_orphaned_studies(self) -> None:
+        """Fail jobs no live process can still own (boot after crash/restart).
+
+        Only optimize jobs silent longer than ORPHAN_AFTER_S: live studies
+        heartbeat every trial, so silence implies death. Timestamps compare
+        in Python — ledger ISO text and SQLite datetime() text do not share
+        a lexicographic order. Sim-job orphans are a known limitation
+        (status quo, not a regression).
+        """
+        from datetime import UTC, datetime, timedelta
+
+        cutoff = datetime.now(UTC) - timedelta(seconds=ORPHAN_AFTER_S)
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, updated_at FROM job WHERE kind = ?"
+                " AND status IN ('pending', 'running')",
+                (STUDY_KIND,),
+            ).fetchall()
+            orphans = []
+            for row in rows:
+                try:
+                    if datetime.fromisoformat(str(row[1])) < cutoff:
+                        orphans.append(str(row[0]))
+                except ValueError:
+                    orphans.append(str(row[0]))
+            for job_id in orphans:
+                self._conn.execute(
+                    "UPDATE job SET status = 'failed',"
+                    " error = 'Schema: engine restarted with study running,"
+                    " verdict unknown; resubmit', updated_at = ? WHERE id = ?",
+                    (utcnow_iso(), job_id),
+                )
+            self._conn.commit()
 
     def close(self) -> None:
         """Shut down workers and release the database connection."""
+        with self._lock:
+            live = list(self._study_live)
+        for job_id in live:
+            try:
+                self.cancel_job(job_id=job_id)
+            except KeyError:
+                continue
         with self._lock:
             if self._runner is not None:
                 self._runner.shutdown()
@@ -473,6 +527,188 @@ class EngineV01(DesignEngine):
             "cell_id": cell_id,
             "reproducibility_id": reproducibility_id,
         }
+
+    def cancel_job(self, *, job_id: str) -> dict[str, str]:
+        """Terminate a live study or sim worker; settled jobs keep status.
+
+        Study processes die by terminate/kill (their daemon sim workers
+        die with them — no orphans by construction). Sim jobs cancel
+        through this binding's runner when it owns them; other bindings'
+        live sims are returned as-is (best-effort, documented). Unknown
+        ids fail closed (KeyError).
+        """
+        with self._lock:
+            proc = self._study_live.get(job_id)
+            if proc is not None:
+                if proc.is_alive():
+                    proc.terminate()
+                    proc.join(10)
+                    if proc.is_alive():
+                        proc.kill()
+                        proc.join(10)
+                    self._conn.execute(
+                        "UPDATE job SET status = 'cancelled', updated_at = ?"
+                        " WHERE id = ?",
+                        (utcnow_iso(), job_id),
+                    )
+                    self._conn.commit()
+                del self._study_live[job_id]
+                row = self._conn.execute(
+                    "SELECT status FROM job WHERE id = ?", (job_id,)
+                ).fetchone()
+                if row is None:
+                    raise KeyError(f"unknown job {job_id!r}")
+                return {"job_id": job_id, "status": str(row[0])}
+        if self._runner is not None:
+            return {"job_id": job_id, "status": self._runner.cancel(job_id)}
+        row = self.job_result(job_id=job_id)
+        return {"job_id": job_id, "status": str(row["status"])}
+
+    def submit_study(
+        self,
+        *,
+        template_id: str,
+        spec_id: str,
+        space: Mapping[str, list[float]],
+        seed: int,
+        max_trials: int = 15,
+        trial_timeout_s: float = 300.0,
+        study_timeout_s: float | None = None,
+        objective: str = SPEC_OBJECTIVE,
+    ) -> dict[str, str]:
+        """Validate a study fail-fast, enqueue it, return handles in ms.
+
+        Never waits, simulates, or touches Optuna: the supervisor process
+        does that. Rejections (ValueError): unknown template/spec,
+        spec without rules, rules on unmeasured metrics, single-metric
+        specs (degenerate objectives), non-positive space bounds,
+        max_trials outside 1..30, non-positive timeouts/seed, bad
+        objective.         PDK-minima enforcement stays per-trial (validator
+        fails out-of-limit suggestions closed, visible in telemetry).
+        """
+        template = get_template(template_id)
+        template.validate_parameters({})
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            raise ValueError(f"Schema: study seed must be an int, got {seed!r}")
+        bounds: dict[str, list[float]] = {}
+        defaults = template.validate_parameters({})
+        for name, edges in space.items():
+            if name not in defaults:
+                raise ValueError(
+                    f"Schema: unknown parameter {name!r} for template {template_id!r}"
+                )
+            if len(edges) != 2:
+                raise ValueError(
+                    f"Schema: space bound {name!r} needs [low, high], got {edges!r}"
+                )
+            low, high = float(edges[0]), float(edges[1])
+            if not (low > 0.0 and high > low):
+                raise ValueError(
+                    f"Schema: space bound {name!r} must satisfy 0 < low < high"
+                )
+            bounds[name] = [low, high]
+        if not bounds:
+            raise ValueError("Schema: study space defines no parameters")
+        if not isinstance(max_trials, int) or isinstance(max_trials, bool):
+            raise ValueError(f"Schema: max_trials must be an int, got {max_trials!r}")
+        if not 1 <= max_trials <= 30:
+            raise ValueError(
+                f"Schema: max_trials {max_trials!r} outside browser ceiling 1..30"
+            )
+        if not trial_timeout_s > 0.0:
+            raise ValueError("Schema: trial_timeout_s must be positive")
+        if study_timeout_s is None:
+            study_timeout_s = float(max_trials) * float(trial_timeout_s)
+        if not study_timeout_s > 0.0:
+            raise ValueError("Schema: study_timeout_s must be positive")
+        if objective not in OBJECTIVES:
+            raise ValueError(
+                f"Schema: unknown objective {objective!r} (want one of {OBJECTIVES})"
+            )
+        with self._lock:
+            spec = self._conn.execute(
+                "SELECT id FROM specification WHERE id = ?", (spec_id,)
+            ).fetchone()
+            if spec is None:
+                raise ValueError(f"Schema: unknown spec_id {spec_id!r}")
+            rules = load_spec_rules(self._conn, spec_id)
+            if not rules:
+                raise ValueError(f"Schema: spec {spec_id!r} defines no rules")
+            measured = {"dc_gain", "ac_gain", "bandwidth"}
+            have = {metric for metric, _, _ in rules}
+            if not have <= measured:
+                raise ValueError(
+                    f"Schema: spec {spec_id!r} rules reference unmeasured metrics"
+                    f" {sorted(have - measured)}"
+                )
+            if len(have) < 2:
+                raise ValueError(
+                    f"Schema: single-metric studies rejected (degenerate objectives);"
+                    f" spec {spec_id!r} covers only {sorted(have)}"
+                )
+            study_id = new_id()
+            job_id = new_id()
+            payload = json.dumps({
+                "study_id": study_id, "template_id": template_id,
+                "spec_id": spec_id, "space": bounds, "seed": seed,
+                "max_trials": max_trials, "trial_timeout_s": trial_timeout_s,
+                "study_timeout_s": study_timeout_s, "objective": objective,
+            }, sort_keys=True)
+            self._conn.execute(
+                "INSERT INTO job (id, kind, status, payload, result, error,"
+                " created_at, updated_at) VALUES (?, ?, 'pending', ?, NULL, NULL, ?, ?)",
+                (job_id, STUDY_KIND, payload, utcnow_iso(), utcnow_iso()),
+            )
+            self._conn.commit()
+            ctx = mp.get_context("spawn")
+            proc = ctx.Process(
+                target=_study_worker,
+                args=(self._db_path, job_id, study_id, template_id, spec_id,
+                      bounds, seed, max_trials, float(trial_timeout_s),
+                      float(study_timeout_s), objective),
+                daemon=False,
+            )
+            proc.start()
+            self._study_live[job_id] = proc
+        return {"job_id": job_id, "study_id": study_id}
+
+    def list_trials(self, *, study_id: str) -> list[dict[str, object]]:
+        """Trial telemetry for one study with recomputed scores (no stored column)."""
+        from analog_ic_design.optimize.ledger import list_experiments
+        from analog_ic_design.optimize.scalarizer import score_trial
+
+        with self._lock:
+            found = None
+            for row in self._conn.execute(
+                "SELECT id, payload FROM job WHERE kind = ?", (STUDY_KIND,)
+            ).fetchall():
+                try:
+                    payload = json.loads(str(row[1]))
+                except ValueError:
+                    continue
+                if payload.get("study_id") == study_id:
+                    found = payload
+                    break
+            if found is None:
+                raise KeyError(f"unknown study {study_id!r}")
+            rules = load_spec_rules(self._conn, str(found["spec_id"]))
+            trials = list_experiments(self._conn, study_id)
+        out = []
+        for trial in trials:
+            try:
+                score = score_trial(trial.metrics, rules)
+            except ValueError:
+                score = TIMEOUT_PENALTY
+            out.append({
+                "trial": trial.trial,
+                "status": trial.status,
+                "parameters": trial.parameters,
+                "metrics": trial.metrics,
+                "verdict": trial.verdict,
+                "score": score,
+                "reproducibility_id": trial.reproducibility_id,
+            })
+        return out
 
     def check_constraints(self, *, cell_id: str) -> tuple[bool, tuple[str, ...]]:
         """[defer R0] Needs measurement orchestration (Testbench Manager)."""

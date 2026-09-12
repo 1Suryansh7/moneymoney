@@ -211,6 +211,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 ## 2026-09-10 — Quick-wins debt batch (base + EDA + tsc + build green)
 - CORS loopback-only; Misc signoff/metrics fiction → run-state truth; gates deck via assemble_transient (additive extra_lines; remapped samples EDA-proven). Base 371+42; EDA 8 passed.
 
+## 2026-09-12 — R0-5 Commit 1 study supervisor (base + EDA green)
+- Scalarizer + supervisor proc (mock/slow/spec, timeout wrapper, heartbeats) + submit/cancel/trials + 3 routes + reconciliation. RFC amended to as-built. Base 386+47; live 3-trial CS study green in 4.3 min.
+
 ## 2026-09-12 — RFC-001 approved + ADR-035 (docs commit)
 - Spec updated with 4 binding verdicts (§7 scalarizer, §10 resolved); no code per orders. Commit 1 (§9.1) next.
 

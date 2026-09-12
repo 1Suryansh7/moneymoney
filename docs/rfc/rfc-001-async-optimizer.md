@@ -138,11 +138,14 @@ rollback-journal mode with the driver-default 5 s busy wait:
 
 ### 3.6 Boot reconciliation (orphans)
 
-In-memory `{job_id: Popen}` maps die with the server. On engine
-startup, any `job` row in `running` with no live process is marked
-`failed` with `Schema: server restarted mid-study, verdict unknown` —
-never silently resumed, never left `running` forever. Same rule
-applies to sim jobs today (gap noted, fixed once here for both).
+In-memory `{job_id: Popen}` maps die with the server. The worker
+heartbeats its job row every trial; on engine boot, optimize jobs
+silent longer than 30 minutes are marked `failed` with `Schema:
+engine restarted with study running, verdict unknown; resubmit` —
+never silently resumed, never left `running` forever. (Timestamps
+compare in Python: ledger ISO text and SQLite `datetime()` text
+share no lexicographic order — found during build, not review.)
+Sim-job orphans stay a known limitation.
 
 ## 4. Trial telemetry
 
@@ -155,14 +158,18 @@ via the existing `record_experiment` (no schema change):
   single-metric studies are rejected at submit: `ValueError`, degenerate
   objectives are a design error, not a user freedom)
 - `verdict` (best-so-far marker or failure taxonomy class)
-- `reproducibility_id`, `seed`, `job_id` (the trial's sim job linkage)
+- `reproducibility_id`: empty in Commit 1 — trial linkage to individual
+  sim jobs is deferred; seed + params + metrics replay any trial
+  exactly (R0-5b design task, not an oversight to work around)
+- `seed`, `job_id`: null in Commit 1 (same linkage note as above)
 
 Failed trials are data and persist as `failed` — the convergence curve
 draws them as gaps, never interpolates across them.
 
 `GET /studies/{study_id}/trials` returns these rows oldest-first with
-a `best_so_far` rollup the frontend draws without computing (the rollup
-is assembly, not physics: max over returned objective column).
+a recomputed `score` per trial (scalarizer re-run server-side: no
+stored column, no drift). The frontend takes max over scores for the
+best banner — display assembly, not physics.
 
 ## 5. Cancellation & timeout (three distinct mechanisms)
 
@@ -202,7 +209,9 @@ rejects:
 
 - rules on unmeasured metric_ids (`ValueError`: no testbench),
 - single-metric studies (degenerate-objective guard above),
-- spaces wider than PDK limits (`pdk_limits` is the ceiling).
+- non-positive or empty space bounds (`ValueError`; PDK-minima
+  enforcement stays per-trial — the validator fails out-of-limit
+  suggestions closed with taxonomy verdicts visible in telemetry).
 
 Per-trial score is a scalarizer over measured metrics (binding
 verdict 4 — booleans never reach the optimizer):
@@ -236,7 +245,7 @@ failure is a submit-time error, not a runtime surprise.
    `POST /optimize`, `GET /studies/{id}/trials`,
    `POST /jobs/{id}/cancel` + pytest (mock-objective EDA-free path
    first, live 3-trial CS study on EDA).
-2. Boot reconciliation for running jobs (both kinds).
+2. Boot reconciliation for orphaned optimize jobs (sim orphans: known limitation).
 3. Frontend slice: store + explorer trial table + convergence plot +
    Stop wiring + Playwright (short study, cancel mid-run asserted).
 4. Docs sync (ADR-035) + push.

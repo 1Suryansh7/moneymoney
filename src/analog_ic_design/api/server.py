@@ -237,6 +237,45 @@ class MeasureOut(BaseModel):
     unit: str
 
 
+class OptimizeIn(BaseModel):
+    """Study request: template, spec, space, budgets (returns in ms)."""
+
+    template_id: str
+    spec_id: str
+    space: dict[str, list[float]]
+    seed: int
+    max_trials: int = 15
+    trial_timeout_s: float = 300.0
+    study_timeout_s: float | None = None
+    objective: str = "spec"
+
+
+class OptimizeOut(BaseModel):
+    """Study handles: ledger job plus study identity."""
+
+    job_id: str
+    study_id: str
+
+
+class TrialOut(BaseModel):
+    """One trial's telemetry with recomputed score."""
+
+    trial: int
+    status: str
+    parameters: dict[str, float]
+    metrics: dict[str, float]
+    verdict: str
+    score: float
+    reproducibility_id: str
+
+
+class CancelOut(BaseModel):
+    """Cancel verdict: terminal status stands, whatever it is."""
+
+    job_id: str
+    status: str
+
+
 def _engine(request: Request) -> EngineV01:
     engine = request.app.state.engine
     assert isinstance(engine, EngineV01)
@@ -382,6 +421,36 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/optimize", response_model=OptimizeOut, status_code=202)
+    def submit_study(body: OptimizeIn, request: Request) -> dict[str, str]:
+        try:
+            return _engine(request).submit_study(
+                template_id=body.template_id,
+                spec_id=body.spec_id,
+                space=body.space,
+                seed=body.seed,
+                max_trials=body.max_trials,
+                trial_timeout_s=body.trial_timeout_s,
+                study_timeout_s=body.study_timeout_s,
+                objective=body.objective,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/studies/{study_id}/trials", response_model=list[TrialOut])
+    def list_trials(study_id: str, request: Request) -> list[dict[str, object]]:
+        try:
+            return _engine(request).list_trials(study_id=study_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/jobs/{job_id}/cancel", response_model=CancelOut)
+    def cancel_job(job_id: str, request: Request) -> dict[str, str]:
+        try:
+            return _engine(request).cancel_job(job_id=job_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.get("/cells", response_model=list[CellSummary])
     def list_cells(request: Request) -> list[dict[str, str]]:
