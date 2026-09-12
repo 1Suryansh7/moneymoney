@@ -505,8 +505,14 @@ class EngineV01(DesignEngine):
         sweep_net: str = "in",
         ac_in: str = "in",
         ac_out: str = "out",
+        ac_extra_lines: list[str] | None = None,
     ) -> tuple[float, float, float, ACWaveform, str, str]:
-        """DC sweep trip discovery plus AC at trip; returns gains, trip, wave, jobs."""
+        """DC sweep trip discovery plus AC at trip; returns gains, trip, wave, jobs.
+
+        The DC deck stays exactly the proven bias recipe; the AC deck
+        takes its own extras so a declared load capacitance can attach
+        for bandwidth without perturbing the operating point.
+        """
         libs = [(_SKY130_LIB, "tt")]
         self.simulate(
             netlist=assemble_dc_sweep(
@@ -532,7 +538,8 @@ class EngineV01(DesignEngine):
         self.simulate(
             netlist=assemble_ac(
                 fragment, in_net=ac_in, v_bias=trip,
-                extra_lines=extra_lines, libs=libs,
+                extra_lines=ac_extra_lines if ac_extra_lines is not None else extra_lines,
+                libs=libs,
             ),
             seed=_MEASURE_SEED,
         )
@@ -563,9 +570,9 @@ class EngineV01(DesignEngine):
         Anything else fails closed. Gain needs DC/AC agreement within 10%
         (single-analysis gain lies, observed live in R0-3b); both gain rows
         persist. Bandwidth reads the same in-memory AC sweep — zero extra
-        sims — and fails closed per contract when the stimulus holds no
-        unity crossing (measured live: unloaded inverter 6.5, CS 2.5 V/V
-        at 10 GHz).
+        sims — with the Stage 3 declared 1 pF load attached, and fails
+        closed per contract when even the loaded stimulus holds no unity
+        crossing.
         """
         if metric_id not in ("dc_gain", "ac_gain", "bandwidth"):
             raise ValueError(
@@ -591,11 +598,15 @@ class EngineV01(DesignEngine):
             }
         # Shape dispatch: each branch binds deck bias knowledge earned with
         # its own EDA proof. split_limit names a second output that must
-        # stay attenuated (differential-split trust anchor).
+        # stay attenuated (differential-split trust anchor). AC extras carry
+        # the declared 1 pF load (Stage 3 precedent) for bandwidth; the DC
+        # deck stays exactly the proven bias recipe.
         split_limit: tuple[str, float] | None
+        load = ["Cload out 0 1p"]
         if syms == ["nfet_01v8", "pfet_01v8"] and nets == {"in", "out", "vbias", "vdd", "vss"}:
             extra, v_start, v_stop = ["Vbias vbias 0 DC 0.9"], 0.4, 1.2
             sweep_net, ac_in, ac_out, split_limit = "in", "in", "out", None
+            ac_extra = ["Vbias vbias 0 DC 0.9"] + load
         elif (
             syms == ["nfet_01v8", "pfet_01v8"]
             and "in" in nets
@@ -604,6 +615,7 @@ class EngineV01(DesignEngine):
         ):
             extra, v_start, v_stop = [], 0.0, 1.8
             sweep_net, ac_in, ac_out, split_limit = "in", "in", "out", None
+            ac_extra = load
         elif (
             syms == ["nfet_01v8"] * 3 + ["pfet_01v8"] * 2
             and nets == {"inp", "inn", "outp", "outn", "tail", "vbias", "vdd", "vss"}
@@ -612,6 +624,7 @@ class EngineV01(DesignEngine):
             v_start, v_stop = 0.7, 1.1
             sweep_net, ac_in, ac_out = "inp", "inp", "outn"
             split_limit = ("outp", 2.0)
+            ac_extra = extra
         else:
             raise ValueError(
                 f"Schema: no testbench registered for cell {cell_id!r}"
@@ -626,6 +639,7 @@ class EngineV01(DesignEngine):
         dc_gain, ac_gain, _trip, ac_wave, dc_job, ac_job = self._transfer_gain(
             fragment, cell_id, extra_lines=extra, v_start=v_start,
             v_stop=v_stop, sweep_net=sweep_net, ac_in=ac_in, ac_out=ac_out,
+            ac_extra_lines=ac_extra,
         )
         if split_limit is not None:
             try:

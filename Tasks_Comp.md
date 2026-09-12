@@ -211,6 +211,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 ## 2026-09-10 — Quick-wins debt batch (base + EDA + tsc + build green)
 - CORS loopback-only; Misc signoff/metrics fiction → run-state truth; gates deck via assemble_transient (additive extra_lines; remapped samples EDA-proven). Base 371+42; EDA 8 passed.
 
+## 2026-09-12 — R0-4e declared-load bandwidth (base + EDA + e2e green)
+- 1 pF on AC decks (Stage 3 precedent, DC untouched); MEASURED INV 56.9 / CS 20.709046 MHz; UGBW row live; e2e result-cell assertion fixed. Base 372+46; EDA 7+2; Playwright 4/4.
+
 ## 2026-09-10 — R0-4d-2 diff-pair testbench (base + EDA green)
 - Third fingerprint with R0-2b bias recipe; DC/AC cross-check + split anchor; rows persist. Probe DC 8.31 pre-commit. Base 372+46; EDA 7+2. Trinity complete (survived a host crash mid-proof; resumed clean).
 

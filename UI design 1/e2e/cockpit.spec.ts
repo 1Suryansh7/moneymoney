@@ -38,6 +38,15 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     await expect(gainRow).toContainText("MEASURED", { timeout: 5000 });
     console.log("Measured gain row:", await gainRow.innerText());
 
+    // 4c. Bandwidth row shows loaded UGBW in the result cell (R0-4e
+    // declared 1 pF). NOTE: match the result cell (nth 2), not the row:
+    // the static spec column always contains "MHz".
+    const bwResult = page.locator("tr:has(td:text-is('UGBW')) td").nth(2);
+    await expect(bwResult).toContainText("MHz", { timeout: 300000 });
+    const bwRow = page.locator("tr:has(td:text-is('UGBW'))");
+    await expect(bwRow).toContainText("MEASURED", { timeout: 300000 });
+    console.log("Measured bandwidth row:", await bwRow.innerText());
+
     // 5. Navigate to Waveform Analyzer
     const waveTab = page.getByRole("tab", { name: "Waveform Analyzer" });
     await expect(waveTab).toBeVisible({ timeout: 10000 });

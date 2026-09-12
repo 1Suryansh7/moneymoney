@@ -119,15 +119,21 @@ def test_live_inverter_gain_agrees_and_persists(tmp_path: Path) -> None:
 
 
 @NEEDS_LIB
-def test_live_inverter_bandwidth_refuses_per_contract(tmp_path: Path) -> None:
-    """The unloaded inverter still has 6.5 V/V at 10 GHz (measured live),
-    so the contract 1 Hz-10 GHz stimulus contains no unity crossing and
-    bandwidth fails closed. The first live number needs the cs_amp
-    testbench (the contract golden fixture) in R0-4d."""
+def test_live_inverter_bandwidth_loaded(tmp_path: Path) -> None:
+    """Under the declared 1 pF load the inverter rolls off in-range:
+    MEASURED 56.9 MHz pre-commit (unloaded it honestly refuses at 6.5)."""
     eng, cell = _engine_with_inverter(tmp_path)
     try:
-        with pytest.raises(SimError, match="never crosses unity"):
-            eng.measure(cell_id=cell, metric_id="bandwidth")
+        ugbw = eng.measure(cell_id=cell, metric_id="bandwidth")
+        assert 1.0e7 < ugbw < 1.0e9
+        conn = sqlite3.connect(str(tmp_path / "measure.sqlite"))
+        try:
+            rows = conn.execute(
+                "SELECT metric_id, units FROM measurement WHERE metric_id='bandwidth'"
+            ).fetchall()
+        finally:
+            conn.close()
+        assert rows and all(r[1] == "Hz" for r in rows)
     finally:
         eng.close()
 
@@ -157,14 +163,13 @@ def test_live_cs_gain_agrees_and_persists(tmp_path: Path) -> None:
 
 
 @NEEDS_LIB
-def test_live_cs_bandwidth_refuses_per_contract(tmp_path: Path) -> None:
-    """Unloaded CS still shows 2.45 V/V at 10 GHz (measured live), so
-    bandwidth fails closed here too; a declared-load testbench earns
-    the first live number in a later slice."""
+def test_live_cs_bandwidth_loaded(tmp_path: Path) -> None:
+    """CS under 1 pF must reproduce the Stage 3 observation (2.07e7 Hz)
+    through the engine path; the Stage 3 window (1e6-1e9) applies."""
     eng, cell = _engine_with_cs(tmp_path)
     try:
-        with pytest.raises(SimError, match="never crosses unity"):
-            eng.measure(cell_id=cell, metric_id="bandwidth")
+        ugbw = eng.measure(cell_id=cell, metric_id="bandwidth")
+        assert 1.0e6 < ugbw < 1.0e9
     finally:
         eng.close()
 
