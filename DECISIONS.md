@@ -31,6 +31,7 @@
 - [ADR-023: Stage 5 Grounded-AI Rules (Substring Citations, Session Opt-In, Zero-Dep Transport)](#adr-023-stage-5-grounded-ai-rules-substring-citations-session-opt-in-zero-dep-transport)
 - [ADR-033: Path B Product-First Vertical Slice (close R0-3, wire the shell, defer B5–B7)](#adr-033-path-b-product-first-vertical-slice-close-r0-3-wire-the-shell-defer-b5b7)
 - [ADR-034: UI Wire Contract — Dumb Frontend, Concrete-Only Engine Growth, Mock Copilot](#adr-034-ui-wire-contract--dumb-frontend-concrete-only-engine-growth-mock-copilot)
+- [ADR-035: Async Optimizer Execution (RFC-001, Study Jobs + Mandatory Scalarizer)](#adr-035-async-optimizer-execution-rfc-001-study-jobs--mandatory-scalarizer)
 
 ---
 
@@ -421,4 +422,15 @@
 - **Rationale**: The 7B-4 precedent (concrete-only `list_jobs`/`job_result`) scales to every UI need without ABC churn; mock-copilot keeps residency law §9.4 satisfiable over HTTP today.
 - **Alternatives Considered**: Frontend-parsed raw SPICE vectors (rejected: EDA physics in React, violates ADR-031 + Law 4 intent); hosted-model copilot now (rejected: no opt-in flow over HTTP; secrets/residency unsatisfiable).
 - **Consequences**: 13 live endpoints; Step 3 binds `store.tsx`/`SimulationExplorer`/`WaveformAnalyzer` against them; TS changes unverifiable in this environment (no node binary) — flagged per-file until the Step 4 `npm run dev` proof.
+
+---
+
+### ADR-035: Async Optimizer Execution (RFC-001, Study Jobs + Mandatory Scalarizer)
+- **Date**: 2026-09-12
+- **Status**: Accepted with 4 binding verdicts (trial timeout 300 s; max trials default 15 / ceiling 30; cancel kills sims AND studies; continuous scalarizer mandatory — booleans never reach TPE)
+- **Context**: A 15–30 trial Optuna study runs 10–60 minutes; `simulate()` blocks its caller, so inline execution wedges FastAPI workers and orphans ngspice processes. Single-metric gain objectives admit degenerate circuits, so bandwidth must constrain every study.
+- **Decision**: (1) Spawned study-supervisor process driving ask → instantiate → measure → tell → `record_experiment` per trial; no threads (libngspice), no broker (second truth source). (2) Zero schema migration: free-text `job.kind` + existing `cancelled` status + `experiment` table suffice (verified, not assumed). (3) Keep rollback-journal with short transactions + 30 s bounded contention retry; WAL only on measured pain; boot reconciliation marks orphaned `running` rows failed. (4) Per-trial score is the §7 scalarizer (`-1000*(1+Σviolations)` outside feasibility, positive gain×bandwidth FOM inside); single-metric studies rejected at submit. (5) `POST /optimize` returns in ms; `GET /studies/{id}/trials` streams telemetry; generic `POST /jobs/{id}/cancel` kills both sims and studies.
+- **Rationale**: Generalizes the proven `_simulate_worker` + ledger pattern instead of inventing machinery; the scalarizer gives TPE its gradient (19 dB outscores 2 dB); the UI stays a ledger renderer per ADR-031.
+- **Alternatives Considered**: In-process/threaded study loop (rejected: libngspice non-reentrancy, wedged workers); Redis/Celery broker (rejected: unapproved dependency, second truth source); raw pass/fail objective (rejected: TPE collapses to blind search); WAL now (rejected: no contention incident yet).
+- **Consequences**: Build order §9 (worker + routes + tests → reconciliation → frontend → docs); full spec in `docs/rfc/rfc-001-async-optimizer.md`.
 
