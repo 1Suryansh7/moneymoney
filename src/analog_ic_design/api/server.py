@@ -269,6 +269,20 @@ class TrialOut(BaseModel):
     reproducibility_id: str
 
 
+class SpecCreateIn(BaseModel):
+    """Specification authoring request (study targets)."""
+
+    cell_id: str
+    name: str
+    rules: list[dict[str, Any]]
+
+
+class SpecOut(BaseModel):
+    """Created specification handle."""
+
+    spec_id: str
+
+
 class CancelOut(BaseModel):
     """Cancel verdict: terminal status stands, whatever it is."""
 
@@ -451,6 +465,15 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
             return _engine(request).cancel_job(job_id=job_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/specs", response_model=SpecOut)
+    def create_spec(body: SpecCreateIn, request: Request) -> dict[str, str]:
+        try:
+            return _engine(request).create_spec(
+                cell_id=body.cell_id, name=body.name, rules=body.rules
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/cells", response_model=list[CellSummary])
     def list_cells(request: Request) -> list[dict[str, str]]:

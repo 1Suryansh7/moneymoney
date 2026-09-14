@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ANALYSES, CORNERS, DESIGN_VARIABLES } from "../data";
 import { useStore } from "../store";
+import { PlotPane, type Plot } from "./WaveformAnalyzer";
 import { Field, IconBtn, SectionTitle, StatusCell, StatusDot, td, th } from "../ui";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -35,6 +36,41 @@ function fmtSi(v: number, unit: string): string {
     return `${v.toFixed(0)} Hz`;
   }
   return `${v.toFixed(3)} ${unit}`;
+}
+
+function StudyConvergence() {
+  const s = useStore();
+  const pts: { x: number; y: number }[] = [];
+  let best = -Infinity;
+  for (const t of s.trials) {
+    if (t.score > best) best = t.score;
+    pts.push({ x: t.trial, y: best });
+  }
+  if (pts.length === 0) return null;
+  const ys = pts.map((p) => p.y);
+  const lo = Math.min(...ys);
+  const hi = Math.max(...ys);
+  const pad = hi === lo ? Math.abs(hi) * 0.1 + 1e-12 : (hi - lo) * 0.1;
+  const bestTrial = s.trials.reduce((b, t) => (t.score > b.score ? t : b), s.trials[0]);
+  const plot: Plot = {
+    title: `Convergence (best score) — ${s.studyId ? s.studyId.slice(0, 8) : "—"}…`,
+    unit: "score",
+    logX: false,
+    xMin: 0,
+    xMax: Math.max(...pts.map((p) => p.x), 1),
+    yMin: lo - pad,
+    yMax: hi + pad,
+    series: [{ name: "best", color: "#4b93ff", pts }],
+  };
+  return (
+    <div>
+      <div className="num px-2 py-1 text-[11px]">
+        Best: trial {bestTrial.trial} · Wₙ {(bestTrial.parameters.w_n * 1e6).toFixed(2)} µm · Wₚ{" "}
+        {(bestTrial.parameters.w_p * 1e6).toFixed(2)} µm · score {bestTrial.score.toExponential(2)}
+      </div>
+      <PlotPane plot={plot} cursorX={0} onCursor={() => undefined} />
+    </div>
+  );
 }
 
 export function SimulationExplorer({ dense = false }: { dense?: boolean }) {
@@ -347,6 +383,77 @@ export function SimulationExplorer({ dense = false }: { dense?: boolean }) {
                 <span className="num text-[10px] text-subtle">re-run applies · live metrics pending</span>
               </div>
             </div>
+          )}
+
+          <SectionTitle>Optimization Study</SectionTitle>
+          <div className="num px-2 pb-1 text-[10px] text-subtle">
+            Demo study: common-source, gain≥5 + UGBW≥1MHz, 3 trials, seed 7. Requires a completed
+            simulation run first.
+          </div>
+          <div className="flex gap-1 px-2 pb-2">
+            <button
+              onClick={s.startStudy}
+              disabled={s.studyPhase === "OPTIMIZING"}
+              className="h-[22px] rounded-[3px] bg-success/15 px-3 text-[11px] text-success hover:bg-success/25 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {s.studyPhase === "OPTIMIZING" ? "Optimizing…" : "Optimize"}
+            </button>
+            <button
+              onClick={s.stopStudy}
+              disabled={s.studyPhase !== "OPTIMIZING"}
+              className="h-[22px] rounded-[3px] border border-border px-3 text-[11px] text-muted-foreground hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Stop Study
+            </button>
+            <span className="num ml-auto self-center text-[11px] text-subtle">
+              {s.studyPhase === "OPTIMIZING"
+                ? `running · ${s.trials.length} trials`
+                : s.studyId
+                  ? `done · ${s.trials.length} trials`
+                  : "idle"}
+            </span>
+          </div>
+          {s.trials.length > 0 && (
+            <>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    {["Trial", "Status", "Wn µm", "Wp µm", "Gain", "UGBW MHz", "Score", "Verdict"].map(
+                      (h) => (
+                        <th key={h} className={th}>
+                          {h}
+                        </th>
+                      ),
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {s.trials.map((t) => (
+                    <tr key={t.trial} className="hover:bg-raised/60">
+                      <td className={cn(td, "num")}>{t.trial}</td>
+                      <td className={cn(td, "num text-subtle")}>{t.status}</td>
+                      <td className={cn(td, "num text-right")}>
+                        {t.parameters.w_n !== undefined ? (t.parameters.w_n * 1e6).toFixed(2) : "—"}
+                      </td>
+                      <td className={cn(td, "num text-right")}>
+                        {t.parameters.w_p !== undefined ? (t.parameters.w_p * 1e6).toFixed(2) : "—"}
+                      </td>
+                      <td className={cn(td, "num text-right")}>
+                        {typeof t.metrics.dc_gain === "number" ? t.metrics.dc_gain.toFixed(2) : "—"}
+                      </td>
+                      <td className={cn(td, "num text-right")}>
+                        {typeof t.metrics.bandwidth === "number"
+                          ? (t.metrics.bandwidth / 1e6).toFixed(2)
+                          : "—"}
+                      </td>
+                      <td className={cn(td, "num text-right")}>{t.score.toExponential(2)}</td>
+                      <td className={cn(td, "num text-subtle")}>{t.verdict.slice(0, 40)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <StudyConvergence />
+            </>
           )}
         </div>
       </div>

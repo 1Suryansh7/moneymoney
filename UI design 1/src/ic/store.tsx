@@ -11,8 +11,10 @@ import {
 import { LAYERS, OUTPUTS, DRC_VIOLATIONS, type Status } from "./data";
 import {
   ApiError,
+  cancelJob,
   createCell,
   createProject,
+  createSpec,
   getJob,
   getSchematic,
   getWaveforms,
@@ -20,13 +22,16 @@ import {
   instantiate,
   listCells,
   listJobs,
+  listTrials,
   measure,
   renameCell,
   runDemo,
+  startStudy as requestStudy,
   type CellSummary,
   type JobDetail,
   type JobSummary,
   type Schematic,
+  type Trial,
   type Waveforms,
 } from "./api";
 
@@ -148,6 +153,10 @@ function useStoreValue() {
   const [measuredBandwidth, setMeasuredBandwidth] = useState<{ value: number; unit: string } | null>(
     null,
   );
+  const [studyJobId, setStudyJobId] = useState<string | null>(null);
+  const [studyId, setStudyId] = useState<string | null>(null);
+  const [trials, setTrials] = useState<Trial[]>([]);
+  const [studyPhase, setStudyPhase] = useState<"IDLE" | "OPTIMIZING" | "DONE">("IDLE");
   const [backendUp, setBackendUp] = useState<boolean | null>(null);
   const [simPhase, setSimPhase] = useState<SimPhase>("READY");
   const [simProgress, setSimProgress] = useState(0);
@@ -176,6 +185,7 @@ function useStoreValue() {
   const [zoom, setZoom] = useState(1);
   const timers = useRef<number[]>([]);
   const runToken = useRef(0);
+  const studyToken = useRef(0);
 
   const log = useCallback((text: string, kind?: ConsoleLine["kind"]) => {
     setConsole((c) => [...c, { t: now(), text, kind }].slice(-400));
@@ -411,7 +421,127 @@ function useStoreValue() {
     setSimPhase("READY");
     setSimProgress(0);
     log("Run cancelled by user", "warn");
-  }, [log]);
+    if (lastJobId) {
+      const jid = lastJobId;
+      void (async () => {
+        try {
+          const res = await cancelJob(jid);
+          log(`Backend job ${jid.slice(0, 8)}… ${res.status}`);
+        } catch (err) {
+          log(
+            `Backend cancel failed: ${err instanceof Error ? err.message : String(err)}`,
+            "warn",
+          );
+        }
+      })();
+    }
+  }, [log, lastJobId]);
+
+  const startStudy = useCallback(() => {
+    if (!demoCellId) {
+      log("Optimize needs a completed simulation first — press Run", "warn");
+      return;
+    }
+    studyToken.current += 1;
+    const token = studyToken.current;
+    setTrials([]);
+    setStudyPhase("OPTIMIZING");
+    log("Study: demo CS gain≥5 + UGBW≥1MHz, 3 trials (spec authored live)");
+    void (async () => {
+      let jobId = "";
+      let sid = "";
+      try {
+        const spec = await createSpec(demoCellId, "demo-gain-bw", [
+          { metric: "dc_gain", operator: ">=", threshold: 5.0 },
+          { metric: "bandwidth", operator: ">=", threshold: 1e6 },
+        ]);
+        if (token !== studyToken.current) return;
+        const out = await requestStudy({
+          template_id: "common_source",
+          spec_id: spec.spec_id,
+          space: { w_n: [0.5e-6, 2e-6], w_p: [1e-6, 4e-6] },
+          seed: 7,
+          max_trials: 3,
+          objective: "spec",
+        });
+        setBackendUp(true);
+        jobId = out.job_id;
+        sid = out.study_id;
+      } catch (err) {
+        if (token !== studyToken.current) return;
+        setStudyPhase("IDLE");
+        const msg = err instanceof ApiError ? err.detail : String(err);
+        if (err instanceof ApiError && err.status === 0) setBackendUp(false);
+        log(`Study failed to launch: ${msg}`, "err");
+        return;
+      }
+      if (token !== studyToken.current) return;
+      setStudyJobId(jobId);
+      setStudyId(sid);
+      log(`Study ${sid.slice(0, 8)}… running; polling trials`);
+      const later = (fn: () => void, ms: number) =>
+        timers.current.push(window.setTimeout(fn, ms) as unknown as number);
+      const poll = async (): Promise<void> => {
+        if (token !== studyToken.current) return;
+        try {
+          const [detail, rows] = await Promise.all([
+            getJob(jobId),
+            listTrials(sid).catch(() => [] as Trial[]),
+          ]);
+          if (token !== studyToken.current) return;
+          setTrials(rows);
+          if (
+            detail.status === "succeeded" ||
+            detail.status === "failed" ||
+            detail.status === "cancelled"
+          ) {
+            setStudyPhase("DONE");
+            const best = rows.reduce<Trial | null>(
+              (b, t) => (b === null || t.score > b.score ? t : b),
+              null,
+            );
+            log(
+              `Study ${detail.status}: ${rows.length} trials` +
+                (best ? `, best trial ${best.trial} score ${best.score.toExponential(2)}` : ""),
+              detail.status === "succeeded" ? undefined : "warn",
+            );
+            void refreshJobs();
+            return;
+          }
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 0) {
+            setBackendUp(false);
+            setStudyPhase("IDLE");
+            log("Backend lost during study poll", "err");
+            return;
+          }
+        }
+        later(() => void poll(), 2000);
+      };
+      void poll();
+    })();
+  }, [demoCellId, log, refreshJobs]);
+
+  const stopStudy = useCallback(() => {
+    studyToken.current += 1;
+    setStudyPhase("IDLE");
+    log("Study cancelled by user (trials kept)", "warn");
+    if (studyJobId) {
+      const jid = studyJobId;
+      void (async () => {
+        try {
+          const res = await cancelJob(jid);
+          log(`Backend study ${jid.slice(0, 8)}… ${res.status}`);
+          void refreshJobs();
+        } catch (err) {
+          log(
+            `Backend cancel failed: ${err instanceof Error ? err.message : String(err)}`,
+            "warn",
+          );
+        }
+      })();
+    }
+  }, [log, studyJobId, refreshJobs]);
 
   useEffect(() => {
     void (async () => {
@@ -428,6 +558,7 @@ function useStoreValue() {
     })();
     return () => {
       runToken.current += 1;
+      studyToken.current += 1;
       timers.current.forEach(clearTimeout);
     };
   }, [refreshCells, refreshJobs, selectCell]);
@@ -504,6 +635,12 @@ function useStoreValue() {
     setIbias,
     runSimulation,
     stopSimulation,
+    studyJobId,
+    studyId,
+    trials,
+    studyPhase,
+    startStudy,
+    stopStudy,
     drcDone,
     runDrc,
     setDrcDone,

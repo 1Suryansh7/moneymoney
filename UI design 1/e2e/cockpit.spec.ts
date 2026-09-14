@@ -87,8 +87,9 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     await expect(newCellItem).toBeVisible();
     await newCellItem.click();
 
-    // 4. Verify NewCellDialog opened
-    await expect(page.getByText("New Cell View")).toBeVisible();
+    // 4. Verify NewCellDialog opened (scoped to the dialog role: the
+    // canvas empty state mentions the menu path as guidance text)
+    await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10000 });
 
     // 5. Fill cell name
     const cellInput = page.getByPlaceholder("e.g. my_amp");
@@ -104,8 +105,9 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     await expect(createBtn).toBeEnabled();
     await createBtn.click();
 
-    // 8. Wait for dialog to close on success
-    await expect(page.getByText("New Cell View")).not.toBeVisible({ timeout: 10000 });
+    // 8. Wait for dialog to close on success (role-scoped: canvas
+    // guidance text shares the menu-path wording)
+    await expect(page.getByRole("dialog")).not.toBeVisible({ timeout: 10000 });
 
     // 9. Verify creation log in console dock
     const logEntry = page.locator("text=/Created my_project\\/cs_amp_test from common_source/i");
@@ -140,7 +142,7 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     await page.getByPlaceholder("e.g. my_amp").fill("schem_live_test");
     await page.getByLabel("Template").selectOption("common_source");
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText("New Cell View")).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("dialog")).not.toBeVisible({ timeout: 10000 });
 
     const schemTab = page.getByRole("tab", { name: "schem_live_test : schematic" });
     await expect(schemTab).toBeVisible({ timeout: 10000 });
@@ -151,5 +153,34 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     await expect(canvas.getByText("m2", { exact: true })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("2 instances")).toBeVisible();
     await expect(page.getByText("schem_live_test : schematic — sky130 — auto-layout")).toBeVisible();
+  });
+
+  test("optimizer streams trials, cancels mid-run, then completes", async ({
+    page,
+  }) => {
+    test.slow(); // real sims behind every trial: ~10min on shared hardware
+    await page.goto("http://localhost:5173", { waitUntil: "networkidle" });
+    const simTab = page.getByRole("tab", { name: "Simulation Explorer" });
+    await simTab.click();
+    await page.getByRole("button", { name: "Run", exact: true }).first().click();
+    const phaseCell = page.locator("tr:has(td:text-is('Phase')) td").nth(1);
+    await expect(phaseCell).toHaveText("COMPLETE", { timeout: 120000 });
+
+    // Start study, wait for the first trial to stream, then cancel.
+    await page.getByRole("button", { name: "Optimize" }).click();
+    const trialRows = page.locator("table:has(th:text-is('Trial')) tbody tr");
+    await expect(trialRows.first()).toBeVisible({ timeout: 600000 });
+    await page.getByRole("button", { name: "Stop Study" }).click();
+    await expect(page.getByText("done · 1 trials")).toBeVisible({ timeout: 120000 });
+
+    // Re-run to completion: 3 trials, best banner, convergence curve.
+    await page.getByRole("button", { name: "Optimize" }).click();
+    await expect(page.locator("table:has(th:text-is('Trial')) tbody tr")).toHaveCount(
+      3,
+      { timeout: 1200000 },
+    );
+    await expect(page.getByText(/Best: trial \d/)).toBeVisible({ timeout: 10000 });
+    const svgPlot = page.locator("svg").first();
+    await expect(svgPlot).toBeVisible({ timeout: 10000 });
   });
 });

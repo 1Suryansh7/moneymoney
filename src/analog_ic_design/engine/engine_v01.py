@@ -391,6 +391,79 @@ class EngineV01(DesignEngine):
             self._conn.commit()
         return {"cell_id": cell_id, "cell_name": cell_name}
 
+    def create_spec(
+        self,
+        *,
+        cell_id: str,
+        name: str,
+        rules: list[dict[str, object]],
+    ) -> dict[str, str]:
+        """Author a specification with constraint rules (study targets).
+
+        Each rule needs metric/operator/threshold; metric must be a
+        canonical contract id, operator one of >=, <=, =. Tolerance and
+        priority default to 0.0/0; weight stays null (unweighted). The
+        study submitter narrows to measured, multi-metric specs.
+        """
+        self._require_cell(cell_id)
+        if not name.strip():
+            raise ValueError("Schema: spec name must be non-empty")
+        parsed: list[tuple[str, str, float, float, int]] = []
+        for index, rule in enumerate(rules):
+            metric = rule.get("metric")
+            operator = rule.get("operator")
+            threshold = rule.get("threshold")
+            if metric not in METRIC_BY_ID:
+                raise ValueError(
+                    f"Schema: rule {index} references unknown metric {metric!r}"
+                )
+            if operator not in (">=", "<=", "="):
+                raise ValueError(
+                    f"Schema: rule {index} has bad operator {operator!r}"
+                )
+            if isinstance(threshold, bool) or not isinstance(
+                threshold, (int, float)
+            ):
+                raise ValueError(
+                    f"Schema: rule {index} threshold must be numeric"
+                )
+            tolerance = rule.get("tolerance", 0.0)
+            priority = rule.get("priority", 0)
+            if not isinstance(tolerance, (int, float)) or isinstance(
+                tolerance, bool
+            ):
+                raise ValueError(
+                    f"Schema: rule {index} tolerance must be numeric"
+                )
+            if not isinstance(priority, int) or isinstance(priority, bool):
+                raise ValueError(
+                    f"Schema: rule {index} priority must be an int"
+                )
+            parsed.append((
+                str(metric), str(operator), float(threshold),
+                float(tolerance), int(priority),
+            ))
+        if not parsed:
+            raise ValueError("Schema: spec defines no rules")
+        spec_id = new_id()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO specification VALUES (?, ?, ?, ?)",
+                (spec_id, cell_id, name, utcnow_iso()),
+            )
+            for index, (metric, operator, threshold, tolerance, priority) in enumerate(
+                parsed
+            ):
+                self._conn.execute(
+                    "INSERT INTO constraint_rule VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        new_id(), spec_id, "hard", metric, operator,
+                        threshold, tolerance, priority, None, utcnow_iso(),
+                    ),
+                )
+            self._conn.commit()
+        return {"spec_id": spec_id}
+
     def schematic(self, *, cell_id: str) -> dict[str, Any]:
         """Serialize one cell for schematic rendering.
 

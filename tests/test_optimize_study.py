@@ -75,24 +75,78 @@ def _seed_spec(
     cid = client.post("/cells", json={"project_id": pid, "cell_name": "c"}).json()[
         "cell_id"
     ]
+    body = client.post(
+        "/specs",
+        json={
+            "cell_id": cid,
+            "name": "demo-spec",
+            "rules": [
+                {"metric": m, "operator": o, "threshold": t} for m, o, t in rules
+            ],
+        },
+    ).json()
+    return str(body["spec_id"])
+
+
+def test_create_spec_roundtrip(server: tuple[httpx2.Client, str]) -> None:
+    client, db = server
+    pid = client.post("/projects", json={"name": "sp"}).json()["project_id"]
+    cid = client.post("/cells", json={"project_id": pid, "cell_name": "c"}).json()[
+        "cell_id"
+    ]
+    spec = client.post(
+        "/specs",
+        json={
+            "cell_id": cid,
+            "name": "s",
+            "rules": [
+                {"metric": "dc_gain", "operator": ">=", "threshold": 5.0},
+                {"metric": "bandwidth", "operator": ">=", "threshold": 1e6,
+                 "tolerance": 0.1, "priority": 2},
+            ],
+        },
+    ).json()["spec_id"]
     conn = sqlite3.connect(db)
     try:
-        conn.execute(
-            "INSERT INTO specification VALUES (?, ?, ?, ?)",
-            ("spec-1", cid, "demo-spec", "2026-09-12T00:00:00+00:00"),
-        )
-        for i, (metric, operator, threshold) in enumerate(rules):
-            conn.execute(
-                "INSERT INTO constraint_rule VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    f"rule-{i}", "spec-1", "hard", metric, operator,
-                    threshold, 0.0, i, None, "2026-09-12T00:00:00+00:00",
-                ),
-            )
-        conn.commit()
+        rows = conn.execute(
+            "SELECT metric, operator, threshold, tolerance, priority FROM"
+            " constraint_rule WHERE specification_id = ? ORDER BY priority",
+            (spec,),
+        ).fetchall()
     finally:
         conn.close()
-    return "spec-1"
+    assert [(r[0], r[1], r[2]) for r in rows] == [
+        ("dc_gain", ">=", 5.0),
+        ("bandwidth", ">=", 1e6),
+    ]
+    assert rows[1][3] == 0.1 and rows[1][4] == 2
+
+
+def test_create_spec_rejections(server: tuple[httpx2.Client, str]) -> None:
+    client, _ = server
+    pid = client.post("/projects", json={"name": "sp"}).json()["project_id"]
+    cid = client.post("/cells", json={"project_id": pid, "cell_name": "c"}).json()[
+        "cell_id"
+    ]
+    good = {"metric": "dc_gain", "operator": ">=", "threshold": 5.0}
+    cases = [
+        ({"cell_id": "nope", "name": "s", "rules": [good]}, "unknown cell_id"),
+        ({"cell_id": cid, "name": "  ", "rules": [good]}, "non-empty"),
+        ({"cell_id": cid, "name": "s", "rules": []}, "no rules"),
+        ({"cell_id": cid, "name": "s",
+          "rules": [{"metric": "vibes", "operator": ">=", "threshold": 1.0}]},
+         "unknown metric"),
+        ({"cell_id": cid, "name": "s",
+          "rules": [{"metric": "dc_gain", "operator": "!=", "threshold": 1.0}]},
+         "bad operator"),
+        ({"cell_id": cid, "name": "s",
+          "rules": [{"metric": "dc_gain", "operator": ">=", "threshold": "x"}]},
+         "must be numeric"),
+    ]
+    for body, needle in cases:
+        resp = client.post("/specs", json=body)
+        assert resp.status_code == 422, body
+        assert needle in resp.json()["detail"], body
 
 
 def _submit(

@@ -18,7 +18,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-type Plot = { title: string; unit: string; logX: boolean; series: { name: string; color: string; pts: Pt[] }[]; yMin: number; yMax: number; xMin: number; xMax: number };
+export type Plot = { title: string; unit: string; logX: boolean; series: { name: string; color: string; pts: Pt[] }[]; yMin: number; yMax: number; xMin: number; xMax: number };
 
 type Pt = { x: number; y: number };
 
@@ -64,7 +64,7 @@ function fmtHz(f: number) {
   return `${f.toFixed(0)} Hz`;
 }
 
-function PlotPane({ plot, cursorX, onCursor }: { plot: Plot; cursorX: number; onCursor: (v: number) => void }) {
+export function PlotPane({ plot, cursorX, onCursor }: { plot: Plot; cursorX: number; onCursor: (v: number) => void }) {
   const W = 1000;
   const H = 190;
   const L = 54;

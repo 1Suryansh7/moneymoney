@@ -122,6 +122,18 @@ export type ExplainOut = {
 };
 export type DemoRunOut = { job_id: string; cell_id: string; reproducibility_id: string };
 export type MeasureOut = { metric_id: string; value: number; unit: string };
+export type StudyOut = { job_id: string; study_id: string };
+export type Trial = {
+  trial: number;
+  status: string;
+  parameters: Record<string, number>;
+  metrics: Record<string, number>;
+  verdict: string;
+  score: number;
+  reproducibility_id: string;
+};
+export type CancelOut = { job_id: string; status: string };
+export type SpecOut = { spec_id: string };
 
 export const health = (): Promise<Health> => request<Health>("/health");
 export const listJobs = (): Promise<JobSummary[]> => request<JobSummary[]>("/jobs");
@@ -136,6 +148,27 @@ export const runDemo = (name: string, seed = 21): Promise<DemoRunOut> =>
   post<DemoRunOut>("/testbenches/run", { name, seed });
 export const measure = (cellId: string, metricId: string): Promise<MeasureOut> =>
   post<MeasureOut>("/measure", { cell_id: cellId, metric_id: metricId });
+export const createSpec = (
+  cellId: string,
+  name: string,
+  rules: { metric: string; operator: string; threshold: number }[],
+): Promise<SpecOut> => post<SpecOut>("/specs", { cell_id: cellId, name, rules });
+export type StudyReq = {
+  template_id: string;
+  spec_id: string;
+  space: Record<string, [number, number]>;
+  seed: number;
+  max_trials?: number;
+  trial_timeout_s?: number;
+  study_timeout_s?: number | null;
+  objective?: string;
+};
+export const startStudy = (req: StudyReq): Promise<StudyOut> =>
+  post<StudyOut>("/optimize", req);
+export const listTrials = (studyId: string): Promise<Trial[]> =>
+  request<Trial[]>(`/studies/${encodeURIComponent(studyId)}/trials`);
+export const cancelJob = (jobId: string): Promise<CancelOut> =>
+  post<CancelOut>(`/jobs/${encodeURIComponent(jobId)}/cancel`, {});
 export const explainJob = (jobId: string): Promise<ExplainOut> =>
   post<ExplainOut>("/copilot/explain", { job_id: jobId });
 export const createProject = (name: string): Promise<ProjectOut> =>
