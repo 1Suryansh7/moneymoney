@@ -434,3 +434,14 @@
 - **Alternatives Considered**: In-process/threaded study loop (rejected: libngspice non-reentrancy, wedged workers); Redis/Celery broker (rejected: unapproved dependency, second truth source); raw pass/fail objective (rejected: TPE collapses to blind search); WAL now (rejected: no contention incident yet).
 - **Consequences**: Build order §9 (worker + routes + tests → reconciliation → frontend → docs); full spec in `docs/rfc/rfc-001-async-optimizer.md`.
 
+---
+
+### ADR-036: Tutor Freeze & Canonical EDA Pivot (Option 1, human-directed 2026-09-14)
+- **Date**: 2026-09-14
+- **Status**: Accepted (human verdict: synthesis tutor off the table; v0 UI wire declined)
+- **Context**: RFC-002 v0-backend (`26d1176`: keyword classifier + `POST /copilot/chat` + 20-prompt Eval, base 412+47 green) is committed and pushed. The human ruled that any synthesis tutor violates the Golden Rule (ungrounded LLM synthesis + unverified deck generation), and declined even the minimal v0 AssistPanel wire. Momentum returns to the Master Plan EDA track.
+- **Decision**: (1) Total freeze on all AI/tutor features: v0-frontend, v1 proposal gate, ChatGPT-Plus adversarial Eval hardening, and RFC-002's planned ADR-036/037 docs-sync are deferred indefinitely — superseded by this record, not pending. (2) The v0-backend stays in tree as frozen, tested code (no deletion, no UI wiring). (3) Next builds: Track A B5 folded-cascode bench, Track B PVT sweep in the cockpit UI.
+- **Rationale**: A living EDA vertical (real benches, real corner dispersion in the browser) beats copilot theater for students and commercial credibility; the frozen v0 backend remains available if a future human unfreezes it.
+- **Alternatives Considered**: Option 2 minimal v0 UI wire first (rejected by human: freeze now); Option 3 discard `26d1176` via reset (rejected by human: keep the frozen backend).
+- **Consequences**: No `AssistPanel`/copilot TS changes until a human unfreeze verdict; EDA track commits proceed under existing gates.
+
