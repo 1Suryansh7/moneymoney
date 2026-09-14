@@ -207,6 +207,26 @@ class ExplainOut(BaseModel):
     model: str
 
 
+class ChatIn(BaseModel):
+    """Tutor message: free text, routed by the keyword classifier."""
+
+    message: str
+
+
+class ChatOut(BaseModel):
+    """Grounded answer (trail echoes action_id) or refusal (null trail)."""
+
+    job_id: str | None
+    category: str
+    trigger: str
+    prose: str
+    cited_ids: list[str]
+    action_id: str
+    trail: str
+    provider: str
+    model: str
+
+
 class DemoRunIn(BaseModel):
     """One-click demo simulation request (deck assembled server-side)."""
 
@@ -415,6 +435,12 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/copilot/chat", response_model=ChatOut)
+    def copilot_chat(body: ChatIn, request: Request) -> dict[str, Any]:
+        # Chat never raises: failure questions without failed jobs in
+        # scope refuse, exactly like out-of-domain messages.
+        return _engine(request).chat(message=body.message)
 
     @app.post("/testbenches/run", response_model=DemoRunOut)
     def run_demo_testbench(body: DemoRunIn, request: Request) -> dict[str, str]:

@@ -82,29 +82,35 @@ Operational code and agent configuration NEVER hardcode model generation names (
 
 ## 5. Current Project Status & File Inventory
 
-### Active Status: STAGES 0–6 + PHASE 0 + 7A + 7B-1→7B-8 + R0-1→R0-3 COMMITTED (push due)
+### Active Status: STAGES 0–6 + PHASE 0 + 7A + 7B-1→7B-9 + R0-1→R0-5 COMPLETE, HEAD `7c4ca71` IN SYNC WITH origin/main
 > 6E sim-grounded Miller → 6F sizing (winner invalidated) → Phase 0 Steps 1–2
 > (PM unwrap fix ADR-027, re-baseline ADR-028, empirical winner trial 17:
 > gain 81.30dB / UGB 16.58MHz / PM 63.64°).
 > Step-2 re-close verdict CONFIRMED by human 2026-09-09 (accept Trial-17,
-> UGB shortfall recorded) — push gate lifted, R0-1→R0-3 pushed to origin/main.
+> UGB shortfall recorded) — everything through R0-5 pushed to origin/main.
 > 7A lockdown (EngineV01 strangler facade ADR-030, Law-4 AST guard, schema v9
 > checkpoint_registry + design_state) → 7B HTTP service (pinned
 > fastapi/uvicorn/httpx2, threaded-server tests, thin-slice inverter wave
 > over HTTP ADR-032) → 7B-4 job observability → Path B adopted 2026-09-10
 > (ADR-033: close R0-3, wire the shell, B5–B7 stay deferred) → 7B-5 cells/
 > schematic + 7B-6 waveforms + 7B-7 mock-copilot + 7B-8 demo-testbench
-> routes (ADR-034 wire contract; 13 endpoints total).
-> Gates: base 361+40 green (incl. human NAND-gate tests); EDA B4 `-k b4`
-> 2 passed + 1 skip, demo file 2 passed + 1 skip, NAND truth table 3 passed.
+> routes (ADR-034 wire contract; 13 endpoints total) → 7B-9 cell rename →
+> Step 3 shell binding (3a run loop, 3b/3c de-faked, 3d cell creation,
+> 3d-fix toolbar, 3e live canvas) → R0-4 Testbench Manager (measure dc/ac
+> gain R0-4a/4b, contract-crossing bandwidth R0-4c, CS testbench R0-4d,
+> diff-pair R0-4d-2, declared-load 1pF bandwidth R0-4e:
+> INV 56.9MHz / CS 20.709046MHz) → RFC-001 async optimizer APPROVED
+> (ADR-035) → R0-5 Commit 1 study supervisor → R0-5 Commit 2 optimizer UI
+> slice (Playwright 5/5) → CI smoke-red fix (ruff + .dockerignore slim).
+> Gates: base 388 passed + 47 skipped (ruff + mypy-strict 125 files clean,
+> re-verified 2026-09-14); EDA full-suite proof due with next suite change.
 > CI Actions status unobserved from here (no gh/token) — verify green in
 > the GitHub tab.
-> Pushed to origin/main through `43599eb` (9 commits: 8 agent + human e2e).
-> Committed locally, UNPUSHED: `edcae3b` (3d cell creation).
-> Next: Step 4 user E2E (uvicorn on app-eda + bun dev, eye-verify), then
-> push `edcae3b`. Follow-ups filed in To-Do (CORS tightening, micron
-> helper debt, golden netlist asserts). B5–B7 deferred; interactive
-> schematic editing is a later stage (no add-instance/connect API yet).
+> Next: human verdicts on RFC-002 Grounded Tutor §10 (4 blocking questions);
+> NO tutor code until accepted. B5–B7 deferred; interactive schematic
+> editing is a later stage (no add-instance/connect API yet). Only
+> non-blocking follow-up: golden byte-identical netlist asserts (substring
+> asserts stand).
 
 ### Repository File Map
 ```text
@@ -115,7 +121,7 @@ C:\MONEY\Cad\codeeahhhhhhh\
 ├── AGENTS.md               # Layer 1 Global Rules (The 4 laws, checkpoints, units, safety)
 ├── context.md              # [THIS FILE] System continuity handbook and state memory
 ├── To-Do.md                # Granular task tracker (updated before and after every step)
-├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-034)
+├── DECISIONS.md            # Architecture Decision Records (ADR-001 through ADR-035)
 ├── PREREQUISITES.md        # Complete Stage 0 prerequisite specifications & verification
 ├── Dockerfile              # Layered build: base verified / eda GREEN (ADR-015/017)
 ├── docker-compose.yml      # app (base) + app-eda (eda profile) services

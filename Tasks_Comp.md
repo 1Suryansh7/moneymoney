@@ -193,10 +193,17 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **Stage 6 Human Checkpoint Signoff** — RE-BASELINED winner (focused study, seed 200, trial 17): gain 81.30dB / UGB 16.58MHz / PM 63.64deg vs 60dB/40MHz/60deg spec = gain+PM PASS, UGB SHORT. Old 6F winner re-measured +27.58 MARGINAL (kind story; 180-27.58=152.42 refutes committed PASS). CONFIRMED by human 2026-09-09: accept Trial-17 as honest empirical baseline, UGB shortfall recorded; push authorized.
-2. **Push to GitHub** — verdict CONFIRMED 2026-09-09; push authorized for everything since `9980521` (6E/6F, Phase-0, 7A, 7B).
-3. **Stage 7 — Schematic UI** — Lovable Axiom shell ADOPTED as baseline (ADR-031); 7B API service built (`03635a8` pins, `1cc858f` threading, `5b8c80d` routes, `ca155c4` thin slice; base 331+31, EDA thin slice green) + 7B-4 job observability (`f949200`; base 334+32, EDA jobs file green). R0-1 AnalogBench (`ca588c7`; base 338+33): registry B0–B7, executable B0, EDA B0-live pending full-suite run. Next: workspace wiring + Playwright with first UI action.
-4. **Stage 8 — Physical Design** — (KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow).
+1. **RFC-002 Grounded Tutor review** — Draft at `docs/rfc/rfc-002-grounded-tutor.md` (v0 explain-or-refuse chat route + 20-prompt refusal Eval + AssistPanel rewire; v1 CandidateCircuitIR Review modal). BLOCKED on human verdicts to its §10 questions (classifier type, Eval authorship, token caps, feature flag). NO tutor code until accepted.
+2. **Golden byte-identical netlist asserts** — Substring asserts stand (`test_inverter.py`, gates file); golden replacement is non-blocking, unscheduled.
+3. **Stage 8+ physical design** — KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow, then Stages 9–10 per `planchanges.md`. B5–B7 benches stay deferred per ADR-033.
+4. **CI Actions observation** — No gh/token from here; confirm the post-`7c4ca71` smoke/eda runs are green in the GitHub tab.
+
+## 2026-09-14 — Session gate re-verification + tracker sync (no commit)
+
+## 2026-09-14 — Session gate re-verification + tracker sync (no commit)
+- Full base gate re-run at HEAD `7c4ca71`: ruff clean, mypy strict clean (125 files), pytest **388 passed + 47 skipped in 65.7 s**. Only failure en route was 3 ruff hits (I001/F541) from untracked scratch `scripts/_probe_fcn.py` (folded-cascode bias probe, EDA-path hardcoded) — deleted, gate green.
+- Verified two To-Do follow-ups as DONE in code and retired them: CORS loopback-only (`api/server.py:323-324`); `test_digital_gates.py` on `assemble_transient` (`tests/test_digital_gates.py:24,124`).
+- Synced `To-Do.md` status overview (was stale at Stage 3), `context.md` Active Status (was stale at R0-3/push-due), and this ledger's NOT-done section (was stale at Stage-6-signoff/push-due).
 
 ## 2026-09-09 — Stage 0–6 verification sweep + 6E rework (all green)
 - Verified Stages 0–5 against AGENTS.md: SI discipline clean (no parser, display-only formatting), golden `nmos.cir` untouched since 1G, NEEDS_LIB skips are documented env-gating (EDA runs them: 334 passed, 0 skipped), provider urllib confined to `ai/provider.py`, spawn isolation in `sim/jobs.py`, optuna pinned `==5.0.0`, no green-washing, no PDK-from-memory writes beyond quoted bindings.

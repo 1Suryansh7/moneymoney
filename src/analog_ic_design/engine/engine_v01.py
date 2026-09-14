@@ -32,6 +32,11 @@ from analog_ic_design.ai.explainer import explain_failure
 from analog_ic_design.ai.provider import MockProvider
 from analog_ic_design.ai.residency import ProviderGuard
 from analog_ic_design.ai.taxonomy import classify_failure
+from analog_ic_design.ai.tutor import (
+    CHAT_REFUSAL,
+    REFUSED_TRAIL,
+    classify_intent,
+)
 from analog_ic_design.circuit.compiler import compile_netlist
 from analog_ic_design.circuit.validator import validate as validate_cell
 from analog_ic_design.engine.design_engine import DesignEngine
@@ -565,6 +570,39 @@ class EngineV01(DesignEngine):
             "action_id": explanation.action_id,
             "provider": provider.provider_name,
             "model": provider.model_name,
+        }
+
+    def chat(self, *, message: str) -> dict[str, Any]:
+        """Tutor v0 explain-or-refuse chat (RFC-002, mock model only).
+
+        Failure questions resolve to the newest classifiable failed job
+        and reuse the `explain_job` pipeline verbatim (MockProvider +
+        citation check + AIAction row, `trail` echoes the action id).
+        Anything else — concepts, how-tos, unbuilt topologies — refuses
+        via a code path: no model call, no provenance row, null trail
+        marked `refused-no-evidence`. A failure question with no failed
+        (or no classifiable) job in scope also refuses; chat never raises.
+        """
+        if classify_intent(message) == "failure_question":
+            for job in self.list_jobs():
+                if job["status"] != "failed":
+                    continue
+                try:
+                    answered = self.explain_job(job_id=job["job_id"])
+                except ValueError:
+                    continue  # unclassifiable ledger text: try older failures
+                answered["trail"] = answered["action_id"]
+                return answered
+        return {
+            "job_id": None,
+            "category": "refused",
+            "trigger": "no-evidence",
+            "prose": CHAT_REFUSAL,
+            "cited_ids": [],
+            "action_id": "",
+            "trail": REFUSED_TRAIL,
+            "provider": "none",
+            "model": "none",
         }
 
     def run_demo_testbench(self, *, name: str, seed: int = 21) -> dict[str, str]:
