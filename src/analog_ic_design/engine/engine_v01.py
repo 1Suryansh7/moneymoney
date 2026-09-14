@@ -451,9 +451,7 @@ class EngineV01(DesignEngine):
                 "INSERT INTO specification VALUES (?, ?, ?, ?)",
                 (spec_id, cell_id, name, utcnow_iso()),
             )
-            for index, (metric, operator, threshold, tolerance, priority) in enumerate(
-                parsed
-            ):
+            for metric, operator, threshold, tolerance, priority in parsed:
                 self._conn.execute(
                     "INSERT INTO constraint_rule VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (

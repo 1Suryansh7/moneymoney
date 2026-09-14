@@ -8,3 +8,8 @@ __pycache__
 artifacts
 pdk
 .env
+UI design 1/node_modules
+UI design 1/.output
+UI design 1/.wrangler
+UI design 1/test-results
+UI design 1/dist

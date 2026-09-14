@@ -211,6 +211,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 ## 2026-09-10 — Quick-wins debt batch (base + EDA + tsc + build green)
 - CORS loopback-only; Misc signoff/metrics fiction → run-state truth; gates deck via assemble_transient (additive extra_lines; remapped samples EDA-proven). Base 371+42; EDA 8 passed.
 
+## 2026-09-12 — CI smoke red fix (ruff + dockerignore)
+- Unused loop var broke `make test` ruff gate (Commit 2 shipped without full local gate — lapse recorded); UI generated dirs excluded from image context. Local full gate 388+47 green; CI re-run requested (59s profile = build stage).
+
 ## 2026-09-12 — R0-5 Commit 2 optimizer UI (tsc + build + base + e2e green)
 - create_spec + POST /specs; study state/poll/stop; sim Stop kills backend; trial table + best + convergence; own dialog-text scoping bug fixed. Playwright 5/5 in 11.4 min.
 
