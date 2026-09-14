@@ -198,7 +198,10 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 3. **Stage 8+ physical design** — KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow, then Stages 9–10 per `planchanges.md`. B5–B7 benches stay deferred per ADR-033.
 4. **CI Actions observation** — No gh/token from here; confirm the post-`7c4ca71` smoke/eda runs are green in the GitHub tab.
 
-## 2026-09-14 — Session gate re-verification + tracker sync (no commit)
+## 2026-09-14 — RFC-002 v0-backend (`26d1176`, base green, UNPUSHED)
+- RFC-002 ACCEPTED by human (all 4 §10 verdicts = proposals); status flipped in-file.
+- Claim: tutor explain-or-refuse chat over HTTP + 20-prompt refusal Eval. `ai/tutor.py` keyword classifier (9 stems, pure), concrete-only `EngineV01.chat` (newest-first failed-job scan, unclassifiable skipped, fail-soft refusal, chat never raises), `POST /copilot/chat` (ChatIn/ChatOut, trail echoes action_id or `refused-no-evidence`), `tests/test_tutor_refusal.py` (10 in-domain must-ground verbatim + AIAction row; 10 out-of-domain must-refuse with zero provenance rows; newest-fallback, no-job, unclassifiable-only edges; uncited-refusal covered at explainer level in `test_ai_explain.py`).
+- Evidence: ruff clean, mypy strict clean, new file 24 passed, full base **412 passed + 47 skipped**. One ruff I001 fixed en route (tutor import sorts after taxonomy). Frontend (AssistPanel rewire + Playwright), v1, ADR-036/037 remain.
 
 ## 2026-09-14 — Session gate re-verification + tracker sync (no commit)
 - Full base gate re-run at HEAD `7c4ca71`: ruff clean, mypy strict clean (125 files), pytest **388 passed + 47 skipped in 65.7 s**. Only failure en route was 3 ruff hits (I001/F541) from untracked scratch `scripts/_probe_fcn.py` (folded-cascode bias probe, EDA-path hardcoded) — deleted, gate green.
