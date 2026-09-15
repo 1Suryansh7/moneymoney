@@ -445,3 +445,14 @@
 - **Alternatives Considered**: Option 2 minimal v0 UI wire first (rejected by human: freeze now); Option 3 discard `26d1176` via reset (rejected by human: keep the frozen backend).
 - **Consequences**: No `AssistPanel`/copilot TS changes until a human unfreeze verdict; EDA track commits proceed under existing gates.
 
+---
+
+### ADR-037: Layout Backend Spike Verdict (KLayout primary, Magic/Netgen adapters)
+- **Date**: 2026-09-15
+- **Status**: Accepted (spike-measured, single-NMOS evidence below)
+- **Context**: Stage 8 needs one geometry authority plus DRC/LVS engines behind the `LayoutBackend` ABC (Law 4). All three candidates were driven live in the pinned EDA image on real Sky130 data — no single-tool monopoly assumed.
+- **Decision**: (1) KLayout is the primary geometry/viewer backend: `pya` via `klayout -b -r` drew a single NMOS on 8 PDK-quoted layers (diff 65/20, poly 66/20, licon1 66/44, li1 67/20, mcon 67/44, met1 68/20, nsdm 93/44, tap 65/44 — `sky130A.lyp`), 16 boxes, 507-byte OASIS, re-read round-trip True on 0.30.12. (`klayout.db` pip package is NOT installed; the `-b -r` entry is the supported path.) (2) Magic is the DRC/extraction adapter: batch `-T sky130A.tech` (v1.0.608) painted/saved a cell and reported "No errors found". (3) Netgen is the LVS adapter: 1.5.323 + `sky130A_setup.tcl` self-matches identically and fails gate/drain swaps; d/s swaps pass by correct `permute default` MOS-symmetry semantics.
+- **Rationale**: Best adapter per step (mirrors the ngspice-solver precedent of using tools for what each proves): KLayout owns polygons/viewing, Magic owns DRC/extract, Netgen owns netlist-vs-netlist comparison. Nothing was forced into a monopoly.
+- **Alternatives Considered**: KLayout-only DRC/LVS (rejected: Magic DRC decks and Netgen comparison are the PDK-blessed flow, both proven present); Magic-only geometry (rejected: pya API is cleaner for PCell generation than Tcl painting).
+- **Consequences**: PCell generators build on `pya` behind `LayoutBackend`; DRC calls route to Magic batch, LVS to Netgen batch. First clean DRC+LVS on a benchmark cell still gates on the §8 visual KLayout checkpoint (screenshot to `artifacts/layout/`).
+

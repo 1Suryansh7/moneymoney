@@ -213,7 +213,11 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Human Checkpoint CONFIRMED: electrical correctness, pin order, W/L in meters, single-ended AC drive verified.
 - Evidence: `test_digital_gates.py`, `test_inverter.py`, `test_stage6_demo.py` all green (15 passed in 249.20s). Full base gate clean.
 
-## 2026-09-14 — Golden netlist seal (Error 2, human-CONFIRMED, B0–B8 scoreboard complete)
+## 2026-09-15 — Stage 8 backend spike (`b06df86` + `18f68bd`, ADR-037, EDA-proven)
+- K: pya single-NMOS on 8 PDK-quoted layers, 16 boxes, 507B OASIS, round-trip True (0.30.12). argv lesson: `-b -r` eats positionals — fixed contract name + cwd. `klayout.db` pip package absent; `-b -r` is the path.
+- M: Magic batch `-T sky130A.tech` v1.0.608, paint + save (120B .mag) + DRC "No errors found". (First attempt loaded default tech — `-T` required.)
+- N: Netgen 1.5.323 + sky130A_setup.tcl self-matches; gate/drain swap fails; d/s swap passes by correct `permute default` semantics (first misread as tool bug, root-caused).
+- Verdict: KLayout primary geometry/viewer, Magic DRC/extract adapter, Netgen LVS adapter. Visual §8 checkpoint still gates first clean pass.
 - NOT/NAND compiled fragments + Miller AC deck migrated from substring asserts to byte-identical goldens (`tests/golden/*.cir`, 1G read-only protocol); inverter micron deck to inline `==`. Assembler-plumbing asserts (corner lib/temp lines) deliberately stay substring — they pin the varying part.
 - Human hand-verified: CMOS inverter/NAND topology, d/g/s/b order, W/L meters, single-ended AC drive. Full base 432+51 green at seal time.
 - Housekeeping in the same window: planning records + Lovable shell vendor drop committed (fresh clones build; generated weight stays gitignored); working tree clean.
