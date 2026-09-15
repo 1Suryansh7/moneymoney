@@ -230,6 +230,7 @@ analyzer traces, 1.9 min).
   - [x] Playwright automated equivalence test (UI cell creation produces netlist byte-identical to direct Engine API instantiation, proven in `e2e/cockpit.spec.ts` in 5.5s).
 - [-] **Stage 8 — Physical Design** (spike recon done 2026-09-15: pya via `klayout -b -r` proven; magic 8.3 + netgen + sky130A.magicrc/setup.tcl present; layers quoted from `sky130A.lyp`)
   - [x] Spike K `pya` (`scripts/layout_spike_nmos.py` + `tests/test_layout_spike.py`): single NMOS, 8 PDK-quoted layers, 16 boxes, 507-byte OASIS, re-read round-trip True on KLayout 0.30.12. argv lesson: `klayout -b -r` eats positionals as inputs — fixed contract name + cwd. EDA 2 passed.
+  - [x] Spike M/N (`scripts/magic_spike.tcl` + netgen LVS in `tests/test_layout_spike.py`): Magic batch sky130A tech v1.0.608 + paint + save + DRC "No errors found"; Netgen 1.5.323 self-LVS match + gate/drain-swap fail (d/s swap passes by correct `permute default` semantics). EDA file 4 passed.
   - [ ] `LayoutBackend` PCell placement, DRC, and LVS flow.
   - [ ] 🔴 **HUMAN CHECKPOINT**: Visual layout inspection in KLayout on first clean DRC/LVS.
 - [ ] **Stage 9 — Post-Layout Physical Verification Loop**

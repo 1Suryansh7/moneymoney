@@ -1,10 +1,13 @@
-"""Stage 8 spike K tests: KLayout single-NMOS geometry proof (EDA only).
+"""Stage 8 spike tests: backend tool smoke proofs (EDA only).
 
-Runs `scripts/layout_spike_nmos.py` under `klayout -b -r`, parses the
-REPORT lines, and pins the measured shape counts. Base skips (no klayout
-binary in the base image); the EDA job proves the API path. The geometry
-is an honest DRC-dirty demo device, not a PCell — placement rules arrive
-later. OASIS artifact lands in artifacts/layout/ (gitignored weight).
+K (KLayout pya): single-NMOS geometry + OASIS round trip.
+M (Magic batch): sky130A tech load + paint + save + DRC check.
+N (Netgen batch LVS): self-match passes, gate/drain swap fails. d/s
+swap PASSES by correct LVS semantics (`permute default` in
+sky130A_setup.tcl treats MOS terminals as symmetric) — not a tool bug.
+Base skips everything (no binaries in the base image); the EDA job
+proves the paths. Geometry here is honest DRC-dirty demo material, not
+PCells — placement rules arrive later.
 """
 
 from __future__ import annotations
@@ -18,9 +21,22 @@ import pytest
 SPIKE = (
     Path(__file__).resolve().parent.parent / "scripts" / "layout_spike_nmos.py"
 )
+MAGIC_TCL = (
+    Path(__file__).resolve().parent.parent / "scripts" / "magic_spike.tcl"
+)
+SKY130_TECH = "/usr/local/share/pdk/sky130A/libs.tech/magic/sky130A.tech"
+SKY130_SETUP = "/usr/local/share/pdk/sky130A/libs.tech/netgen/sky130A_setup.tcl"
 NEEDS_KLAYOUT = pytest.mark.skipif(
     shutil.which("klayout") is None,
     reason="klayout binary absent (base image); covered by CI eda job",
+)
+NEEDS_MAGIC = pytest.mark.skipif(
+    shutil.which("magic") is None,
+    reason="magic binary absent (base image); covered by CI eda job",
+)
+NEEDS_NETGEN = pytest.mark.skipif(
+    shutil.which("netgen") is None,
+    reason="netgen binary absent (base image); covered by CI eda job",
 )
 
 
@@ -56,3 +72,66 @@ def test_pya_nmos_roundtrip(tmp_path: Path) -> None:
     assert int(rep["file_bytes"]) > 0
     assert rep["roundtrip_ok"] == "True"
     assert rep["klayout_version"] != ""
+
+
+_LVS_WRAPPER = """\
+* lvs smoke wrapper (test-only subckt shell, not a golden)
+.subckt nmos_golden drain gate source vss
+Xm1 {d} {g} {s} vss sky130_fd_pr__nfet_01v8 L=1.5e-07 W=1e-06
+.ends
+"""
+
+
+def _lvs(proc_file: str, proc_cell: str, ref_file: str, ref_cell: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["netgen", "-batch", "lvs", f"{proc_file} {proc_cell}",
+         f"{ref_file} {ref_cell}", SKY130_SETUP],
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+
+
+@NEEDS_MAGIC
+def test_magic_batch_tech_paint_save_drc(tmp_path: Path) -> None:
+    with open(MAGIC_TCL, encoding="utf-8") as handle:
+        script = handle.read()
+    proc = subprocess.run(
+        ["magic", "-dnull", "-noconsole", "-T", SKY130_TECH],
+        input=script,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        cwd=tmp_path,
+    )
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    assert 'Using technology "sky130A"' in proc.stdout
+    assert "No errors found." in proc.stdout
+    mag = tmp_path / "spike_magic.mag"
+    assert mag.is_file()
+    assert "metal1" in mag.read_text(encoding="utf-8")
+
+
+@NEEDS_NETGEN
+def test_netgen_self_lvs_matches_and_asymmetry_fails(tmp_path: Path) -> None:
+    good = tmp_path / "a.spice"
+    good.write_text(_LVS_WRAPPER.format(d="drain", g="gate", s="source"), encoding="utf-8")
+    copy = tmp_path / "a_copy.spice"
+    copy.write_text(_LVS_WRAPPER.format(d="drain", g="gate", s="source"), encoding="utf-8")
+    # d/s swap passes: `permute default` treats MOS terminals symmetric.
+    swapped = tmp_path / "swap_ds.spice"
+    swapped.write_text(
+        _LVS_WRAPPER.format(d="source", g="gate", s="drain"), encoding="utf-8"
+    )
+    # Gate/drain swap must fail: asymmetric pins, no permutation saves it.
+    broken = tmp_path / "swap_gd.spice"
+    broken.write_text(
+        _LVS_WRAPPER.format(d="gate", g="drain", s="source"), encoding="utf-8"
+    )
+    same = _lvs(str(good), "nmos_golden", str(copy), "nmos_golden")
+    assert same.returncode == 0
+    assert "Circuits match uniquely." in same.stdout
+    sym = _lvs(str(good), "nmos_golden", str(swapped), "nmos_golden")
+    assert "Circuits match uniquely." in sym.stdout
+    bad = _lvs(str(good), "nmos_golden", str(broken), "nmos_golden")
+    assert "failed pin matching" in bad.stdout
