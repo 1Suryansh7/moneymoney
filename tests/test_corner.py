@@ -13,7 +13,7 @@ from analog_ic_design.robust import (
     FULL_45_CORNER_MATRIX,
     Corner,
 )
-from analog_ic_design.sim.testbench import assemble_ac
+from analog_ic_design.sim.testbench import assemble_ac, assemble_temp_sweep
 
 
 def test_corner_rejects_nonsense() -> None:
@@ -70,3 +70,27 @@ def test_corner_without_libs_fails_closed() -> None:
     corner = Corner(name="ss", process="ss", vdd=1.62, temperature=398.15)
     with pytest.raises(ValueError, match="requires a .lib path"):
         assemble_ac("* cell x\nXm1 a b\n.end\n", libs=[], corner=corner)
+
+
+def test_temp_sweep_deck_nominal() -> None:
+    deck = assemble_temp_sweep(
+        "* cell x\nXm1 a b\n.end\n", libs=[("/models/sky130.lib.spice", "tt")]
+    )
+    assert ".dc temp -40.0 125.0 5.0\n" in deck
+    assert "VDD vdd 0 DC 1.8\n" in deck
+    assert ".temp " not in deck
+    assert deck.endswith(".end\n")
+
+
+def test_temp_sweep_deck_corner_follows_lib_and_supply() -> None:
+    corner = Corner(name="ss_125C_1.62V", process="ss", vdd=1.62, temperature=398.15)
+    deck = assemble_temp_sweep(
+        "* cell x\nXm1 a b\n.end\n",
+        libs=[("/models/sky130.lib.spice", "tt")],
+        corner=corner,
+    )
+    assert ".lib '/models/sky130.lib.spice' ss\n" in deck
+    assert "VDD vdd 0 DC 1.62\n" in deck
+    # The sweep owns temperature: no single-point .temp line may fight it.
+    assert ".temp " not in deck
+    assert ".dc temp -40.0 125.0 5.0\n" in deck

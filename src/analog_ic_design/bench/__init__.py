@@ -20,7 +20,9 @@ from analog_ic_design.engine.engine_v01 import EngineV01
 from analog_ic_design.metrics.bandwidth import extract_bandwidth
 from analog_ic_design.metrics.gain import extract_ac_gain, extract_dc_gain
 from analog_ic_design.metrics.phase_margin import extract_phase_margin
+from analog_ic_design.metrics.tempco import compensated_vref, extract_tempco
 from analog_ic_design.robust.corner import FAST_5_CORNER_ENVELOPE
+from analog_ic_design.sim.bandgap import build_bandgap
 from analog_ic_design.sim.cascode import build_cascode
 from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.diff_pair import build_diff_pair
@@ -29,7 +31,12 @@ from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.miller_opamp import MILLER_TRIAL17_WINNER, assemble_miller_ac_deck
 from analog_ic_design.sim.mirror import build_mirror
 from analog_ic_design.sim.ngspice import RawSim, SimError
-from analog_ic_design.sim.testbench import assemble_ac, assemble_dc_sweep, assemble_transient
+from analog_ic_design.sim.testbench import (
+    assemble_ac,
+    assemble_dc_sweep,
+    assemble_temp_sweep,
+    assemble_transient,
+)
 from analog_ic_design.sim.waveform import parse_ac, parse_transient
 from analog_ic_design.store.schema import connect, migrate
 from analog_ic_design.topology.templates import instantiate_template
@@ -587,6 +594,78 @@ def _run_b6(*, db_path: str, seed: int) -> BenchResult:
         eng.close()
 
 
+# B7 design constants. Emitter bias per device (mirror-IDC precedent);
+# K=9.0 declared near first-order cancel (measured slopes give 9.35 —
+# the residual bow is the honest tempco, never tuned away).
+_B7_IREF_A: Final = 10e-6
+_B7_K: Final = 9.0
+# MEASURED envelope: tt 57.44, ff 68.90, ss 43.47, fs/sf 57.44 ppm/°C
+# (Vref mean 1.227–1.236V). Band 100 clears worst (ff) with margin.
+# Readout: fs/sf match tt to 4 decimals at same VDD — the PDK appears
+# to qualify bipolars at tt only (inference); tempco here moves with
+# supply (PSRR of the ideal-R bench), not process. All honest rows.
+_B7_TEMPCO_PPM: Final = 100.0
+
+
+def _run_b7(*, db_path: str, seed: int) -> BenchResult:
+    setup = connect(db_path)
+    try:
+        migrate(setup)
+        cell = build_bandgap(setup)
+    finally:
+        setup.close()
+    eng = EngineV01(db_path=db_path)
+    try:
+        valid, violations = eng.validate(cell_id=cell)
+        if not valid:
+            return BenchResult("B7", "fail", {}, (),
+                               f"Constraint: validation gate failed: {violations}")
+        frag = eng.netlist(cell_id=cell)
+        metrics: dict[str, float] = {}
+        repros: list[str] = []
+        for corner in FAST_5_CORNER_ENVELOPE:
+            deck = assemble_temp_sweep(
+                frag,
+                extra_lines=[f"I1 vdd e1 DC {_B7_IREF_A}", f"I2 vdd e2 DC {_B7_IREF_A}"],
+                libs=[(SKY130_LIB, "tt")],
+                corner=corner,
+            )
+            try:
+                repro = eng.simulate(netlist=deck, seed=seed)
+            except SimError as exc:
+                return BenchResult("B7", "error", {}, (), f"{exc}")
+            jobs = eng.list_jobs()
+            detail = eng.job_result(job_id=jobs[0]["job_id"])
+            payload = json.loads(str(detail["result"]))
+            vectors = payload["vectors"]
+            try:
+                temps = [float(v) for v in vectors["temp-sweep"]]
+                veb = [float(v) for v in vectors["e1"]]
+                e2 = [float(v) for v in vectors["e2"]]
+                # e1 (unit) runs hotter-voltage than e2 (8×) at equal
+                # current, so e1-e2 is the PTAT quantity; compensated below.
+                dvbe = [a - b for a, b in zip(veb, e2, strict=True)]
+                vref = compensated_vref(veb, dvbe, k=_B7_K)
+            except (KeyError, SimError) as exc:
+                return BenchResult("B7", "error", {}, (repro,), f"{exc}")
+            try:
+                tempco = extract_tempco(temps, vref)
+            except SimError as exc:
+                return BenchResult("B7", "error", {}, (repro,), f"{exc}")
+            proc = corner.process
+            metrics[f"tempco_ppm_{proc}"] = tempco
+            metrics[f"vref_mean_v_{proc}"] = sum(vref) / len(vref)
+            repros.append(repro)
+        worst = max(metrics[f"tempco_ppm_{c.process}"] for c in FAST_5_CORNER_ENVELOPE)
+        if worst < _B7_TEMPCO_PPM:
+            return BenchResult("B7", "pass", metrics, tuple(repros), "")
+        return BenchResult(
+            "B7", "fail", metrics, tuple(repros),
+            f"Constraint: bandgap tempco {worst:.1f}ppm/C exceeds {_B7_TEMPCO_PPM:.0f}")
+    finally:
+        eng.close()
+
+
 def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
     """Execute one benchmark by id; unknown ids fail closed (Schema)."""
     if bench_id not in BENCHES:
@@ -605,5 +684,7 @@ def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
         return _run_b5(db_path=db_path, seed=seed)
     if bench_id == "B6":
         return _run_b6(db_path=db_path, seed=seed)
+    if bench_id == "B7":
+        return _run_b7(db_path=db_path, seed=seed)
     owner = BENCHES[bench_id].owner
     raise NotImplementedError(f"{bench_id} deferred to {owner}")

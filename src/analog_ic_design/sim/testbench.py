@@ -232,6 +232,49 @@ def assemble_dc_sweep(
     return "\n".join(lines) + "\n"
 
 
+def assemble_temp_sweep(
+    fragment: str,
+    *,
+    vdd_net: str = "vdd",
+    vdd_volts: float = 1.8,
+    vss_net: str = "vss",
+    t_start_c: float = -40.0,
+    t_stop_c: float = 125.0,
+    t_step_c: float = 5.0,
+    extra_lines: Sequence[str] = (),
+    includes: Sequence[str] = (),
+    libs: Sequence[tuple[str, str]] = (),
+    corner: Corner | None = None,
+) -> str:
+    """Assemble a temperature-sweep DC deck around a cell `fragment`.
+
+    `.dc temp` proven live on ngspice-47 (B7 recon: CTAT slope on the
+    PDK PNP). With a corner, the lib section and VDD follow it but the
+    `.temp` line is skipped — the sweep owns temperature. Celsius here:
+    temperature is a deck-boundary quantity (ADR-020 convention, same as
+    `Corner.temp_celsius()`).
+    """
+    body = fragment.splitlines()
+    while body and not body[-1].strip():
+        body.pop()
+    if body and body[-1].strip().lower() == ".end":
+        body.pop()
+    title, rest = (body[0], body[1:]) if body else ("* testbench", [])
+    lines = [title]
+    lines += [f".include {path}" for path in includes]
+    lines += _corner_libs(libs, corner)
+    lines.append(".param mc_mm_switch=0")
+    lines.append(".option scale=1e-6")
+    lines += [_to_microns(line) for line in rest]
+    vdd = corner.vdd if corner is not None else vdd_volts
+    lines.append(f"VDD {vdd_net} 0 DC {vdd}")
+    lines.append(f"VSS {vss_net} 0 DC 0")
+    lines += list(extra_lines)
+    lines.append(f".dc temp {t_start_c} {t_stop_c} {t_step_c}")
+    lines.append(".end")
+    return "\n".join(lines) + "\n"
+
+
 def assemble_ac(
     fragment: str,
     *,

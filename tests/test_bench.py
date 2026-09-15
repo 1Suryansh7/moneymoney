@@ -41,9 +41,12 @@ def test_unknown_bench_fails_closed() -> None:
         run_bench("B9", db_path=":memory:")
 
 
-def test_deferred_benches_raise_with_owner(tmp_path: Path) -> None:
-    with pytest.raises(NotImplementedError, match="R0-5"):
-        run_bench("B7", db_path=str(tmp_path / "b.sqlite"))
+def test_no_bench_remains_deferred(tmp_path: Path) -> None:
+    """B7 was the last deferred bench: every registry id executes (base
+    asserts fail-closed error data without a backend, never NotImplementedError)."""
+    for bid in sorted(BENCHES):
+        result = run_bench(bid, db_path=str(tmp_path / f"{bid.lower()}.sqlite"))
+        assert isinstance(result, BenchResult)
 
 
 def test_b0_without_backend_reports_error(tmp_path: Path) -> None:
@@ -239,6 +242,25 @@ def test_b6_live_passes_with_evidence(tmp_path: Path) -> None:
         assert result.metrics[f"gain_db_{proc}"] >= 60.0
         assert result.metrics[f"pm_deg_{proc}"] >= 45.0
         assert result.metrics[f"ugb_hz_{proc}"] > 1e6
+    assert len(result.evidence) == 5 and all(len(r) == 64 for r in result.evidence)
+
+
+def test_b7_without_backend_reports_error(tmp_path: Path) -> None:
+    result = run_bench("B7", db_path=str(tmp_path / "b7.sqlite"))
+    assert isinstance(result, BenchResult)
+    if libngspice_available():
+        pytest.skip("backend present; fail-closed path covered on base")
+    assert result.status == "error"
+    assert "Schema" in result.message or "SimError" in result.message
+
+
+@NEEDS_LIB
+def test_b7_live_passes_with_evidence(tmp_path: Path) -> None:
+    result = run_bench("B7", db_path=str(tmp_path / "b7live.sqlite"))
+    assert result.status == "pass", result.message
+    for proc in ("tt", "ff", "ss", "fs", "sf"):
+        assert result.metrics[f"tempco_ppm_{proc}"] < 100.0
+        assert 1.0 < result.metrics[f"vref_mean_v_{proc}"] < 1.5
     assert len(result.evidence) == 5 and all(len(r) == 64 for r in result.evidence)
 
 

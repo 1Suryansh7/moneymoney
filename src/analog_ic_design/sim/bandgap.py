@@ -10,9 +10,13 @@ the CTAT `Veb(T)` and PTAT `ΔVbe(T)` the runner compensates in
 PDK-quoted (Law 2), read from the pinned image:
 `.../libs.ref/sky130_fd_pr/spice/sky130_fd_pr__pnp_05v5_W3p40L3p40.model.spice`
 → `.subckt sky130_fd_pr__pnp_05v5_W3p40L3p40 Collector Base Emitter`
-(model name, C/B/E order, subckt kind ⇒ `X` prefix, `.param mult`).
+(model name, C/B/E order, subckt kind ⇒ `X` prefix).
+Area ratio is structural: Q2 is `ratio` unit devices in parallel (exact
+8× by construction). The subckt `mult` parameter was probed live and
+scales only mismatch sigma (Pelgrom 1/sqrt), NOT emitter area —
+`ΔVbe` measured exactly zero with it, so the fixture does not use it.
 Resistors and current feeds are ideal deck elements (documented runner
-assumption); only the PNP pair is PDK-bound.
+assumption); only the PNP devices are PDK-bound.
 """
 
 from __future__ import annotations
@@ -30,14 +34,14 @@ PIN_ORDER = "Collector Base Emitter"
 def build_bandgap(
     conn: sqlite3.Connection,
     *,
-    mult: float = 8.0,
+    ratio: int = 8,
 ) -> str:
-    """Create project/lib/cell/symbol/tech/binding/instances/nets/ports/
-    params for the two-PNP bandgap core; returns the cell id.
+    """Create project/lib/cell/symbol/tech/binding/instances/nets/ports
+    for the two-PNP bandgap core; returns the cell id.
 
-    Q1 unit device, Q2 `mult`× area. All geometry is the PDK-drawn
-    W3p40L3p40 device; scaling is the quoted `mult` parameter (SI-pure
-    float, no units).
+    Q1 single unit device, Q2 `ratio` unit devices with commoned
+    terminals (exact area ratio by construction). The drawn device is
+    always the PDK W3p40L3p40; there are no geometry parameters.
     """
     pid, lib, cell, tech = (new_id() for _ in range(4))
     pcell, psym = new_id(), new_id()
@@ -57,9 +61,16 @@ def build_bandgap(
     )
     conn.execute("INSERT INTO symbol VALUES (?, ?, ?, ?)", (psym, pcell, "pnp_05v5", STAMP))
 
-    q1, q2 = new_id(), new_id()
+    q1 = new_id()
     conn.execute("INSERT INTO instance VALUES (?, ?, ?, ?, ?)", (q1, cell, psym, "q1", STAMP))
-    conn.execute("INSERT INTO instance VALUES (?, ?, ?, ?, ?)", (q2, cell, psym, "q2", STAMP))
+    q2s: list[str] = []
+    for i in range(ratio):
+        q2 = new_id()
+        q2s.append(q2)
+        conn.execute(
+            "INSERT INTO instance VALUES (?, ?, ?, ?, ?)",
+            (q2, cell, psym, f"q2_{i}", STAMP),
+        )
     nets: dict[str, str] = {}
     for name in ("e1", "e2", "vss"):
         nid = new_id()
@@ -69,18 +80,18 @@ def build_bandgap(
         (q1, "Collector", "vss"),
         (q1, "Base", "vss"),
         (q1, "Emitter", "e1"),
-        (q2, "Collector", "vss"),
-        (q2, "Base", "vss"),
-        (q2, "Emitter", "e2"),
     )
     for iid, term, net in hooks:
         conn.execute(
             "INSERT INTO port VALUES (?, NULL, ?, ?, ?, ?)",
             (new_id(), iid, nets[net], term, STAMP),
         )
-    for iid, mval in ((q1, 1.0), (q2, mult)):
-        conn.execute(
-            "INSERT INTO parameter VALUES (?, ?, ?, ?, ?)", (new_id(), iid, "mult", mval, STAMP)
-        )
+    for q2 in q2s:
+        for term in ("Collector", "Base", "Emitter"):
+            net = "e2" if term == "Emitter" else "vss"
+            conn.execute(
+                "INSERT INTO port VALUES (?, NULL, ?, ?, ?, ?)",
+                (new_id(), q2, nets[net], term, STAMP),
+            )
     conn.commit()
     return cell
