@@ -213,6 +213,73 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     await expect(tracePolylines.first()).toBeVisible({ timeout: 10000 });
     expect(await tracePolylines.count()).toBeGreaterThan(0);
   });
+
+  test("UI cell creation produces canonical netlist equivalent to direct engine API", async ({
+    page,
+    request,
+  }) => {
+    const testCellName = `equiv_cs_${Date.now()}`;
+
+    // 1. Open the UI
+    await page.goto("http://localhost:5173", { waitUntil: "networkidle" });
+
+    // 2. Open New Cell View dialog via toolbar button
+    await page.getByRole("button", { name: "New Cell View" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10000 });
+
+    // 3. Create common_source cell via the UI dialog
+    await page.getByPlaceholder("e.g. my_amp").fill(testCellName);
+    await page.getByLabel("Template").selectOption("common_source");
+    await page.getByRole("button", { name: "Create" }).click();
+    await expect(page.getByRole("dialog")).not.toBeVisible({ timeout: 10000 });
+
+    // 4. Find the cell ID created by the UI from the GET /cells API
+    const cellsResp = await request.get("http://localhost:8000/cells");
+    expect(cellsResp.ok()).toBeTruthy();
+    const cells = (await cellsResp.json()) as { cell_id: string; cell_name: string }[];
+    const uiCell = cells.find((c) => c.cell_name === testCellName);
+    expect(uiCell).toBeDefined();
+    const uiCellId = uiCell!.cell_id;
+
+    // 5. Compile netlist for UI-created cell via POST /netlist
+    const uiNetlistResp = await request.post("http://localhost:8000/netlist", {
+      data: { cell_id: uiCellId },
+    });
+    expect(uiNetlistResp.ok()).toBeTruthy();
+    const uiNetlist = ((await uiNetlistResp.json()) as { netlist: string }).netlist;
+
+    // 6. Independently create the identical cell purely through the Engine API
+    const apiProjResp = await request.post("http://localhost:8000/projects", {
+      data: { name: "api_equiv_proj" },
+    });
+    const apiProjId = ((await apiProjResp.json()) as { project_id: string }).project_id;
+    const apiAnchorResp = await request.post("http://localhost:8000/cells", {
+      data: { project_id: apiProjId, cell_name: `${testCellName}_api_anchor` },
+    });
+    const apiAnchorId = ((await apiAnchorResp.json()) as { cell_id: string }).cell_id;
+    const apiInstResp = await request.post("http://localhost:8000/instantiate", {
+      data: { cell_id: apiAnchorId, template_id: "common_source", parameters: {} },
+    });
+    const apiInstId = ((await apiInstResp.json()) as { cell_id: string }).cell_id;
+    await request.post(`http://localhost:8000/cells/${encodeURIComponent(apiInstId)}/rename`, {
+      data: { cell_name: testCellName },
+    });
+
+    // 7. Compile netlist for API-created cell via POST /netlist
+    const apiNetlistResp = await request.post("http://localhost:8000/netlist", {
+      data: { cell_id: apiInstId },
+    });
+    expect(apiNetlistResp.ok()).toBeTruthy();
+    const apiNetlist = ((await apiNetlistResp.json()) as { netlist: string }).netlist;
+
+    // 8. Assert byte-identical netlist equality between UI-instantiated and API-instantiated designs
+    expect(uiNetlist).toBe(apiNetlist);
+
+    // 9. Assert expected electrical instances and Sky130 model bindings exist in both
+    expect(uiNetlist).toContain("Xm1 out in vss vss sky130_fd_pr__nfet_01v8");
+    expect(uiNetlist).toContain("Xm2 out vbias vdd vdd sky130_fd_pr__pfet_01v8");
+    expect(uiNetlist).toContain(".end");
+  });
 });
 
 

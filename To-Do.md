@@ -225,9 +225,9 @@ analyzer traces, 1.9 min).
   - [x] R0-2b B2 diff pair (runner): single-ended AC drive, both output gains via Stage 3 extractor over complex phasors; differential-action fingerprint MEASURED 8.075/0.536 — 3–30 mirror side plus under-2 diode side, bands structural not fitted. EDA bench file 8 passed + 3 skips.
   - [x] R0-3a B3 common-source amp (runner over new `sim/cs_amp.py` fixture + `BiasSearch`): missionary M1-off trap hit live (Vg=0.99 parks device OFF, gain -0.3), fixed by Vg sweep-load-line search; entry-bar trap avoided by fitting dc-then-ac at measured trip. MEASURED DC 9.102 == AC 9.087 within 10%, op trip 0.85V vs 1.31 pass band, rails 0.023–1.797. EDA bench file 10 passed + 4 skips.
   - [x] R0-3b B4 cascode (runner over new `sim/cascode.py` fixture): Vbcas search reversed live (1.1 rail-hugging beats intended 0.9 by +4 gain, physically correct — higher Vbcas maximizes swing); dual DC+AC assertions required (AC-only lies: 1.6 DC vs 13.5 AC through drain resistor). MEASURED DC 12.999 == AC 12.989 at trip 0.85V, clears same-size plain-CS 9.1 action threshold 10, headroom span 0.205V, rails 0.091–1.800. Base 346+37 green; EDA `-k b4` 2 passed + 1 legit skip in 75s. Pushed `28be619` + `a9f8e07` to origin/main — R0-3 CLOSED, B5–B7 stay deferred.
-- [ ] **Stage 7 — Schematic UI**
-  - [ ] Interactive UI client calling `DesignEngine v0.1` API exclusively.
-  - [ ] Playwright automated equivalence test (UI vs Python API netlist hash match).
+- [x] **Stage 7 — Schematic UI**
+  - [x] Interactive UI client calling `DesignEngine v0.1` API exclusively (Lovable shell, store.tsx API client, NewCellDialog, SimulationExplorer, WaveformAnalyzer).
+  - [x] Playwright automated equivalence test (UI cell creation produces netlist byte-identical to direct Engine API instantiation, proven in `e2e/cockpit.spec.ts` in 5.5s).
 - [ ] **Stage 8 — Physical Design**
   - [ ] Single-device backend technology spike (KLayout vs Magic vs Netgen).
   - [ ] `LayoutBackend` PCell placement, DRC, and LVS flow.

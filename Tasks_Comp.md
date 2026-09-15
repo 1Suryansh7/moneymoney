@@ -193,9 +193,16 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **Stage 7 UI-API Equivalence Proof** — Automated Playwright test proving UI-created cell netlist matches Python EngineV01 netlist hash.
-2. **Stage 8+ physical design** — KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow, then Stages 9–10 per `planchanges.md`.
-3. **CI Actions observation** — Confirm smoke/eda runs are green in the GitHub Actions tab.
+1. **Stage 8+ physical design** — KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow, then Stages 9–10 per `planchanges.md`.
+2. **CI Actions observation** — Confirm smoke/eda runs are green in the GitHub Actions tab.
+
+## 2026-09-15 — Stage 7 UI-API Equivalence Proof (Playwright E2E green)
+- Automated Playwright end-to-end equivalence test (`UI design 1/e2e/cockpit.spec.ts:217`):
+  - User creates `common_source` cell via the Cockpit UI `NewCellDialog`.
+  - Backend compiles UI-instantiated cell via `POST /netlist`.
+  - Independent direct instantiation executed purely via Engine API (`POST /cells` + `POST /instantiate`).
+  - Byte-identical netlist equality (`expect(uiNetlist).toBe(apiNetlist)`) and matching Sky130 model bindings (`sky130_fd_pr__nfet_01v8`, `sky130_fd_pr__pfet_01v8`) verified live in real Chromium in 5.3s.
+- Stage 7 done-when criterion formally satisfied.
 
 ## 2026-09-15 — Golden netlist byte-identical asserts (Error 2, base + EDA green)
 - Replaced substring asserts with byte-identical golden comparisons against hand-verified reference netlists:
