@@ -27,6 +27,7 @@ from analog_ic_design.circuit.compiler import compile_netlist
 from analog_ic_design.circuit.validator import validate
 from analog_ic_design.optimize.optimizer import SearchSpace, TrialResult
 from analog_ic_design.optimize.optuna_optimizer import OptunaOptimizer
+from analog_ic_design.robust.corner import Corner
 from analog_ic_design.sim.jobs import JobRunner
 from analog_ic_design.sim.ngspice import RawSim, SimError
 from analog_ic_design.sim.reproduce import design_identity_hash
@@ -98,6 +99,7 @@ def assemble_miller_ac_deck(
     points_per_decade: int = 10,
     cload_farads: float = 2.0e-12,
     libs: Sequence[tuple[str, str]] = (),
+    corner: Corner | None = None,
 ) -> str:
     """Assemble small-signal AC frequency response deck for Two-Stage Miller Op-Amp.
 
@@ -116,11 +118,11 @@ def assemble_miller_ac_deck(
 
     lines = [title]
     lines.append(PASSIVE_SUBCKTS.strip())
-    lines += _corner_libs(libs, corner=None)
+    lines += _corner_libs(libs, corner)
     lines.append(".param mc_mm_switch=0")
     lines.append(".option scale=1e-6")
     lines += [_to_microns(line) for line in rest]
-    lines += _corner_supply(vdd_net, vdd_volts, corner=None)
+    lines += _corner_supply(vdd_net, vdd_volts, corner)
     lines.append(f"VSS {vss_net} 0 DC 0")
     lines.append(f"Vbias1 vbias1 0 DC {vbias1_volts}")
     lines.append(f"Vbias2 vbias2 0 DC {vbias2_volts}")

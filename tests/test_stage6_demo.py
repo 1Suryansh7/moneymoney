@@ -25,6 +25,7 @@ import pytest
 
 from analog_ic_design.circuit.compiler import compile_netlist
 from analog_ic_design.circuit.validator import validate
+from analog_ic_design.robust.corner import FAST_5_CORNER_ENVELOPE
 from analog_ic_design.sim.jobs import JobRunner
 from analog_ic_design.sim.miller_opamp import (
     assemble_miller_ac_deck,
@@ -75,6 +76,22 @@ def test_miller_deck_assembly(db: sqlite3.Connection) -> None:
     assert "AC -0.5" not in deck
     assert ".ac dec 10 1.0 10000000000.0" in deck
     assert deck.endswith(".end\n")
+
+
+def test_miller_deck_corner_sections(db: sqlite3.Connection) -> None:
+    """Corner plumbing is additive: None keeps the nominal deck byte-identical,
+    a corner swaps the .lib section, supply, and .temp (B6 PVT)."""
+    cell_id = instantiate_template(db, "two_stage_miller", cell_name="miller_corner_test")
+    frag = compile_netlist(db, cell_id)
+    nominal = assemble_miller_ac_deck(frag, libs=[("dummy.lib", "tt")])
+    assert ".lib 'dummy.lib' tt" in nominal
+    assert "VDD vdd 0 DC 1.8" in nominal
+    assert ".temp" not in nominal
+    corner = next(c for c in FAST_5_CORNER_ENVELOPE if c.process == "ss")
+    swept = assemble_miller_ac_deck(frag, libs=[("dummy.lib", "tt")], corner=corner)
+    assert ".lib 'dummy.lib' ss" in swept
+    assert "VDD vdd 0 DC 1.62" in swept
+    assert ".temp 125.00" in swept
 
 
 def test_miller_evaluation_fails_closed_without_backend(db: sqlite3.Connection) -> None:
