@@ -1,9 +1,9 @@
 """AnalogBench registry + runner (R0 trust core).
 
 Eight canonical benchmarks B0–B7 form the release scoreboard. B0 (inverter),
-B1 (mirror), B2 (diff pair), B3 (common-source) and B4 (cascode) execute
-today; B5–B7 raise NotImplementedError with per-bench defer owners instead
-of faking results. Runner returns data
+B1 (mirror), B2 (diff pair), B3 (common-source), B4 (cascode) and B5
+(folded-cascode OTA) execute today; B6–B7 raise NotImplementedError with
+per-bench defer owners instead of faking results. Runner returns data
 (BenchResult), never raises on simulation faults — failures are scoreboard
 rows, and the fail-closed contract surfaces them as status="error" with the
 taxonomy message attached.
@@ -17,10 +17,12 @@ from dataclasses import dataclass, field
 from typing import Final
 
 from analog_ic_design.engine.engine_v01 import EngineV01
+from analog_ic_design.metrics.bandwidth import extract_bandwidth
 from analog_ic_design.metrics.gain import extract_ac_gain, extract_dc_gain
 from analog_ic_design.sim.cascode import build_cascode
 from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.diff_pair import build_diff_pair
+from analog_ic_design.sim.folded_cascode import build_folded_cascode
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.mirror import build_mirror
 from analog_ic_design.sim.ngspice import RawSim, SimError
@@ -73,7 +75,7 @@ BENCHES: dict[str, Benchmark] = {
     "B4": Benchmark("B4", "Telescopic cascode", "cascode",
                     ("ac",), "gain + headroom within tolerance", "R0-3"),
     "B5": Benchmark("B5", "Folded-cascode OTA", "folded_cascode",
-                    ("ac", "tran"), "gain/UGB/PM within tolerance", "R0-4"),
+                    ("ac", "tran"), "dc/ac gain + UGB within tolerance (1pF)", "R0-4"),
     "B6": Benchmark("B6", "Miller op-amp PVT", "two_stage_miller",
                     ("ac", "pvt"), "spec across corners", "R0-4"),
     "B7": Benchmark("B7", "Bandgap reference", "bandgap",
@@ -422,6 +424,100 @@ def _run_b4(*, db_path: str, seed: int) -> BenchResult:
         eng.close()
 
 
+# B5 bias recipe, discovered live on the EDA image by grid probe
+# (probe_b5_tmp.py, deleted scratch): the NMOS/PMOS balance is razor
+# sharp — strong-NMOS corners park `out` at vss, strong-PMOS corners at
+# vdd. tail=1.0/bp=1.0/n1=0.5/n2=1.0/vcm=0.9 centers the transfer with
+# rail-to-rail swing; the DC-sweep trip search absorbs residual offset.
+_B5_EXTRA = [
+    "Vbtail vbias_tail 0 DC 1.0",
+    "Vbp vbias_p 0 DC 1.0",
+    "Vbn1 vbias_n1 0 DC 0.5",
+    "Vbn2 vbias_n2 0 DC 1.0",
+    "Vvin vin 0 DC 0.9",
+]
+
+
+def _run_b5(*, db_path: str, seed: int) -> BenchResult:
+    setup = connect(db_path)
+    try:
+        migrate(setup)
+        cell = build_folded_cascode(setup)
+    finally:
+        setup.close()
+    eng = EngineV01(db_path=db_path)
+    try:
+        valid, violations = eng.validate(cell_id=cell)
+        if not valid:
+            return BenchResult("B5", "fail", {}, (),
+                               f"Constraint: validation gate failed: {violations}")
+        frag = eng.netlist(cell_id=cell)
+        dc_deck = assemble_dc_sweep(
+            frag,
+            sweep_net="vip",
+            v_start=0.4,
+            v_stop=1.4,
+            v_step=0.005,
+            extra_lines=_B5_EXTRA,
+            libs=[(SKY130_LIB, "tt")],
+        )
+        try:
+            eng.simulate(netlist=dc_deck, seed=seed)
+            dc_vecs, _ = _job_vectors(eng)
+            vip = [float(v) for v in dc_vecs["vip"]]
+            vout = [float(v) for v in dc_vecs["out"]]
+            dc_gain = extract_dc_gain(vip, vout)
+            slopes = [abs((vout[i + 1] - vout[i]) / (vip[i + 1] - vip[i]))
+                      for i in range(len(vip) - 1)]
+            trip = vip[slopes.index(max(slopes))]
+            ac_deck = assemble_ac(
+                frag,
+                in_net="vip",
+                v_bias=trip,
+                extra_lines=_B5_EXTRA + ["Cload out 0 1p"],
+                libs=[(SKY130_LIB, "tt")],
+            )
+            repro = eng.simulate(netlist=ac_deck, seed=seed)
+        except SimError as exc:
+            return BenchResult("B5", "error", {}, (), f"{exc}")
+        jobs = eng.list_jobs()
+        detail = eng.job_result(job_id=jobs[0]["job_id"])
+        payload = json.loads(str(detail["result"]))
+        cx = {k: [complex(p[0], p[1]) for p in v]
+              for k, v in payload.get("complex_vectors", {}).items()}
+        wave = parse_ac(RawSim(vectors=payload["vectors"], complex_vectors=cx, log=""))
+        try:
+            ac_gain = extract_ac_gain(wave, in_node="vip", out_node="out")
+            ugb = extract_bandwidth(wave, in_node="vip", out_node="out")
+        except SimError as exc:
+            return BenchResult("B5", "error", {}, (repro,), f"{exc}")
+        metrics = {
+            "dc_gain": dc_gain,
+            "ac_gain": ac_gain,
+            "ugb_hz": ugb,
+            "trip_v": trip,
+            "vout_min_v": min(vout),
+            "vout_max_v": max(vout),
+        }
+        # MEASURED live: DC 28.070 == AC 28.070 at trip 0.870V, UGB
+        # 39.6kHz @ declared 1pF, rails 0.063–1.775V. Dual-analysis
+        # agreement pins deck integrity; gain > 10 pins OTA action (clears
+        # the plain-CS 9.1, same logic as B4); UGB band pins a real
+        # frequency response rather than a DC artifact. PM is NOT asserted:
+        # single-ended open-loop PM is ill-defined — closed-loop PM stays
+        # Stage 3's Tian domain (acceptance text updated to match).
+        rel_diff = abs(dc_gain - ac_gain) / dc_gain if dc_gain > 0 else float("inf")
+        if ac_gain > 10.0 and min(vout) < 0.1 and max(vout) > 1.7 \
+                and rel_diff < 0.10 and 1e3 < ugb < 1e9:
+            return BenchResult("B5", "pass", metrics, (repro,), "")
+        return BenchResult(
+            "B5", "fail", metrics, (repro,),
+            f"Constraint: folded-cascode action broken (dc={dc_gain:.3f},"
+            f" ac={ac_gain:.3f}, ugb={ugb:.3e})")
+    finally:
+        eng.close()
+
+
 def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
     """Execute one benchmark by id; unknown ids fail closed (Schema)."""
     if bench_id not in BENCHES:
@@ -436,5 +532,7 @@ def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
         return _run_b3(db_path=db_path, seed=seed)
     if bench_id == "B4":
         return _run_b4(db_path=db_path, seed=seed)
+    if bench_id == "B5":
+        return _run_b5(db_path=db_path, seed=seed)
     owner = BENCHES[bench_id].owner
     raise NotImplementedError(f"{bench_id} deferred to {owner}")

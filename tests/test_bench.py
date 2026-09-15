@@ -199,3 +199,23 @@ def test_b5_fixture_validates_without_backend(tmp_path: Path) -> None:
     finally:
         conn.close()
     assert report.valid, [v.message for v in report.violations]
+
+
+def test_b5_without_backend_reports_error(tmp_path: Path) -> None:
+    result = run_bench("B5", db_path=str(tmp_path / "b5.sqlite"))
+    assert isinstance(result, BenchResult)
+    if libngspice_available():
+        pytest.skip("backend present; fail-closed path covered on base")
+    assert result.status == "error"
+    assert "Schema" in result.message or "SimError" in result.message
+
+
+@NEEDS_LIB
+def test_b5_live_passes_with_evidence(tmp_path: Path) -> None:
+    result = run_bench("B5", db_path=str(tmp_path / "b5live.sqlite"))
+    assert result.status == "pass", result.message
+    assert result.metrics["ac_gain"] > 10.0
+    assert 1e3 < result.metrics["ugb_hz"] < 1e9
+    assert result.metrics["vout_min_v"] < 0.1
+    assert result.metrics["vout_max_v"] > 1.7
+    assert len(result.evidence) == 1 and len(result.evidence[0]) == 64
