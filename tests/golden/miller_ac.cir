@@ -1,0 +1,29 @@
+* cell miller_deck_test
+* Ideal passive subcircuit wrappers for simulation compatibility
+.subckt cap_subckt p n c=1e-12
+C1 p n {c}
+.ends
+.subckt res_subckt p n r=1000
+R1 p n {r}
+.ends
+.lib 'dummy.lib' tt
+.param mc_mm_switch=0
+.option scale=1e-6
+Xcc out1 n_comp cap_subckt c=1e-12
+Xm1 n_d1 vip tail vss sky130_fd_pr__nfet_01v8 L=0.5 W=5.0
+Xm2 out1 vin tail vss sky130_fd_pr__nfet_01v8 L=0.5 W=5.0
+Xm3 n_d1 n_d1 vdd vdd sky130_fd_pr__pfet_01v8 L=0.5 W=5.0
+Xm4 out1 n_d1 vdd vdd sky130_fd_pr__pfet_01v8 L=0.5 W=5.0
+Xm5 tail vbias1 vss vss sky130_fd_pr__nfet_01v8 L=0.5 W=5.0
+Xm6 out out1 vdd vdd sky130_fd_pr__pfet_01v8 L=0.5 W=20.0
+Xm7 out vbias2 vss vss sky130_fd_pr__nfet_01v8 L=0.5 W=10.0
+Xrz n_comp out res_subckt r=1000.0
+VDD vdd 0 DC 1.8
+VSS vss 0 DC 0
+Vbias1 vbias1 0 DC 0.65
+Vbias2 vbias2 0 DC 0.65
+Vip vip 0 DC 0.9 AC 1.0
+Vin vin 0 DC 0.9
+Cload out 0 2.0p
+.ac dec 10 1.0 10000000000.0
+.end

@@ -32,6 +32,21 @@ NEEDS_LIB = pytest.mark.skipif(
 
 SKY130_LIB = "/usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice"
 
+GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
+GOLDEN_NOT = GOLDEN_DIR / "not_gate.cir"
+GOLDEN_NAND = GOLDEN_DIR / "nand_gate.cir"
+
+
+def _assert_golden(path: Path, netlist: str) -> None:
+    """Byte-identical golden comparison (1G protocol: LF only, trailing NL).
+
+    The golden files are hand-verified ground truth (human checkpoint):
+    never edit them to make a test pass.
+    """
+    raw = path.read_bytes()
+    assert b"\r" not in raw and raw.endswith(b"\n")
+    assert netlist == raw.decode("utf-8")
+
 
 @pytest.fixture()
 def mem_db() -> sqlite3.Connection:
@@ -71,10 +86,10 @@ def test_not_gate_schema_and_symbol(mem_db: sqlite3.Connection) -> None:
     port_names = [p[0] for p in ports]
     assert port_names == ["in", "out", "vdd", "vss"]
 
-    # 3. Check netlist compiles
+    # 3. Check netlist compiles byte-identical to the golden reference
+    # (node order, terminals d/g/s/b, W/L in meters, model names).
     netlist = compile_netlist(mem_db, cell_id)
-    assert "Xmn1 out in vss vss sky130_fd_pr__nfet_01v8" in netlist
-    assert "Xmp1 out in vdd vdd sky130_fd_pr__pfet_01v8" in netlist
+    _assert_golden(GOLDEN_NOT, netlist)
 
 
 def test_nand_gate_schema_and_symbol(mem_db: sqlite3.Connection) -> None:
@@ -97,12 +112,9 @@ def test_nand_gate_schema_and_symbol(mem_db: sqlite3.Connection) -> None:
     port_names = [p[0] for p in ports]
     assert port_names == ["a", "b", "out", "vdd", "vss"]
 
-    # 3. Check netlist compiles
+    # 3. Check netlist compiles byte-identical to the golden reference.
     netlist = compile_netlist(mem_db, cell_id)
-    assert "Xmp1 out a vdd vdd sky130_fd_pr__pfet_01v8" in netlist
-    assert "Xmp2 out b vdd vdd sky130_fd_pr__pfet_01v8" in netlist
-    assert "Xmn1 out a mid vss sky130_fd_pr__nfet_01v8" in netlist
-    assert "Xmn2 mid b vss vss sky130_fd_pr__nfet_01v8" in netlist
+    _assert_golden(GOLDEN_NAND, netlist)
 
 
 @NEEDS_LIB

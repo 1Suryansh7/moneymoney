@@ -1,0 +1,4 @@
+* cell not_gate
+Xmn1 out in vss vss sky130_fd_pr__nfet_01v8 L=1.5e-07 W=1e-06
+Xmp1 out in vdd vdd sky130_fd_pr__pfet_01v8 L=1.5e-07 W=2e-06
+.end

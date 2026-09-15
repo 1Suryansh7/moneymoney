@@ -60,12 +60,20 @@ def test_assemble_converts_geometry_to_microns() -> None:
         "* cell x\nXm1 out in vss vss sky130_fd_pr__nfet_01v8 L=1.6e-07 W=1e-06\n.end\n",
         libs=[(SKY130_LIB, "tt")],
     )
-    assert "Xm1 out in vss vss sky130_fd_pr__nfet_01v8 L=0.16 W=1.0\n" in deck
-    assert ".option scale=1e-6\n" in deck
-    # Stimulus stays SI: volts/seconds are never micron-scaled.
-    assert "VDD vdd 0 DC 1.8\n" in deck
-    assert "VSS vss 0 DC 0\n" in deck
-    assert ".tran 0.1n 3e-08\n" in deck
+    # Byte-exact: geometry converts, stimulus stays SI (volts/seconds are
+    # never micron-scaled).
+    assert deck == (
+        "* cell x\n"
+        f".lib '{SKY130_LIB}' tt\n"
+        ".param mc_mm_switch=0\n"
+        ".option scale=1e-6\n"
+        "Xm1 out in vss vss sky130_fd_pr__nfet_01v8 L=0.16 W=1.0\n"
+        "VDD vdd 0 DC 1.8\n"
+        "VSS vss 0 DC 0\n"
+        "Vin in 0 DC 0 PULSE(0 1.8 1n 1n 1n 10n 20n)\n"
+        ".tran 0.1n 3e-08\n"
+        ".end\n"
+    )
 
 
 def test_assemble_without_end_still_terminates() -> None:

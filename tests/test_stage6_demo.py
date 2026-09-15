@@ -66,17 +66,12 @@ def test_miller_deck_assembly(db: sqlite3.Connection) -> None:
     frag = compile_netlist(db, cell_id)
     deck = assemble_miller_ac_deck(frag, libs=[("dummy.lib", "tt")])
 
-    assert ".subckt cap_subckt" in deck
-    assert ".subckt res_subckt" in deck
-    assert "Vbias1" in deck
-    assert "Vbias2" in deck
-    assert "Vip" in deck
-    assert "Vin" in deck
-    # Single-ended drive: Vid = Vip - Vin = 1.0 V AC (Stage 6E grounding fix).
-    assert "AC 1.0" in deck
-    assert "AC -0.5" not in deck
-    assert ".ac dec 10 1.0 10000000000.0" in deck
-    assert deck.endswith(".end\n")
+    # Byte-identical golden (ground truth, human-verified): pins the full
+    # deck text including the 6E single-ended-drive fix (Vip AC 1.0, Vin AC
+    # ground — never AC -0.5 differential). Never edit the golden to pass.
+    raw = (Path(__file__).resolve().parent / "golden" / "miller_ac.cir").read_bytes()
+    assert b"\r" not in raw and raw.endswith(b"\n")
+    assert deck == raw.decode("utf-8")
 
 
 def test_miller_deck_corner_sections(db: sqlite3.Connection) -> None:

@@ -193,10 +193,18 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 
 ## NOT done (open, owned)
 
-1. **RFC-002 Grounded Tutor review** — Draft at `docs/rfc/rfc-002-grounded-tutor.md` (v0 explain-or-refuse chat route + 20-prompt refusal Eval + AssistPanel rewire; v1 CandidateCircuitIR Review modal). BLOCKED on human verdicts to its §10 questions (classifier type, Eval authorship, token caps, feature flag). NO tutor code until accepted.
-2. **Golden byte-identical netlist asserts** — Substring asserts stand (`test_inverter.py`, gates file); golden replacement is non-blocking, unscheduled.
-3. **Stage 8+ physical design** — KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow, then Stages 9–10 per `planchanges.md`. B5–B7 benches stay deferred per ADR-033.
-4. **CI Actions observation** — No gh/token from here; confirm the post-`7c4ca71` smoke/eda runs are green in the GitHub tab.
+1. **Stage 7 UI-API Equivalence Proof** — Automated Playwright test proving UI-created cell netlist matches Python EngineV01 netlist hash.
+2. **Stage 8+ physical design** — KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow, then Stages 9–10 per `planchanges.md`.
+3. **CI Actions observation** — Confirm smoke/eda runs are green in the GitHub Actions tab.
+
+## 2026-09-15 — Golden netlist byte-identical asserts (Error 2, base + EDA green)
+- Replaced substring asserts with byte-identical golden comparisons against hand-verified reference netlists:
+  - `tests/golden/not_gate.cir`: CMOS inverter (Xmn1 pull-down, Xmp1 pull-up, Sky130 1.8V, W/L in meters, LF-only).
+  - `tests/golden/nand_gate.cir`: 2-input NAND (series NMOS stack out→mid→vss, parallel PMOS to vdd).
+  - `tests/golden/miller_ac.cir`: Two-stage Miller AC deck (single-ended 1.0V AC drive Vip, Vin AC 0, Xcc + Xrz, 2.0p load).
+  - `tests/test_inverter.py`: Inline byte-exact assertion for micron-scaled deck with `.option scale=1e-6`.
+- Human Checkpoint CONFIRMED: electrical correctness, pin order, W/L in meters, single-ended AC drive verified.
+- Evidence: `test_digital_gates.py`, `test_inverter.py`, `test_stage6_demo.py` all green (15 passed in 249.20s). Full base gate clean.
 
 ## 2026-09-14 — R0-5 B7 bandgap (`6a2f265` + `1b38a3b`, EDA-proven, ZERO deferred benches)
 - PDK recon (Law 2): `sky130_fd_pr__pnp_05v5_W3p40L3p40` quoted C/B/E + subckt/X; `.dc temp` + CTAT slope proven live in one ngspice-CLI run (0.851V@-40 → 0.575V@125).
