@@ -197,7 +197,7 @@
   - [x] v0-backend commit `26d1176` (pushed via `17d07c7` tracker commit): `ai/tutor.py` keyword classifier + `EngineV01.chat` + POST /copilot/chat + `tests/test_tutor_refusal.py` (20-prompt Eval). Evidence: ruff + mypy-strict clean, new file 24 passed, full base 412+47 green.
   - [ ] v0-frontend / v1 / ADR-036-037 docs-sync / adversarial hardening: ALL DEFERRED INDEFINITELY (ADR-036 freeze). Unfreeze requires a human verdict.
 - [-] **Active: canonical EDA pivot (ADR-036)**
-  - [ ] Track A: B5 folded-cascode fixture (`sim/folded_cascode.py`) + `_run_b5` runner + bench tests (dual DC+AC assertions; EDA `-k b5` proof).
+  - [-] Track A: B5 folded-cascode fixture (`sim/folded_cascode.py`) + `_run_b5` runner + bench tests (dual DC+AC assertions; EDA `-k b5` proof).
   - [ ] Track B: PVT sweep in cockpit — `EngineV01.run_corners` + route, rewire "Run All Corners" (currently miswired to nominal sim), dispersion display + Playwright.
 - [x] Quick-wins debt batch: CORS origins tightened to the two loopback dev URLs (wildcard+credentials rejected by browsers — VERIFIED in `api/server.py:323-324`); Misc.tsx signoff/metrics/margins fiction replaced with run-state truth + live Measured block; test_digital_gates.py deck assembly via assemble_transient (VERIFIED `tests/test_digital_gates.py:24,124` — micron string-replace debt retired).
   - [x] 3e canvas live: cell picker + `activeCellId`/`activeSchematic` in store (mount picks first non-anchor); deterministic auto-layout with W/L engineering notation; connectivity strip + neutral port markers instead of routed-wire fiction; toolbar counts + overlay + Check all live (POST /validate); empty state, no mock fallback. Playwright 4/4 incl. new canvas test (named cell → m1/m2 + counts + sky130 label).

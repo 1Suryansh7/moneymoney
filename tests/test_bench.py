@@ -16,6 +16,7 @@ from analog_ic_design.circuit import validate
 from analog_ic_design.sim.cascode import build_cascode
 from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.diff_pair import build_diff_pair
+from analog_ic_design.sim.folded_cascode import build_folded_cascode
 from analog_ic_design.sim.mirror import build_mirror
 from analog_ic_design.sim.ngspice import libngspice_available
 from analog_ic_design.store.schema import connect, migrate
@@ -41,7 +42,7 @@ def test_unknown_bench_fails_closed() -> None:
 
 def test_deferred_benches_raise_with_owner(tmp_path: Path) -> None:
     with pytest.raises(NotImplementedError, match="R0-4"):
-        run_bench("B5", db_path=str(tmp_path / "b.sqlite"))
+        run_bench("B6", db_path=str(tmp_path / "b.sqlite"))
 
 
 def test_b0_without_backend_reports_error(tmp_path: Path) -> None:
@@ -186,3 +187,15 @@ def test_b4_live_passes_with_evidence(tmp_path: Path) -> None:
     assert result.metrics["vout_max_v"] > 1.7
     assert result.metrics["headroom_v"] > 0.1
     assert len(result.evidence) == 1 and len(result.evidence[0]) == 64
+
+
+def test_b5_fixture_validates_without_backend(tmp_path: Path) -> None:
+    """Folded-cascode OTA cell passes the pre-simulation gate with no simulator."""
+    conn = connect(str(tmp_path / "b5fix.sqlite"))
+    try:
+        migrate(conn)
+        cell = build_folded_cascode(conn)
+        report = validate(conn, cell)
+    finally:
+        conn.close()
+    assert report.valid, [v.message for v in report.violations]
