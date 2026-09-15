@@ -206,7 +206,8 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - MEASURED: tempco tt 57.44 / ff 68.90 / ss 43.47 / fs,sf 57.44 ppm/°C; Vref 1.227–1.236V; band 100 clears worst ff. Readout: fs/sf==tt at same VDD (bipolar tt-only inference); tempco moves with supply.
 - Evidence: EDA b7-live green at <100; full base 432+51 green. Scratch probes deleted pre-commit.
 
-## 2026-09-14 — R0-4 B6 Miller PVT (`89d33b1` + `42180b0`, EDA-proven)- B6a: `corner` plumbing in `assemble_miller_ac_deck` (None default keeps nominal decks byte-identical, proven by untouched deck test) + per-corner deck-text test.
+## 2026-09-14 — R0-4 B6 Miller PVT (`89d33b1` + `42180b0`, EDA-proven)
+- B6a: `corner` plumbing in `assemble_miller_ac_deck` (None default keeps nominal decks byte-identical, proven by untouched deck test) + per-corner deck-text test.
 - B6b: `_run_b6` instantiates Trial-17 (now single-sourced as `MILLER_TRIAL17_WINNER`, Stage 6 demo deduplicated) across the 5-envelope; per-corner gain_db/UGB/PM via the Stage 6 extraction path; pass = gain≥60dB + PM STABLE on all 5, UGB reported with 1MHz floor.
 - MEASURED: tt 81.30/16.58M/63.64, ff 85.40/15.07M/65.07, ss 66.32/16.10M/63.67, fs 84.52/4.96M/63.83, sf 60.78/29.33M/66.06. TT reproduces ADR-028 to 4 sig figs through the corner-plumbed path; 60dB spec survives every corner; 40MHz UGB target stays shorted (reported, not gated).
 - Evidence: EDA b6-live green (5 sims, 220 s); full base 421+50 green. Scratch probe deleted pre-commit. Deferral advanced B6→B7/R0-5; only B7 bandgap remains.
