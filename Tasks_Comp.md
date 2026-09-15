@@ -213,6 +213,11 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Human Checkpoint CONFIRMED: electrical correctness, pin order, W/L in meters, single-ended AC drive verified.
 - Evidence: `test_digital_gates.py`, `test_inverter.py`, `test_stage6_demo.py` all green (15 passed in 249.20s). Full base gate clean.
 
+## 2026-09-14 — Golden netlist seal (Error 2, human-CONFIRMED, B0–B8 scoreboard complete)
+- NOT/NAND compiled fragments + Miller AC deck migrated from substring asserts to byte-identical goldens (`tests/golden/*.cir`, 1G read-only protocol); inverter micron deck to inline `==`. Assembler-plumbing asserts (corner lib/temp lines) deliberately stay substring — they pin the varying part.
+- Human hand-verified: CMOS inverter/NAND topology, d/g/s/b order, W/L meters, single-ended AC drive. Full base 432+51 green at seal time.
+- Housekeeping in the same window: planning records + Lovable shell vendor drop committed (fresh clones build; generated weight stays gitignored); working tree clean.
+
 ## 2026-09-14 — R0-5 B7 bandgap (`6a2f265` + `1b38a3b`, EDA-proven, ZERO deferred benches)
 - PDK recon (Law 2): `sky130_fd_pr__pnp_05v5_W3p40L3p40` quoted C/B/E + subckt/X; `.dc temp` + CTAT slope proven live in one ngspice-CLI run (0.851V@-40 → 0.575V@125).
 - Key falsification en route: subckt `mult` scales mismatch sigma only — ΔVbe measured exactly 0.0000 with it. Fixture reworked to structural 1:8 (Q1 + 8 parallel units, exact by construction); ΔVbe then physical (42.54mV@-40 → 73.10mV@125, theory 41.75/71.3).
