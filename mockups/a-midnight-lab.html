@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenVirtuoso — Midnight Lab (mockup A, static selection artifact)</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#11161f; --panel2:#0d1219; --border:#1e2632;
+    --text:#e6edf3; --muted:#8b949e; --faint:#5b6570;
+    --cyan:#22d3ee; --green:#34d399; --amber:#fbbf24; --red:#f87171; --violet:#a78bfa;
+    --mono:ui-monospace,"Cascadia Mono","JetBrains Mono",Consolas,Menlo,monospace;
+    --sans:-apple-system,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  /* ── top bar ─────────────────────────────── */
+  header{display:flex;align-items:center;gap:14px;padding:0 16px;height:52px;border-bottom:1px solid var(--border);background:var(--panel);flex:0 0 auto}
+  .logo{font-weight:800;letter-spacing:.5px;font-size:15px}
+  .logo span{color:var(--cyan)}
+  .badge{font-family:var(--mono);font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:20px;color:var(--muted);white-space:nowrap}
+  .badge.ok{color:var(--green);border-color:#1d4034}
+  .badge.dim{color:var(--faint)}
+  .spacer{flex:1}
+  .envhash{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  /* ── shell ───────────────────────────────── */
+  #shell{flex:1;display:flex;min-height:0}
+  nav{width:204px;flex:0 0 auto;background:var(--panel);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+  nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;color:var(--muted);font-family:var(--sans);font-size:13.5px;padding:9px 12px;border-radius:8px;cursor:pointer}
+  nav button .ico{width:20px;text-align:center;font-size:15px}
+  nav button:hover{background:#161d28;color:var(--text)}
+  nav button.active{background:#0e2b33;color:var(--cyan);box-shadow:inset 2px 0 0 var(--cyan)}
+  nav .foot{margin-top:auto;font-size:11px;color:var(--faint);padding:8px 12px;font-family:var(--mono)}
+  main{flex:1;min-width:0;overflow:auto;padding:20px 24px 90px}
+  .page{display:none;animation:fade .18s ease-in}
+  .page.active{display:block}
+  @keyframes fade{from{opacity:.4}to{opacity:1}}
+  h1{font-size:20px;margin:0 0 4px;font-weight:700}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .grid{display:grid;gap:12px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .card h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600}
+  .big{font-family:var(--mono);font-size:24px;font-weight:700}
+  .pill{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.4px}
+  .pass{background:rgba(52,211,153,.12);color:var(--green);border:1px solid #1d4034}
+  .short{background:rgba(251,191,36,.12);color:var(--amber);border:1px solid #4a3a14}
+  .fail{background:rgba(248,113,113,.12);color:var(--red);border:1px solid #4c1f1f}
+  .idle{background:#161d28;color:var(--muted);border:1px solid var(--border)}
+  .info{background:rgba(34,211,238,.1);color:var(--cyan);border:1px solid #134e5c}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:var(--faint);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:8px 10px;border-bottom:1px solid var(--border)}
+  td{padding:9px 10px;border-bottom:1px solid #151c26;font-family:var(--mono);font-size:12.5px}
+  tr:last-child td{border-bottom:0}
+  tr:hover td{background:#121924}
+  .mono{font-family:var(--mono)}
+  .muted{color:var(--muted)}
+  .btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:#1a2230;color:var(--text);cursor:pointer}
+  .btn:hover{border-color:var(--cyan)}
+  .btn.accept{background:#0d3b2e;border-color:#1d5c46;color:var(--green)}
+  .btn.reject{background:#3d1518;border-color:#5c2226;color:var(--red)}
+  .btn.primary{background:#0e2b33;border-color:var(--cyan);color:var(--cyan)}
+  /* ── schematic ───────────────────────────── */
+  .schemwrap{display:flex;gap:12px}
+  #schem{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:12px;min-height:480px}
+  #inspector{width:264px;flex:0 0 auto}
+  .net{stroke:#3b4757;stroke-width:2;fill:none;cursor:pointer}
+  .net:hover{stroke:var(--cyan)}
+  .net.lit{stroke:var(--cyan);stroke-width:3;filter:drop-shadow(0 0 4px rgba(34,211,238,.7))}
+  .wirelbl{font-family:var(--mono);font-size:10px;fill:var(--faint)}
+  .dev{stroke:#c9d4e0;stroke-width:1.6;fill:#11161f}
+  .devtxt{font-family:var(--mono);font-size:10.5px;fill:var(--text)}
+  .devsub{font-family:var(--mono);font-size:9.5px;fill:var(--muted)}
+  .tick{font-size:13px}
+  /* ── console strip ───────────────────────── */
+  #console{position:fixed;left:204px;right:0;bottom:0;background:#0c1017;border-top:1px solid var(--border);font-family:var(--mono);font-size:12px;z-index:5}
+  #console .bar{display:flex;align-items:center;gap:10px;padding:7px 16px;cursor:pointer;color:var(--muted)}
+  #console .body{display:none;max-height:150px;overflow:auto;padding:4px 16px 12px;line-height:1.7}
+  #console.open .body{display:block}
+  .lg-ok{color:var(--green)} .lg-warn{color:var(--amber)} .lg-err{color:var(--red)} .lg-dim{color:var(--faint)} .lg-cy{color:var(--cyan)}
+  .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pl 1.6s infinite}
+  @keyframes pl{50%{opacity:.35}}
+  /* ── copilot ─────────────────────────────── */
+  .chat{max-width:860px;display:flex;flex-direction:column;gap:12px}
+  .bubble{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px 16px;line-height:1.65}
+  .bubble.q{border-color:#23405a;background:#0e1622}
+  .who{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+  .who.ai{color:var(--cyan)}
+  .cite{display:inline-block;font-family:var(--mono);font-size:11px;background:#13202b;border:1px solid #23405a;color:var(--cyan);border-radius:6px;padding:1px 7px;margin:1px 2px;cursor:pointer}
+  .cite:hover{background:#1a2c3d}
+  kbd{font-family:var(--mono);font-size:11px;background:#1a2230;border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:1px 6px}
+  /* ── review ──────────────────────────────── */
+  .checkpoint{border:1px solid #4a3a14;background:#12100a;border-radius:12px;padding:16px 18px;font-family:var(--mono);font-size:13px;line-height:1.8;white-space:pre-wrap}
+  .diffgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;font-family:var(--mono);font-size:12.5px}
+  .diffgrid>div{padding:9px 12px;border-bottom:1px solid #151c26}
+  .diffgrid .hd{background:#141b26;color:var(--faint);font-weight:700}
+  .chg{color:var(--amber)}
+  /* ── toast ───────────────────────────────── */
+  #toast{position:fixed;bottom:64px;left:50%;transform:translateX(-50%) translateY(20px);background:#16202e;border:1px solid var(--cyan);color:var(--text);padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;transition:all .25s;pointer-events:none;z-index:50}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  canvas.plot{width:100%;height:300px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;cursor:crosshair}
+  .tabs{display:flex;gap:6px;margin-bottom:12px}
+  .tabs button{background:none;border:1px solid var(--border);color:var(--muted);font-size:12.5px;padding:6px 14px;border-radius:8px;cursor:pointer}
+  .tabs button.active{color:var(--cyan);border-color:var(--cyan);background:#0e2b33}
+  #readout{font-family:var(--mono);font-size:12px;color:var(--cyan);min-height:20px;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Open<span>Virtuoso</span></div>
+  <span class="badge ok">sky130A · fd_pr@403964dc</span>
+  <span class="badge">LOCAL_ONLY</span>
+  <span class="badge dim">miller_opamp · REV-017</span>
+  <div class="spacer"></div>
+  <span class="envhash">env 9f2c…a41b · seed 200 · trial 17</span>
+  <span class="badge ok"><span class="pulse"></span>&nbsp; ngspice-47 idle</span>
+</header>
+<div id="shell">
+<nav>
+  <button class="active" data-page="home"><span class="ico">▦</span>Project Home</button>
+  <button data-page="schem"><span class="ico">⌁</span>Schematic</button>
+  <button data-page="waves"><span class="ico">〜</span>Waveforms</button>
+  <button data-page="runs"><span class="ico">▶</span>Run Center</button>
+  <button data-page="copilot"><span class="ico">✦</span>AI Copilot</button>
+  <button data-page="review"><span class="ico">☑</span>Review Gate <span class="pill fail" style="margin-left:auto">1</span></button>
+  <div class="foot">mockup A · static<br>no backend calls</div>
+</nav>
+<main>
+  <!-- ══════════ HOME ══════════ -->
+  <section class="page active" id="pg-home">
+    <h1>miller_opamp <span class="muted mono" style="font-size:13px">/ REV-017 · two_stage_miller</span></h1>
+    <p class="sub">Spec “60 dB · 40 MHz · 60°” — empirical winner trial 17, measured by ngspice-47 + Sky130A BSIM4.</p>
+    <div class="grid g4">
+      <div class="card"><h3>Gain</h3><div class="big">81.30 <span style="font-size:13px;color:var(--muted)">dB</span></div><div style="margin-top:6px"><span class="pill pass">PASS ≥60</span></div></div>
+      <div class="card"><h3>UGB</h3><div class="big">16.58 <span style="font-size:13px;color:var(--muted)">MHz</span></div><div style="margin-top:6px"><span class="pill short">SHORT &lt;40</span></div></div>
+      <div class="card"><h3>Phase margin</h3><div class="big">63.64 <span style="font-size:13px;color:var(--muted)">°</span></div><div style="margin-top:6px"><span class="pill pass">PASS ≥60 · STABLE</span></div></div>
+      <div class="card"><h3>Cost</h3><div class="big">117.08</div><div style="margin-top:6px"><span class="pill idle">all-UGB-shortfall</span></div></div>
+    </div>
+    <div class="grid g2" style="margin-top:12px">
+      <div class="card"><h3>Verification status</h3>
+        <table>
+          <tr><th>Gate</th><th>State</th><th>Evidence</th></tr>
+          <tr><td>Schema + validation</td><td><span class="pill pass">PASS</span></td><td class="muted">VAL-8812</td></tr>
+          <tr><td>Nominal AC</td><td><span class="pill pass">PASS</span></td><td class="muted">MEAS-4401…4403</td></tr>
+          <tr><td>PVT corners</td><td><span class="pill idle">QUEUED</span></td><td class="muted">—</td></tr>
+          <tr><td>Monte Carlo</td><td><span class="pill idle">QUEUED</span></td><td class="muted">—</td></tr>
+          <tr><td>DRC / LVS / PEX</td><td><span class="pill idle">STAGE 8</span></td><td class="muted">—</td></tr>
+        </table>
+      </div>
+      <div class="card"><h3>Recent runs</h3>
+        <table>
+          <tr><th>Run</th><th>Kind</th><th>Status</th><th>Seed</th></tr>
+          <tr><td>RUN-1841</td><td>trial 17 · AC</td><td><span class="pill pass">succeeded</span></td><td>217</td></tr>
+          <tr><td>RUN-1840</td><td>trial 16 · AC</td><td><span class="pill pass">succeeded</span></td><td>216</td></tr>
+          <tr><td>RUN-1839</td><td>trial 15 · AC</td><td><span class="pill pass">succeeded</span></td><td>215</td></tr>
+          <tr><td>RUN-1832</td><td>trial 9 · AC</td><td><span class="pill short">spec-gap</span></td><td>209</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ SCHEMATIC ══════════ -->
+  <section class="page" id="pg-schem">
+    <h1>Schematic <span class="muted mono" style="font-size:13px">two_stage_miller · click any net to probe</span></h1>
+    <p class="sub">Green ✓ = validation gate closed on that net · sizes are trial-17 SI values.</p>
+    <div class="schemwrap">
+    <svg id="schem" viewBox="0 0 760 480" role="img" aria-label="Two-stage Miller op-amp schematic">
+      <!-- rails -->
+      <line x1="40" y1="36" x2="720" y2="36" stroke="#f87171" stroke-width="2"/>
+      <text x="46" y="28" class="wirelbl" fill="#f87171">vdd 1.8V</text>
+      <line x1="40" y1="444" x2="720" y2="444" stroke="#8b949e" stroke-width="2"/>
+      <text x="46" y="460" class="wirelbl">vss 0V</text>
+      <!-- PMOS mirror M3 M4 -->
+      <g>
+        <rect class="net" data-net="vdd" x="150" y="36" width="4" height="40" style="stroke-width:4"/>
+        <rect class="net" data-net="vdd" x="330" y="36" width="4" height="40" style="stroke-width:4"/>
+        <g class="dev"><rect x="132" y="76" width="40" height="64" rx="3" class="dev"/>
+          <line x1="132" y1="96" x2="172" y2="96" class="dev"/><line x1="132" y1="120" x2="172" y2="120" class="dev"/>
+          <circle cx="152" cy="108" r="3" fill="none" class="dev"/></g>
+        <text x="132" y="156" class="devtxt">M3 <tspan class="tick" fill="#34d399">✓</tspan></text>
+        <text x="132" y="168" class="devsub">14.5µ/1.66µ</text>
+        <g class="dev"><rect x="312" y="76" width="40" height="64" rx="3" class="dev"/>
+          <line x1="312" y1="96" x2="352" y2="96" class="dev"/><line x1="312" y1="120" x2="352" y2="120" class="dev"/>
+          <circle cx="332" cy="108" r="3" fill="none" class="dev"/></g>
+        <text x="312" y="156" class="devtxt">M4 <tspan class="tick" fill="#34d399">✓</tspan></text>
+        <text x="312" y="168" class="devsub">14.5µ/1.66µ</text>
+        <polyline class="net" data-net="net_tail_m" points="152,76 152,60 332,60 332,76"/>
+        <polyline class="net" data-net="net_tail_m" points="170,108 240,108 240,60"/>
+      </g>
+      <!-- diff pair M1 M2 -->
+      <g>
+        <polyline class="net" data-net="net1" points="152,140 152,190 210,190"/>
+        <polyline class="net" data-net="net1" points="332,140 332,190 274,190"/>
+        <g><rect x="190" y="190" width="40" height="64" rx="3" class="dev"/>
+          <line x1="190" y1="210" x2="230" y2="210" class="dev"/><line x1="190" y1="234" x2="230" y2="234" class="dev"/></g>
+        <text x="186" y="270" class="devtxt">M1 <tspan class="tick" fill="#34d399">✓</tspan></text>
+        <text x="186" y="282" class="devsub">23.9µ/0.83µ</text>
+        <g><rect x="254" y="190" width="40" height="64" rx="3" class="dev"/>
+          <line x1="254" y1="210" x2="294" y2="210" class="dev"/><line x1="254" y1="234" x2="294" y2="234" class="dev"/></g>
+        <text x="252" y="270" class="devtxt">M2 <tspan class="tick" fill="#34d399">✓</tspan></text>
+        <text x="252" y="282" class="devsub">23.9µ/0.83µ</text>
+        <polyline class="net" data-net="vip" points="120,222 190,222"/>
+        <polyline class="net" data-net="vin" points="294,222 364,222"/>
+        <text x="84" y="226" class="wirelbl">vip ⏚ 0.9V</text>
+        <text x="368" y="226" class="wirelbl">vin ⏚ 0.9V</text>
+        <polyline class="net" data-net="net_tail" points="210,254 210,300 274,300 274,254"/>
+      </g>
+      <!-- tail M5 -->
+      <g><rect x="222" y="300" width="40" height="56" rx="3" class="dev"/>
+        <line x1="222" y1="318" x2="262" y2="318" class="dev"/><line x1="222" y1="338" x2="262" y2="338" class="dev"/></g>
+      <text x="222" y="372" class="devtxt">M5 <tspan class="tick" fill="#34d399">✓</tspan></text>
+      <text x="222" y="384" class="devsub">14.4µ/1.41µ</text>
+      <polyline class="net" data-net="vbias" points="110,328 222,328"/>
+      <text x="66" y="332" class="wirelbl">vbias</text>
+      <polyline class="net" data-net="vss" points="242,356 242,444"/>
+      <!-- second stage -->
+      <polyline class="net" data-net="net1" points="274,190 420,190 420,150"/>
+      <g><rect x="400" y="190" width="40" height="64" rx="3" class="dev"/>
+        <line x1="400" y1="210" x2="440" y2="210" class="dev"/><line x1="400" y1="234" x2="440" y2="234" class="dev"/></g>
+      <text x="398" y="270" class="devtxt">M6 <tspan class="tick" fill="#34d399">✓</tspan></text>
+      <text x="398" y="282" class="devsub">86.3µ/1.05µ</text>
+      <polyline class="net" data-net="vss" points="420,254 420,444"/>
+      <polyline class="net" data-net="vdd" x1="0" y1="0" x2="0" y2="0" style="display:none"/>
+      <line x1="510" y1="36" x2="510" y2="76" stroke="#3b4757" stroke-width="2"/>
+      <g><rect x="490" y="76" width="40" height="64" rx="3" class="dev"/>
+        <line x1="490" y1="96" x2="530" y2="96" class="dev"/><line x1="490" y1="120" x2="530" y2="120" class="dev"/>
+        <circle cx="510" cy="108" r="3" fill="none" class="dev"/></g>
+      <text x="490" y="156" class="devtxt">M7 <tspan class="tick" fill="#34d399">✓</tspan></text>
+      <text x="490" y="168" class="devsub">57.1µ/1.10µ</text>
+      <polyline class="net" data-net="vdd" points="510,36 510,76"/>
+      <polyline class="net" data-net="out" points="510,140 510,190 440,190"/>
+      <polyline class="net" data-net="out" points="510,190 620,190 620,300 560,300"/>
+      <text x="626" y="194" class="wirelbl">out → Cload 2pF</text>
+      <!-- Cc + Rz -->
+      <polyline class="net" data-net="net1" points="420,150 420,120 480,120"/>
+      <rect x="480" y="108" width="52" height="24" rx="3" class="dev"/>
+      <text x="484" y="125" class="devsub">Cc 1.33pF</text>
+      <polyline class="net" data-net="out" points="532,120 580,120 580,190 560,190"/>
+      <rect x="580" y="240" width="52" height="24" rx="3" class="dev" transform="rotate(90 606 252)"/>
+      <text x="612" y="256" class="devsub">Rz 2.24kΩ</text>
+      <polyline class="net" data-net="vbias" points="420,222 470,222 470,328 262,328" stroke-dasharray="5 4"/>
+    </svg>
+    <div id="inspector" class="card"><h3>Net inspector</h3><div id="netinfo"><span class="muted">Click any net in the schematic.</span></div></div>
+    </div>
+  </section>
+
+  <!-- ══════════ WAVEFORMS ══════════ -->
+  <section class="page" id="pg-waves">
+    <h1>Waveforms <span class="muted mono" style="font-size:13px">RUN-1841 · AC dec 10 · 1 Hz – 10 GHz</span></h1>
+    <p class="sub">Unwrapped phase throughout (VERIFY-PM-001). Hover the plot for readout.</p>
+    <div class="tabs"><button class="active" data-plot="bode">Bode (AC)</button><button data-plot="tran">Step response (TRAN)</button></div>
+    <canvas class="plot" id="plot" width="1100" height="300"></canvas>
+    <div id="readout">f = — · |A| = — · ∠ = —</div>
+  </section>
+
+  <!-- ══════════ RUN CENTER ══════════ -->
+  <section class="page" id="pg-runs">
+    <h1>Run Center</h1>
+    <p class="sub">Worker-process isolated · one libngspice instance per job · deterministic under seed.</p>
+    <div class="card"><h3>Jobs — study <span class="mono">miller_sizing_demo</span> (seed 200)</h3>
+      <table>
+        <tr><th>Job</th><th>Trial</th><th>Status</th><th>Gain</th><th>UGB</th><th>PM</th><th>Verdict</th></tr>
+        <tr><td>9f2c…</td><td>17 ★</td><td><span class="pill pass">succeeded</span></td><td>81.30 dB</td><td>16.58 MHz</td><td>63.64°</td><td>spec-gap 117.08</td></tr>
+        <tr><td>77ab…</td><td>15</td><td><span class="pill pass">succeeded</span></td><td>70.01 dB</td><td>18.74 MHz</td><td>51.71°</td><td>spec-gap 147.79</td></tr>
+        <tr><td>51cd…</td><td>9</td><td><span class="pill pass">succeeded</span></td><td>37.99 dB</td><td>32.41 MHz</td><td>57.66°</td><td>spec-gap 269.75</td></tr>
+        <tr><td>30ef…</td><td>4</td><td><span class="pill fail">failed</span></td><td colspan="3" class="muted">SimError: SPICE convergence — sub-unity response, metrics {}</td><td>failed data</td></tr>
+      </table>
+    </div>
+    <div class="card" style="margin-top:12px"><h3>Worker log — RUN-1841</h3>
+      <div class="mono" style="font-size:12px;line-height:1.8">
+        <div><span class="lg-dim">[00:00.4]</span> <span class="lg-cy">job 9f2c… submitted</span> seed=217 deck=2.1k lines</div>
+        <div><span class="lg-dim">[00:01.1]</span> worker spawned (pid 8122) · libngspice.so.0.0.16</div>
+        <div><span class="lg-dim">[00:03.8]</span> <span class="lg-ok">AC converged</span> · 91 freq pts · complex vectors OK</div>
+        <div><span class="lg-dim">[00:04.0]</span> extract: gain 81.30 dB · UGB 16.583 MHz · <span class="lg-ok">PM +63.64° STABLE</span></div>
+        <div><span class="lg-dim">[00:04.1]</span> ledger write experiment(trial=17) · repro <span class="lg-cy">dce2d780…</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ COPILOT ══════════ -->
+  <section class="page" id="pg-copilot">
+    <h1>AI Copilot <span class="muted mono" style="font-size:13px">MockProvider · LOCAL_ONLY · every claim cited or refused</span></h1>
+    <div class="chat">
+      <div class="bubble q"><div class="who">You</div>Why is UGB short of 40&nbsp;MHz while gain and PM pass?</div>
+      <div class="bubble"><div class="who ai">Copilot — grounded</div>
+        UGB is set by first-stage transconductance over compensation capacitance
+        (UGB ≈ g<sub>m1</sub>/2πC<sub>c</sub>). Trial 17 runs C<sub>c</sub> = 1.33&nbsp;pF with
+        g<sub>m1</sub> ≈ 139&nbsp;µS, giving 16.58&nbsp;MHz <span class="cite">MEAS-4402</span>.
+        Trial 9 reached 32.41&nbsp;MHz at C<sub>c</sub> = 0.92&nbsp;pF but lost gain (38&nbsp;dB)
+        and PM (57.7°) <span class="cite">EXP-trial-9</span>. The frontier trades C<sub>c</sub>
+        against gain/PM; closing all three likely needs higher g<sub>m1</sub> at small C<sub>c</sub>
+        — the recorded future direction <span class="cite">ADR-028</span>.
+        <div style="margin-top:8px"><span class="pill info">3 claims · 3 citations · 0 refusals</span></div>
+      </div>
+      <div class="bubble q"><div class="who">You</div>What was the old PM 152.4 number?</div>
+      <div class="bubble"><div class="who ai">Copilot — grounded</div>
+        Retracted. Pre-fix extractor interpolated wrapped principal phase and applied
+        180−|φ|, reporting +152.4° for a +27.58° marginal loop
+        <span class="cite">VERIFY-PM-001</span> <span class="cite">ADR-027</span>.
+        Per AGENT2 §10 no silent old numbers are kept — the demo, trackers, and this
+        panel all show the re-measured values.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ REVIEW ══════════ -->
+  <section class="page" id="pg-review">
+    <h1>Review Gate</h1>
+    <p class="sub">Nothing commits without your explicit verdict. This is the BLOCKING checkpoint.</p>
+    <div class="checkpoint">[ HUMAN CHECKPOINT — Phase 0 / spec re-close (outcome) ]
+Trigger: Re-baseline complete; empirical winner trial 17 honestly shorts UGB (16.58 vs 40 MHz) while gain+PM pass.
+Check: Accept trial 17 as empirical winner (accept / reject / compare / fund trial-9-region round)?
+Status: BLOCKING — not proceeding until you confirm.</div>
+    <div class="grid g3" style="margin-top:12px">
+      <div class="card"><h3>Gain</h3><div class="big">81.30 <span style="font-size:13px;color:var(--muted)">dB</span></div><span class="pill pass">PASS ≥ 60</span></div>
+      <div class="card"><h3>UGB</h3><div class="big">16.58 <span style="font-size:13px;color:var(--muted)">MHz</span></div><span class="pill short">SHORT &lt; 40</span></div>
+      <div class="card"><h3>PM</h3><div class="big">63.64 <span style="font-size:13px;color:var(--muted)">°</span></div><span class="pill pass">PASS ≥ 60 · STABLE</span></div>
+    </div>
+    <div class="card" style="margin-top:12px"><h3>Proposed vs current sizing diff</h3>
+      <div class="diffgrid">
+        <div class="hd">Parameter</div><div class="hd">REV-016 (old winner)</div><div class="hd">REV-017 (trial 17)</div>
+        <div>W_in / L_in</div><div class="muted">27.60µ / 1.18µ</div><div class="chg">23.88µ / 0.83µ</div>
+        <div>W_out (gm2)</div><div class="muted">43.68µ</div><div class="chg">86.26µ ← gm2 boost</div>
+        <div>Cc</div><div class="muted">0.56 pF</div><div class="chg">1.33 pF</div>
+        <div>Rz</div><div class="muted">7.95 kΩ @bound</div><div class="chg">2.24 kΩ ≈ 1/gm2</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn accept" onclick="toast('ACCEPT recorded (mockup — no backend call)')">Accept REV-017</button>
+      <button class="btn reject" onclick="toast('REJECT recorded (mockup — no backend call)')">Reject</button>
+      <button class="btn" onclick="toast('Compare view queued (mockup)')">Compare</button>
+      <button class="btn primary" onclick="toast('Trial-9-region round queued (mockup)')">Fund trial-9 round</button>
+    </div>
+  </section>
+</main>
+</div>
+
+<div id="console" onclick="this.classList.toggle('open')">
+  <div class="bar"><span class="pulse"></span><span>run console — 20/20 trials settled · worker pool idle · click to expand</span></div>
+  <div class="body">
+    <div><span class="lg-dim">[21:32]</span> study miller_sizing_demo closed · best cost 117.08 (trial 17)</div>
+    <div><span class="lg-dim">[21:28]</span> <span class="lg-warn">trial 4 failed honestly</span> — SimError: SPICE convergence · metrics {} · recorded, study continues</div>
+    <div><span class="lg-dim">[21:11]</span> <span class="lg-ok">facade green</span> — EngineV01.connect() → "default" · 8/8 engine tests</div>
+    <div><span class="lg-dim">[21:02]</span> EDA suite <span class="lg-ok">340 passed, 0 failed</span> (21:32)</div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ── nav ──
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById("pg-"+b.dataset.page).classList.add("active");
+  if(b.dataset.page==="waves") drawPlot();
+}));
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2200);}
+// ── schematic probe ──
+const NETINFO={
+  vdd:{d:"1.8 V rail · 0.6 mA total branch",s:"PASS"}, vss:{d:"0 V reference · bulk ties OK",s:"PASS"},
+  vip:{d:"AC 1.0 V drive @0.9 V DC · non-inverting input",s:"PASS"},
+  vin:{d:"AC ground @0.9 V DC · CMRR ≈ 68 dB",s:"PASS"},
+  net1:{d:"High-Z first-stage output · dominant pole ≈ 190 kHz",s:"PASS"},
+  net_tail:{d:"Tail node · 61 µA · cascode bias headroom 210 mV",s:"PASS"},
+  net_tail_m:{d:"PMOS mirror gates · matched pair M3/M4",s:"PASS"},
+  out:{d:"Output · 2 pF load · swing 0.12–1.68 V",s:"PASS"},
+  vbias:{d:"0.65 V bias distribution · IR drop < 1 mV",s:"PASS"}
+};
+document.querySelectorAll(".net").forEach(el=>el.addEventListener("click",()=>{
+  document.querySelectorAll(".net").forEach(x=>x.classList.remove("lit"));
+  document.querySelectorAll('.net[data-net="'+el.dataset.net+'"]').forEach(x=>x.classList.add("lit"));
+  const n=NETINFO[el.dataset.net]||{d:"—",s:"PASS"};
+  document.getElementById("netinfo").innerHTML='<div class="mono" style="font-size:15px;color:var(--cyan)">'+el.dataset.net+'</div><p style="color:var(--muted);font-size:13px;line-height:1.6">'+n.d+'</p><span class="pill pass">'+n.s+' · gate closed</span>';
+}));
+// ── Bode model (piecewise, matches measured 81.30 dB / 16.58 MHz / PM 63.6°) ──
+const FU=16.583e6;
+function magDb2(f){ // 81.30 dB DC -> 0 dB at UGB 16.583 MHz, steeper after
+  const r=f/1427; return 20*Math.log10(11614/Math.sqrt(1+r*r)) - (f>3e8? 18*Math.log10(f/3e8):0);
+}
+function phaseAt(f){
+  const t=Math.min(1,Math.max(0,Math.log10(f/190e3)/Math.log10(FU/190e3)));
+  return -180-116.36*t-8*t*t;
+}
+let curPlot="bode";
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); curPlot=b.dataset.plot; drawPlot();
+}));
+const cv=document.getElementById("plot"), ctx=cv.getContext("2d");
+function drawPlot(){
+  const W=cv.width,H=cv.height; ctx.clearRect(0,0,W,H);
+  ctx.fillStyle="#0d1219"; ctx.fillRect(0,0,W,H);
+  const L=64,R=16,T=14,B=30, iw=W-L-R, ih=H-T-B;
+  const fmin=1,fmax=1e10;
+  const X=f=>L+iw*(Math.log10(f)-Math.log10(fmin))/(Math.log10(fmax)-Math.log10(fmin));
+  ctx.strokeStyle="#1e2632";ctx.fillStyle="#5b6570";ctx.font="10px ui-monospace,monospace";ctx.lineWidth=1;
+  if(curPlot==="bode"){
+    const Y=db=>T+ih*(1-(db+20)/120);
+    for(let d=-20;d<=100;d+=20){ctx.beginPath();ctx.moveTo(L,Y(d));ctx.lineTo(W-R,Y(d));ctx.stroke();ctx.fillText(d+" dB",8,Y(d)+3);}
+    for(let e=0;e<=10;e++){const f=Math.pow(10,e);ctx.beginPath();ctx.moveTo(X(f),T);ctx.lineTo(X(f),T+ih);ctx.stroke();ctx.fillText("1e"+e,L+iw*e/10-8,T+ih+16);}
+    // magnitude
+    ctx.strokeStyle="#22d3ee";ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<=iw;i++){const f=Math.pow(10,Math.log10(fmin)+ (Math.log10(fmax)-Math.log10(fmin))*i/iw);const y=Y(magDb2(f));i?ctx.lineTo(L+i,y):ctx.moveTo(L+i,y);}
+    ctx.stroke();
+    // UGB marker
+    const ux=X(FU), uy=Y(0);
+    ctx.strokeStyle="#fbbf24";ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(ux,T);ctx.lineTo(ux,T+ih);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle="#fbbf24";ctx.beginPath();ctx.arc(ux,uy,4,0,7);ctx.fill();
+    ctx.fillStyle="#e6edf3";ctx.fillText("UGB 16.58 MHz · PM 63.64° · STABLE",ux+8,uy-8);
+    ctx.fillStyle="#8b949e";ctx.fillText("0 dB",W-R-34,uy-6);
+    cv._mode="bode";
+  } else {
+    // step response 0 -> 1.8V, mild overshoot, settling band
+    const Y=v=>T+ih*(1-v/2.0);
+    for(let v=0;v<=2.0;v+=0.5){ctx.beginPath();ctx.moveTo(L,Y(v));ctx.lineTo(W-R,Y(v));ctx.stroke();ctx.fillText(v.toFixed(1)+"V",14,Y(v)+3);}
+    for(let t=0;t<=6;t++){const x=L+iw*t/6;ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ih);ctx.stroke();ctx.fillText((t*200)+"ns",x-14,T+ih+16);}
+    const step=t=>1.8*(1-Math.exp(-t/90e-9)*(Math.cos(t/140e-9)-0.12*Math.sin(t/140e-9)));
+    ctx.strokeStyle="#34d399";ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<=iw;i++){const t=i/iw*1.2e-6;const y=Y(step(t));i?ctx.lineTo(L+i,y):ctx.moveTo(L+i,y);}
+    ctx.stroke();
+    ctx.strokeStyle="#fbbf24";ctx.setLineDash([5,4]);
+    [1.782,1.818].forEach(v=>{ctx.beginPath();ctx.moveTo(L,Y(v));ctx.lineTo(W-R,Y(v));ctx.stroke();});
+    ctx.setLineDash([]);ctx.fillStyle="#8b949e";ctx.fillText("±1% band",W-R-64,Y(1.782)-6);
+    cv._mode="tran";
+  }
+  drawPlot._X=X;drawPlot._geom={L,R,T,B,iw,ih,W,H};
+}
+cv.addEventListener("mousemove",e=>{
+  const r=cv.getBoundingClientRect(), g=drawPlot._geom; if(!g) return;
+  const px=(e.clientX-r.left)*(cv.width/r.width);
+  const {L,iw}=g, fmin=1,fmax=1e10;
+  const f=Math.pow(10,Math.log10(fmin)+(Math.log10(fmax)-Math.log10(fmin))*(px-L)/iw);
+  const ro=document.getElementById("readout");
+  if(f<fmin||f>fmax||cv._mode!=="bode"){ro.textContent = cv._mode==="tran" ? "transient · hover disabled in mockup" : "f = — · |A| = — · ∠ = —";return;}
+  ro.textContent="f = "+fmtF(f)+" · |A| = "+magDb2(f).toFixed(2)+" dB · ∠ = "+phaseAt(f).toFixed(1)+"° (unwrapped)";
+});
+function fmtF(f){if(f>=1e9)return (f/1e9).toFixed(2)+" GHz";if(f>=1e6)return (f/1e6).toFixed(2)+" MHz";if(f>=1e3)return (f/1e3).toFixed(1)+" kHz";return f.toFixed(0)+" Hz";}
+drawPlot();
+</script>
+</body>
+</html>

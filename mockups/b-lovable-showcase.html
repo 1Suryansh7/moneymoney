@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Axiom IC Studio — interactive showcase (static mock data, no backend)</title>
+<style>
+  :root{
+    --background:#22262f; --foreground:#e2e6ee; --chrome:#262b36; --panel:#292f3a;
+    --raised:#313845; --canvas:#1b1e26; --grid:#2e3442; --card:#292f3a;
+    --popover:#262b36; --primary:#5b8cff; --primary-fg:#141821;
+    --muted:#313845; --muted-fg:#a7b0c0; --subtle:#7d8698;
+    --border:#4a5265; --ring:#5b8cff;
+    --success:#4cc38a; --warning:#d9a821; --critical:#e5484d;
+    --purple:#a06ee8; --cyan:#56c8dc;
+    --mono:ui-monospace,"IBM Plex Mono","JetBrains Mono",Consolas,monospace;
+    --sans:"Inter","IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--background);color:var(--foreground);font-family:var(--sans);font-size:13px;display:flex;flex-direction:column;overflow:hidden;user-select:none}
+  /* title + menu */
+  #titlebar{display:flex;align-items:center;gap:10px;height:34px;background:var(--chrome);padding:0 12px;font-size:12px;flex:0 0 auto;border-bottom:1px solid var(--border)}
+  #titlebar .app{font-weight:700} #titlebar .app span{color:var(--primary)}
+  #titlebar .file{color:var(--muted-fg);font-family:var(--mono);font-size:11.5px}
+  #menubar{display:flex;gap:2px;height:30px;background:var(--chrome);align-items:center;padding:0 10px;font-size:12.5px;color:var(--muted-fg);flex:0 0 auto;border-bottom:1px solid var(--border)}
+  #menubar span{padding:4px 9px;border-radius:4px;cursor:pointer} #menubar span:hover{background:var(--raised);color:var(--foreground)}
+  #toolbar{display:flex;gap:4px;align-items:center;height:40px;background:var(--panel);padding:0 10px;border-bottom:1px solid var(--border);flex:0 0 auto}
+  .tbtn{border:1px solid transparent;background:none;color:var(--muted-fg);font-family:var(--sans);font-size:12px;padding:5px 9px;border-radius:4px;cursor:pointer;display:flex;gap:6px;align-items:center}
+  .tbtn:hover{background:var(--raised);color:var(--foreground)}
+  .tbtn.on{color:var(--primary);border-color:var(--ring)}
+  .tbtn kbd{font-family:var(--mono);font-size:10px;background:var(--raised);border:1px solid var(--border);border-radius:4px;padding:0 5px;color:var(--subtle)}
+  #wstabs{display:flex;gap:2px;background:var(--chrome);padding:5px 10px 0;font-size:12px;flex:0 0 auto;border-bottom:1px solid var(--border)}
+  #wstabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted-fg);font-family:var(--sans);font-size:12.5px;padding:6px 12px;cursor:pointer}
+  #wstabs button.active{color:var(--foreground);border-bottom-color:var(--primary)}
+  /* body */
+  #mid{flex:1;display:flex;min-height:0}
+  #rail{width:46px;flex:0 0 auto;background:var(--chrome);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px}
+  #rail button{width:34px;height:34px;border:0;border-radius:7px;background:none;color:var(--muted-fg);font-size:16px;cursor:pointer}
+  #rail button:hover{background:var(--raised);color:var(--foreground)}
+  #rail button.active{color:var(--primary);background:rgba(91,140,255,.12)}
+  #left{width:228px;flex:0 0 auto;background:var(--panel);border-right:1px solid var(--border);overflow:auto;padding:8px}
+  #left h4,.dock h4{margin:8px 4px 6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--subtle)}
+  .tree{font-size:12.5px;line-height:1.5}
+  .tree div{padding:2px 6px;border-radius:4px;white-space:nowrap;cursor:pointer}
+  .tree div:hover{background:var(--raised)}
+  .tree .cell{color:var(--foreground)} .tree .view{color:var(--cyan);padding-left:26px}
+  .tree .grp{color:var(--muted-fg);font-weight:600}
+  #center{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--canvas)}
+  #stage{flex:1;min-height:0;overflow:auto;position:relative}
+  #right{width:252px;flex:0 0 auto;background:var(--panel);border-left:1px solid var(--border);overflow:auto;padding:10px}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12px;margin:6px 0}
+  .kv dt{color:var(--subtle)} .kv dd{margin:0;font-family:var(--mono);text-align:right}
+  /* bottom dock */
+  #bottom{height:172px;flex:0 0 auto;background:var(--panel);border-top:1px solid var(--border);display:flex;flex-direction:column}
+  #bottom .btabs{display:flex;gap:2px;padding:4px 10px 0;font-size:12px}
+  #bottom .btabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted-fg);font-family:var(--sans);font-size:12px;padding:5px 10px;cursor:pointer}
+  #bottom .btabs button.active{color:var(--foreground);border-bottom-color:var(--primary)}
+  #bottom .bbody{flex:1;overflow:auto;padding:8px 14px;font-family:var(--mono);font-size:11.5px;line-height:1.75}
+  #statusbar{height:24px;flex:0 0 auto;background:var(--chrome);border-top:1px solid var(--border);display:flex;align-items:center;gap:16px;padding:0 12px;font-family:var(--mono);font-size:11px;color:var(--muted-fg)}
+  #statusbar .ok{color:var(--success)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:10px}
+  .p-pass{background:rgba(76,195,138,.14);color:var(--success)}
+  .p-fail{background:rgba(229,72,77,.14);color:var(--critical)}
+  .p-warn{background:rgba(217,168,33,.14);color:var(--warning)}
+  .p-idle{background:var(--raised);color:var(--muted-fg)}
+  .p-info{background:rgba(86,200,220,.13);color:var(--cyan)}
+  table.grid{width:100%;border-collapse:collapse;font-size:12px}
+  table.grid th{text-align:left;color:var(--subtle);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--panel)}
+  table.grid td{padding:6px 8px;border-bottom:1px solid #333a48;font-family:var(--mono);font-size:11.5px}
+  .pad{padding:14px 18px}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:11px 13px}
+  .card h5{margin:0 0 5px;font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--subtle);font-weight:600}
+  .card .v{font-family:var(--mono);font-size:19px;font-weight:700}
+  .ws{display:none;height:100%} .ws.active{display:block}
+  svg text{user-select:none}
+  .net{fill:none;stroke:#6b7390;stroke-width:1.6;cursor:pointer}
+  .net:hover{stroke:var(--cyan)}
+  .net.lit{stroke:var(--cyan);stroke-width:2.6}
+  .pinlbl{font-family:var(--mono);font-size:10px;fill:var(--subtle)}
+  .devlbl{font-family:var(--mono);font-size:11px;fill:var(--cyan)}
+  .devsub{font-family:var(--mono);font-size:9px;fill:var(--subtle)}
+  /* palette + overlays */
+  .overlay{position:fixed;inset:0;background:rgba(10,12,16,.6);display:none;align-items:flex-start;justify-content:center;padding-top:12vh;z-index:50}
+  .overlay.open{display:flex}
+  .sheet{background:var(--popover);border:1px solid var(--border);border-radius:8px;width:560px;max-height:60vh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.5)}
+  .sheet input{margin:10px;background:var(--canvas);border:1px solid var(--border);color:var(--foreground);border-radius:5px;padding:8px 12px;font-size:13px;font-family:var(--sans);outline:none}
+  .sheet input:focus{border-color:var(--ring)}
+  .cmd{padding:8px 14px;font-size:13px;display:flex;gap:10px;align-items:center;cursor:pointer}
+  .cmd:hover,.cmd.sel{background:var(--raised)}
+  .cmd kbd{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--subtle);background:var(--canvas);border:1px solid var(--border);border-radius:4px;padding:0 6px}
+  #toast{position:fixed;bottom:44px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--raised);border:1px solid var(--ring);padding:9px 18px;border-radius:8px;font-size:13px;opacity:0;transition:all .22s;z-index:99;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  canvas.plot{width:100%;height:280px;background:var(--canvas);cursor:crosshair}
+  .rowbtns{display:flex;gap:8px;margin:10px 0}
+  .btn{background:var(--raised);border:1px solid var(--border);color:var(--foreground);font-size:12.5px;font-weight:600;padding:7px 16px;border-radius:5px;cursor:pointer}
+  .btn:hover{border-color:var(--ring)}
+  .btn.pri{background:var(--primary);border-color:var(--primary);color:#10131a}
+  .lyr{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;padding:3px 4px;cursor:pointer}
+  .swatch{width:14px;height:14px;border-radius:3px;flex:0 0 auto}
+</style>
+</head>
+<body>
+<div id="titlebar"><span class="app">Axiom <span style="color:var(--primary)">IC Studio</span></span><span class="file">aurora_65 / ota_core / schematic — showcase build (mock data, no backend)</span></div>
+<div id="menubar"><span>File</span><span>Edit</span><span>View</span><span>Launch</span><span>Simulation</span><span>Verification</span><span>Tools</span><span>Window</span><span>Help</span></div>
+<div id="toolbar">
+  <button class="tbtn on">⬚ Select <kbd>Esc</kbd></button><button class="tbtn">﹏ Wire <kbd>W</kbd></button>
+  <button class="tbtn">▣ Instance <kbd>I</kbd></button><button class="tbtn">◉ Pin <kbd>P</kbd></button>
+  <button class="tbtn">✥ Move <kbd>M</kbd></button><button class="tbtn">⟳ Rotate <kbd>R</kbd></button>
+  <button class="tbtn">⌖ Probe <kbd>X</kbd></button><button class="tbtn">📏 Measure <kbd>K</kbd></button>
+  <span style="flex:1"></span>
+  <button class="tbtn" id="btn-sim">▶ Run <kbd>⌃R</kbd></button>
+  <button class="tbtn" id="btn-pal">⌘K palette</button>
+</div>
+<div id="wstabs"></div>
+<div id="mid">
+  <div id="rail"></div>
+  <div id="left"><h4>Library: aurora_65 (writable)</h4><div class="tree" id="tree"></div></div>
+  <div id="center"><div id="stage"></div></div>
+  <div id="right"><h4>Inspector</h4><div id="insp"><p style="color:var(--subtle);font-size:12px">Select a device or net.</p></div></div>
+</div>
+<div id="bottom">
+  <div class="btabs"><button class="active" data-b="console">Console</button><button data-b="jobs">Jobs</button><button data-b="problems">Problems <span class="pill p-warn">8</span></button></div>
+  <div class="bbody" id="bbody"></div>
+</div>
+<div id="statusbar"><span class="ok">● READY</span><span>X: 12.45 Y: 8.32</span><span>sky130→gpdk65? mock: gpdk65 1.2V</span><span style="margin-left:auto">mock build · deterministic · no backend calls</span></div>
+<div class="overlay" id="palette"><div class="sheet"><input id="pal-in" placeholder="Type a command… (try: layout, corner, palette)"><div id="pal-list" style="overflow:auto"></div></div></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ═══════════════ mock dataset (abridged from the Lovable app) ═══════════════ */
+const INST=[
+ {id:"M1",t:"n",x:300,y:300,p:{W:"12u",L:"120n",nf:4,m:2},c:{D:"net17",G:"VINP",S:"tail",B:"VSS"},op:{VGS:"641.2 mV",VDS:"709.5 mV",IDS:"92.4 µA",gm:"1.31 mS",gds:"13.8 µS",region:"saturation"}},
+ {id:"M2",t:"n",x:460,y:300,mir:1,p:{W:"12u",L:"120n",nf:4,m:2},c:{D:"net18",G:"VINN",S:"tail",B:"VSS"},op:{VGS:"640.8 mV",VDS:"711.1 mV",IDS:"92.1 µA",gm:"1.30 mS",gds:"13.9 µS",region:"saturation"}},
+ {id:"M3",t:"p",x:300,y:170,p:{W:"24u",L:"240n",nf:8,m:2},c:{D:"net17",G:"VCM",S:"VDD",B:"VDD"},op:{VGS:"-612.4 mV",VDS:"-489.0 mV",IDS:"92.4 µA",gm:"0.94 mS",gds:"9.1 µS",region:"saturation"}},
+ {id:"M4",t:"p",x:460,y:170,mir:1,p:{W:"24u",L:"240n",nf:8,m:2},c:{D:"net18",G:"VCM",S:"VDD",B:"VDD"},op:{VGS:"-611.9 mV",VDS:"-488.2 mV",IDS:"92.1 µA",gm:"0.93 mS",gds:"9.2 µS",region:"saturation"}},
+ {id:"M5",t:"n",x:380,y:420,p:{W:"32u",L:"180n",nf:8,m:1},c:{D:"tail",G:"IBIAS",S:"VSS",B:"VSS"},op:{VGS:"588.4 mV",VDS:"312.6 mV",IDS:"184.5 µA",gm:"1.92 mS",gds:"8.4 µS",region:"saturation"}},
+ {id:"M6",t:"p",x:640,y:170,p:{W:"48u",L:"180n",nf:12,m:2},c:{D:"VOUTP",G:"net17",S:"VDD",B:"VDD"},op:{VGS:"-488.8 mV",VDS:"-596.3 mV",IDS:"412.7 µA",gm:"3.81 mS",gds:"31.2 µS",region:"saturation"}},
+ {id:"M7",t:"n",x:640,y:420,p:{W:"20u",L:"180n",nf:6,m:2},c:{D:"VOUTP",G:"IBIAS",S:"VSS",B:"VSS"},op:{VGS:"588.4 mV",VDS:"603.7 mV",IDS:"412.7 µA",gm:"3.44 mS",gds:"22.6 µS",region:"saturation"},warn:"Floating input: M7.G"},
+ {id:"M8",t:"n",x:780,y:420,mir:1,p:{W:"20u",L:"180n",nf:6,m:2},c:{D:"VOUTN",G:"IBIAS",S:"VSS",B:"VSS"},op:{VGS:"588.4 mV",VDS:"596.9 mV",IDS:"409.9 µA",gm:"3.42 mS",gds:"22.8 µS",region:"saturation"}},
+ {id:"Ccomp",t:"c",x:566,y:300,p:{c:"1.4p"},c:{P:"net17",N:"VOUTP"},op:{Q:"846.1 fC",V:"603.7 mV"}},
+ {id:"Rz",t:"r",x:566,y:240,p:{r:"620"},c:{A:"net17",B:"nz"},op:{I:"0.00 A",V:"0.00 V"}},
+ {id:"IBIAS",t:"i",x:180,y:420,p:{dc:"200u"},c:{P:"VDD",N:"IBIAS"},op:{I:"200.0 µA"}},
+ {id:"XBIAS",t:"b",x:120,y:200,p:{view:"schematic"},c:{VDD:"VDD",VSS:"VSS",IOUT:"IBIAS"},op:{IOUT:"200.0 µA"}},
+ {id:"XCMFB",t:"b",x:830,y:200,p:{view:"schematic"},c:{INP:"VOUTP",INN:"VOUTN",VCM:"VCM"},op:{VCM:"600.0 mV"}}
+];
+const NETS={
+ VDD:{v:"1.200 V",n:9,cap:"412.7 fF",pl:[[[110,100],[900,100]],[[330,100],[330,140]],[[490,100],[490,140]],[[670,100],[670,140]],[[180,100],[180,400]]]},
+ VSS:{v:"0.000 V",n:11,cap:"684.1 fF",pl:[[[110,520],[900,520]],[[410,480],[410,520]],[[670,480],[670,520]],[[810,480],[810,520]]]},
+ tail:{v:"312.6 mV",n:3,cap:"44.8 fF",pl:[[[330,360],[330,390]],[[330,390],[490,390]],[[490,390],[490,360]],[[410,390],[410,400]]]},
+ net17:{v:"711.2 mV",n:4,cap:"62.4 fF",pl:[[[330,200],[330,260]],[[330,230],[560,230]],[[670,230],[670,140]],[[596,240],[670,240]],[[670,230],[670,246]]]},
+ net18:{v:"709.8 mV",n:4,cap:"58.9 fF",pl:[[[490,200],[490,260]],[[490,220],[810,220]],[[810,220],[810,400]]]},
+ VOUTP:{v:"603.7 mV",n:5,cap:"86.2 fF",pl:[[[670,200],[670,400]],[[670,300],[740,300]],[[740,300],[900,300]],[[596,300],[670,300]]]},
+ VOUTN:{v:"596.9 mV",n:4,cap:"84.5 fF",pl:[[[810,400],[810,340]],[[810,340],[900,340]]]},
+ VINP:{v:"600.0 mV",n:2,cap:"18.2 fF",pl:[[[200,320],[286,320]]]},
+ VINN:{v:"600.0 mV",n:2,cap:"18.4 fF",pl:[[[504,320],[560,320]]]},
+ IBIAS:{v:"588.4 mV",n:4,cap:"36.9 fF",pl:[[[180,440],[180,460]],[[180,460],[800,460]],[[410,440],[410,460]],[[670,440],[670,460]],[[800,440],[800,460]]]},
+ VCM:{v:"612.4 mV",n:3,cap:"29.4 fF",pl:[[[330,160],[490,160]],[[490,160],[860,160]],[[330,160],[330,148]]]}
+};
+const OUTPUTS=[
+ ["DC Gain","gain(VOUT/VID)","67.41 dB","> 60 dB","PASS"],["UGBW","unityGainFreq","184.2 MHz","> 150 MHz","PASS"],
+ ["Phase Margin","phaseMargin","63.8 °","> 60 °","PASS"],["Slew Rate +","slewRate","42.1 V/µs","> 35 V/µs","PASS"],
+ ["Noise","integratedNoise","18.63 µVrms","< 20 µVrms","PASS"],["Power","averagePower","2.41 mW","< 2.5 mW","PASS"],
+ ["Output Swing","swing","0.91 V","> 0.95 V","FAIL"]];
+const LAYERS=[["NWELL",0.28,"#8f7f2a"],["DIFF",0.55,"#3f9e4d"],["POLY",0.7,"#d0453f"],["CONT",0.85,"#c9ccd4"],["M1",0.55,"#4b93ff"],["V1",0.9,"#e8eaee"],["M2",0.5,"#b68cff"],["V2",0.9,"#d9c7ff"],["M3",0.45,"#58d6e8"],["M4",0.45,"#e89a4a"],["PIN",0.9,"#45c486"]];
+const DRC=[["001","M1.MIN.SPACE","M1","Error","Metal1 spacing 0.085 µm < 0.090 µm"],["002","VIA1.ENC","VIA1","Error","Via1 enclosure by M2 0.010 µm < 0.015 µm"],["003","POLY.MIN.WIDTH","POLY","Warning","Poly width 0.055 µm < 0.060 µm"],["004","M1.MIN.SPACE","M1","Error","Metal1 spacing 0.081 µm < 0.090 µm"],["005","DIFF.ENC.CONT","DIFF","Error","Contact enclosure by diffusion violation"],["006","NWELL.MIN.SPACE","NWELL","Warning","Nwell spacing 0.58 µm < 0.60 µm"],["007","M2.DENSITY","M2","Error","Metal2 density 18.2% < 20%"]];
+const POST=[["DC Gain","64.82 dB","−2.59"],["UGBW","162.7 MHz","−21.5"],["Phase Margin","58.9 °","−4.9"],["Power","2.44 mW","+0.03"]];
+const REVS=[["r142","Adjusted input pair W/L","YS","17:42"],["r141","Added compensation zero resistor","YS","16:19"],["r140","CMFB routing cleanup","RK","14:51"],["r139","Guard ring around input pair","RK","13:07"],["r138","Initial output stage sizing","YS","11:22"]];
+const JOBS=[["sim_1042","AC · tb_ota_ac","Complete",100,"00:13"],["drc_812","DRC · ota_core","Complete",100,"00:42"],["mc_221","Monte Carlo · tb_ota_mc","Queued",0,"—"]];
+/* ═══════════════ shell ═══════════════ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2200);}
+const WS=[["schematic","Schematic"],["layout","Layout"],["sim","Sim Explorer"],["waves","Waveforms"],["assembler","Assembler"],["pv","DRC/LVS/PEX"],["project","Project"],["tech","Tech"],["intent","Design Intent"]];
+let cur="schematic";
+$("#wstabs").innerHTML=WS.map(([k,l])=>`<button data-w="${k}" class="${k===cur?"active":""}">${l}</button>`).join("");
+$("#wstabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;cur=b.dataset.w;
+  $$("#wstabs button").forEach(x=>x.classList.toggle("active",x===b));render();});
+const RAIL=[["⌁","schematic","Schematic"],["▦","layout","Layout"],["▶","sim","Simulate"],["〜","waves","Waveforms"],["☑","assembler","Assemble"],["⚠","pv","Physical verify"],["◈","intent","Design intent"],["≣","project","Project"]];
+$("#rail").innerHTML=RAIL.map(([i,k])=>`<button data-w="${k}" title="${k}" class="${k===cur?"active":""}">${i}</button>`).join("");
+$("#rail").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  document.querySelector(`#wstabs button[data-w="${b.dataset.w}"]`)?.click();});
+/* tree */
+(function(){
+  const cells=[["ota_core",["schematic","symbol","layout","extracted"]],["bias_gen",["schematic","symbol","layout"]],["cmfb",["schematic","symbol"]],["current_mirror",["schematic"]],["diff_pair",["schematic"]],["output_stage",["schematic","extracted"]],["startup",["schematic"]]];
+  const tbs=["tb_ota_dc","tb_ota_ac","tb_ota_tran","tb_ota_noise","tb_ota_mc"];
+  let h='<div class="grp">▾ aurora_65</div><div class="grp">&nbsp;&nbsp;▾ analog</div>';
+  for(const [c,v] of cells){h+=`<div class="cell">&nbsp;&nbsp;&nbsp;&nbsp;▸ ${c}</div>`;for(const w of v)h+=`<div class="view">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${w}</div>`;}
+  h+='<div class="grp">&nbsp;&nbsp;▾ testbenches</div>';
+  for(const t of tbs)h+=`<div class="cell">&nbsp;&nbsp;&nbsp;&nbsp;▸ ${t}</div><div class="view">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;schematic</div>`;
+  $("#tree").innerHTML=h;
+})();
+/* ═══════════════ workspaces ═══════════════ */
+const stage=$("#stage");
+function mosSVG(d,sel){
+  const p=d.t==="p", col=sel?"var(--primary)":"var(--foreground)";
+  const arrow=p?`<path d="M 4 4 L 12 0 L 4 -4 Z" fill="${col}" transform="translate(-2,0)"/>`
+               :`<path d="M 12 -4 L 4 0 L 12 4 Z" fill="${col}" transform="translate(-2,0)"/>`;
+  return `<g transform="translate(${d.x},${d.y})${d.mir?", scale(-1,1)":""}" data-id="${d.id}" class="dnode" style="cursor:pointer">
+    ${sel?'<rect x="-26" y="-44" width="80" height="88" fill="var(--primary)" opacity="0.10" stroke="var(--primary)" stroke-dasharray="3 2"/>':""}
+    <line x1="-14" y1="-20" x2="-14" y2="20" stroke="${col}" stroke-width="1.4"/>
+    <line x1="-30" y1="0" x2="-14" y2="0" stroke="${col}" stroke-width="1.2"/>
+    <line x1="-8" y1="-22" x2="-8" y2="-8" stroke="${col}" stroke-width="1.4"/>
+    <line x1="-8" y1="-6" x2="-8" y2="6" stroke="${col}" stroke-width="1.4"/>
+    <line x1="-8" y1="8" x2="-8" y2="22" stroke="${col}" stroke-width="1.4"/>
+    <path d="M -8 -16 H 14 V -40" fill="none" stroke="${col}" stroke-width="1.2"/>
+    <path d="M -8 16 H 14 V 40" fill="none" stroke="${col}" stroke-width="1.2"/>
+    <path d="M -8 0 H 14" fill="none" stroke="${col}" stroke-width="1.2"/>${arrow}
+    <text x="20" y="-24" font-size="11" class="devlbl">${d.id}</text>
+    <text x="20" y="-12" font-size="9" class="devsub">W=${d.p.W} L=${d.p.L}</text>
+    <text x="20" y="24" font-size="9" class="devsub" fill="var(--success)">${d.op.region||""}</text>
+    ${d.warn?'<g transform="translate(-32,-32)"><path d="M 0 -6 L 6 0 L 0 6 L -6 0 Z" fill="var(--warning)"/></g>':""}
+  </g>`;
+}
+function devSVG(d,sel){
+  if(d.t==="n"||d.t==="p") return mosSVG(d,sel);
+  const col=sel?"var(--primary)":"var(--foreground)";
+  let inner="";
+  if(d.t==="c") inner=`<line x1="-12" y1="-14" x2="-12" y2="14" stroke="${col}" stroke-width="2"/><line x1="-6" y1="-14" x2="-6" y2="14" stroke="${col}" stroke-width="2"/><line x1="-22" y1="0" x2="-12" y2="0" stroke="${col}" stroke-width="1.2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="${col}" stroke-width="1.2"/><text x="10" y="-16" font-size="10" class="devsub">${d.p.c||""}</text>`;
+  else if(d.t==="r") inner=`<polyline points="-20,0 -12,-10 -4,10 4,-10 12,10 20,0" fill="none" stroke="${col}" stroke-width="1.4"/><text x="10" y="-12" font-size="10" class="devsub">${d.p.r||""}</text>`;
+  else if(d.t==="i") inner=`<circle cx="0" cy="0" r="14" fill="none" stroke="${col}" stroke-width="1.4"/><path d="M 0 -8 V 8 M -4 4 L 0 8 L 4 4" stroke="${col}" stroke-width="1.4" fill="none"/><text x="16" y="-8" font-size="10" class="devsub">${d.p.dc||""}u</text>`;
+  else inner=`<rect x="-30" y="-24" width="76" height="48" rx="3" fill="none" stroke="${col}" stroke-width="1.4" stroke-dasharray="5 3"/><text x="-22" y="4" font-size="11" class="devlbl">${d.id}</text>`;
+  return `<g transform="translate(${d.x},${d.y})" data-id="${d.id}" class="dnode" style="cursor:pointer">${inner}
+    <text x="20" y="-24" font-size="11" class="devlbl">${d.t==="b"?"":d.id}</text></g>`;
+}
+function renderSchem(){
+  let nets="";
+  for(const [id,n] of Object.entries(NETS))
+    for(const seg of n.pl) nets+=`<polyline data-net="${id}" class="net" points="${seg.map(p=>p.join(",")).join(" ")}"/>`;
+  const pins=[["VINP",200,320],["VINN",560,320],["VOUTP",900,300],["VOUTN",900,340],["VCM",860,160],["IBIAS",180,460]];
+  let s=`<svg viewBox="0 0 1000 620" style="width:100%;height:100%;background:var(--canvas)">`;
+  s+=`<defs><pattern id="gr" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 H 0 V 28" fill="none" stroke="var(--grid)" stroke-width="1"/></pattern></defs><rect width="1000" height="620" fill="url(#gr)"/>`;
+  s+=nets;
+  for(const [n,x,y] of pins) s+=`<rect x="${x-5}" y="${y-5}" width="10" height="10" fill="none" stroke="var(--cyan)" stroke-width="1.4"/><text x="${x+9}" y="${y+4}" class="pinlbl">${n}</text>`;
+  for(const d of INST) s+=devSVG(d,d.id===window._sel);
+  s+=`</svg>`;
+  stage.innerHTML=s;
+  stage.querySelectorAll(".dnode").forEach(g=>g.addEventListener("click",e=>{e.stopPropagation();window._sel=g.dataset.id;inspect();renderSchem();}));
+  stage.querySelectorAll(".net").forEach(p=>p.addEventListener("click",()=>{
+    stage.querySelectorAll(".net").forEach(x=>x.classList.remove("lit"));
+    stage.querySelectorAll(`.net[data-net="${p.dataset.net}"]`).forEach(x=>x.classList.add("lit"));
+    const n=NETS[p.dataset.net];
+    $("#insp").innerHTML=`<h4>Net · ${p.dataset.net}</h4><dl class="kv"><dt>voltage</dt><dd>${n.v}</dd><dt>connections</dt><dd>${n.n}</dd><dt>cap</dt><dd>${n.cap}</dd></dl><span class="pill p-pass">gate closed</span>`;
+  }));
+}
+function inspect(){
+  const d=INST.find(x=>x.id===window._sel);
+  if(!d){$("#insp").innerHTML="<p style='color:var(--subtle);font-size:12px'>Select a device or net.</p>";return;}
+  const rows=Object.entries(d.p).map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("")
+    +Object.entries(d.op||{}).map(([k,v])=>`<dt style="color:var(--cyan)">${k}</dt><dd>${v}</dd>`).join("");
+  $("#insp").innerHTML=`<h4>${d.id} · ${d.t==="b"?"block":d.t.toUpperCase()}</h4><dl class="kv">${rows}</dl>${d.warn?`<span class="pill p-warn">${d.warn}</span>`:`<span class="pill p-pass">DRC clean (mock)</span>`}`;
+}
+function renderLayout(){
+  let s=`<svg viewBox="0 0 760 440" style="width:100%;height:100%;background:var(--canvas)">`;
+  const lay=(ln,x,y,w,h,extra)=>{const L=LAYERS.find(l=>l[0]===ln);return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${L[2]}" fill-opacity="${L[1]}" ${extra||""}/>`;};
+  s+=lay("NWELL",20,16,700,180)+lay("M2",30,200,680,14)+lay("M2",30,340,680,12)+lay("M3",40,170,640,10)+lay("M3",380,60,12,300)+lay("M4",430,60,12,300)+lay("M2",60,404,600,10);
+  for(let i=0;i<16;i++){const x=60+i*40;s+=lay("DIFF",x,40,30,120)+lay("POLY",x+11,28,8,146)+lay("M1",x-4,44,12,110)+lay("CONT",x-1,60,5,5)+lay("CONT",x-1,130,5,5);}
+  for(let i=0;i<12;i++){const x=90+i*46;s+=lay("DIFF",x,230,34,96)+lay("POLY",x+13,218,8,122)+lay("M1",x-5,236,13,84);}
+  s+=lay("DIFF",120,356,420,44)+lay("DIFF",560,356,130,44);
+  for(let i=0;i<8;i++)s+=lay("POLY",136+i*52,346,10,64);
+  for(let i=0;i<4;i++)s+=lay("POLY",574+i*32,346,10,64);
+  s+=`</svg>`;
+  const toggles=LAYERS.map(l=>`<div class="lyr"><span class="swatch" style="background:${l[2]}"></span>${l[0]}</div>`).join("");
+  stage.innerHTML=`<div style="display:flex;height:100%"><div style="flex:1;min-width:0">${s}</div>
+    <div style="width:190px;flex:0 0 auto;background:var(--panel);border-left:1px solid var(--border);padding:10px"><h4>Layers</h4>${toggles}
+    <h4>Matching</h4><p style="font-size:12px;color:var(--muted-fg)">PMOS common-centroid · NMOS interdigitated · dummies placed</p></div></div>`;
+}
+function pillFor(st){return st==="PASS"?"p-pass":st==="FAIL"?"p-fail":st==="WARN"||st==="Warning"?"p-warn":"p-idle";}
+function renderSim(){
+  const an=[["dcOp",1,"Save DC yes · 27 °C"],["ac",1,"1 Hz – 10 GHz · 50/dec"],["tran",0,"10 µs · 1 ns max step"],["noise",0,"out VOUTP"],["stb",0,"probe iprb0"],["pss",0,"fund 10 MHz"],["pac",0,"maxsideband 5"]];
+  stage.innerHTML=`<div class="pad"><div class="rowbtns"><button class="btn pri" onclick="toast('Run launched (mockup — deterministic mock data)')">▶ Run all enabled</button>
+    <button class="btn" onclick="toast('PVT sweep queued (mockup)')">PVT sweep</button><button class="btn" onclick="toast('Monte Carlo queued (mockup)')">Monte Carlo</button></div>
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:12px">
+    <div class="card" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px"><h4 style="margin:0 0 8px;font-size:11px;color:var(--subtle)">ANALYSES</h4>
+    ${an.map(a=>`<label style="display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:12px;padding:4px 0"><input type="checkbox" ${a[1]?"checked":""}> ${a[0]} <span style="color:var(--subtle)">${a[2]}</span></label>`).join("")}
+    <h4 style="margin:12px 0 8px;font-size:11px;color:var(--subtle)">VARIABLES</h4>
+    <div class="mono" style="font-size:12px">VDD 1.2 V · IBIAS 200 µA · CLOAD 1.0 pF · TEMP 27 °C · VCM 0.6 V</div></div>
+    <div class="card" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px"><h4 style="margin:0 0 8px;font-size:11px;color:var(--subtle)">OUTPUTS vs SPEC</h4>
+    <table class="grid"><tr><th>Output</th><th>Expr</th><th>Result</th><th>Spec</th><th>Status</th></tr>
+    ${OUTPUTS.map(o=>`<tr><td>${o[0]}</td><td style="color:var(--subtle)">${o[1]}</td><td>${o[2]}</td><td style="color:var(--subtle)">${o[3]}</td><td><span class="pill ${pillFor(o[4])}">${o[4]}</span></td></tr>`).join("")}</table></div>
+    </div></div>`;
+}
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return Math.abs(h%10000)/10000;}
+function renderAsm(){
+  const tests=["AC Performance","Transient","Noise","Stability","Power","Startup"];
+  const corners=[["TT","27","1.20"],["FF","-40","1.32"],["SS","125","1.08"],["FS","27","1.20"],["SF","27","1.20"]];
+  let rows="";
+  for(const t of tests)for(const [c,tp,sp] of corners){
+    const r=hash(t+c), bad=c==="SS"&&(t==="AC Performance"||t==="Stability"), warn=c==="SS"&&t==="Startup";
+    const g=(67.4-(c==="SS"?6.2:c==="FF"?-1.4:r*1.4)).toFixed(1), u=(184.2-(c==="SS"?44.7:c==="FF"?-12.1:r*7)).toFixed(1), p=(63.8-(c==="SS"?8.5:r*2.2)).toFixed(1);
+    rows+=`<tr><td>${t}</td><td>${c}</td><td>${tp}°/${sp}V</td><td><span class="pill ${bad?"p-fail":warn?"p-warn":"p-pass"}">${bad?"FAIL":warn?"WARN":"PASS"}</span></td><td>${g}</td><td>${u}</td><td>${p}</td></tr>`;
+  }
+  stage.innerHTML=`<div class="pad"><div class="cards">
+    <div class="card"><h5>Plan</h5><div class="v" style="font-size:15px">Nominal → PVT → MC → PEX</div></div>
+    <div class="card"><h5>Pass rate</h5><div class="v">27<span style="font-size:12px;color:var(--muted-fg)">/30</span></div></div>
+    <div class="card"><h5>Worst corner</h5><div class="v" style="font-size:15px;color:var(--warning)">SS · Stability</div></div>
+    <div class="card"><h5>Coverage</h5><div class="v">6<span style="font-size:12px;color:var(--muted-fg)">/6 tests</span></div></div></div>
+    <table class="grid"><tr><th>Test</th><th>Corner</th><th>T/V</th><th>Status</th><th>Gain dB</th><th>UGBW MHz</th><th>PM °</th></tr>${rows}</table></div>`;
+}
+function renderWaves(){
+  stage.innerHTML=`<div class="pad"><div class="rowbtns"><button class="btn pri" data-p="bode">Bode AC</button><button class="btn" data-p="tran">Transient</button></div>
+  <canvas class="plot" id="wplot" width="1100" height="280"></canvas><div id="wro" style="font-family:var(--mono);font-size:12px;color:var(--cyan);min-height:20px;margin-top:6px">hover the plot</div></div>`;
+  let mode="bode";
+  const cv=document.getElementById("wplot"),cx=cv.getContext("2d");
+  const G=67.41,FU=184.2e6;
+  const mag=f=>{const r=f/78.4e3;return 20*Math.log10(Math.pow(10,G/20)/Math.sqrt(1+r*r))-(f>4e9?16*Math.log10(f/4e9):0);};
+  const pha=f=>{const t=Math.min(1,Math.max(0,Math.log10(f/78.4e3)/Math.log10(FU/78.4e3)));return -180-116*t-10*t*t;};
+  function draw(){
+    const W=cv.width,H=cv.height;cx.clearRect(0,0,W,H);cx.fillStyle="#1b1e26";cx.fillRect(0,0,W,H);
+    const L=60,R=14,T=12,B=28,iw=W-L-R,ih=H-T-B;
+    cx.strokeStyle="#2e3442";cx.fillStyle="#7d8698";cx.font="10px ui-monospace,monospace";cx.lineWidth=1;
+    if(mode==="bode"){
+      const Y=db=>T+ih*(1-(db+20)/110), X=f=>L+iw*Math.log10(f)/10;
+      for(let d=-20;d<=90;d+=10){cx.beginPath();cx.moveTo(L,Y(d));cx.lineTo(W-R,Y(d));cx.stroke();cx.fillText(d+"",8,Y(d)+3);}
+      for(let e=0;e<=10;e++){cx.beginPath();cx.moveTo(X(Math.pow(10,e)),T);cx.lineTo(X(Math.pow(10,e)),T+ih);cx.stroke();cx.fillText("1e"+e,L+iw*e/10-8,T+ih+15);}
+      cx.strokeStyle="#5b8cff";cx.lineWidth=2;cx.beginPath();
+      for(let i=0;i<=iw;i++){const f=Math.pow(10,10*i/iw);const y=Y(mag(f));i?cx.lineTo(L+i,y):cx.moveTo(L+i,y);}
+      cx.stroke();
+      const ux=X(FU);cx.strokeStyle="#d9a821";cx.setLineDash([5,4]);cx.beginPath();cx.moveTo(ux,T);cx.lineTo(ux,T+ih);cx.stroke();cx.setLineDash([]);
+      cx.fillStyle="#d9a821";cx.beginPath();cx.arc(ux,Y(0),4,0,7);cx.fill();
+      cx.fillStyle="#e2e6ee";cx.fillText("UGB 184.2 MHz · PM 63.8°",ux+8,Y(0)-8);
+      cv._m="b";
+    }else{
+      const Y=v=>T+ih*(1-v/1.4);
+      for(let v=0;v<=1.4;v+=0.2){cx.beginPath();cx.moveTo(L,Y(v));cx.lineTo(W-R,Y(v));cx.stroke();cx.fillText(v.toFixed(1)+"V",12,Y(v)+3);}
+      const st=t=>1.2*(1-Math.exp(-t/8e-9)*(Math.cos(t/12e-9)-0.1*Math.sin(t/12e-9)));
+      cx.strokeStyle="#4cc38a";cx.lineWidth=2;cx.beginPath();
+      for(let i=0;i<=iw;i++){const t=i/iw*100e-9;const y=Y(st(t));i?cx.lineTo(L+i,y):cx.moveTo(L+i,y);}
+      cx.stroke();cv._m="t";
+    }
+  }
+  draw();
+  stage.querySelectorAll("[data-p]").forEach(b=>b.addEventListener("click",()=>{mode=b.dataset.p;draw();}));
+  cv.addEventListener("mousemove",e=>{
+    const r=cv.getBoundingClientRect(),px=(e.clientX-r.left)*(cv.width/r.width),L=60,iw=cv.width-74;
+    const f=Math.pow(10,10*(px-L)/iw),ro=document.getElementById("wro");
+    if(cv._m!=="b"||f<1||f>1e10){ro.textContent=cv._m==="t"?"transient · 1.2 V step · 23.8 ns settling":"—";return;}
+    ro.textContent="f = "+(f>=1e6?(f/1e6).toFixed(2)+" MHz":f>=1e3?(f/1e3).toFixed(1)+" kHz":f.toFixed(0)+" Hz")+" · |A| = "+mag(f).toFixed(2)+" dB · ∠ = "+pha(f).toFixed(1)+"°";
+  });
+}
+function renderPV(){
+  stage.innerHTML=`<div class="pad"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+   <div class="card" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px"><h4 style="margin:0 0 8px;font-size:11px;color:var(--subtle)">DRC — 5 errors · 2 warnings</h4>
+   <table class="grid"><tr><th>ID</th><th>Rule</th><th>Layer</th><th>Text</th></tr>
+   ${DRC.map(d=>`<tr><td>${d[0]}</td><td>${d[1]}</td><td>${d[2]}</td><td style="white-space:normal">${d[4]}</td></tr>`).join("")}</table></div>
+   <div>
+   <div class="card" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px"><h4 style="margin:0 0 8px;font-size:11px;color:var(--subtle)">LVS — CLEAN</h4>
+   <div class="mono" style="font-size:12.5px">schematic 38 dev / 52 nets / 8 pins<br>layout&nbsp;&nbsp;&nbsp; 38 dev / 52 nets / 8 pins<br><span class="pill p-pass">MATCH</span></div></div>
+   <div class="card" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:12px"><h4 style="margin:0 0 8px;font-size:11px;color:var(--subtle)">PEX + PRE/POST</h4>
+   <div class="mono" style="font-size:12px">1,482 R · 3,761 C · 2,114 Cc · 52 nets · 00:41</div>
+   <table class="grid" style="margin-top:8px"><tr><th>Metric</th><th>Post</th><th>Δ</th></tr>
+   ${POST.map(p=>`<tr><td>${p[0]}</td><td>${p[1]}</td><td>${p[2]}</td></tr>`).join("")}</table></div>
+   </div></div></div>`;
+}
+function renderProj(){
+  const cells=[["ota_core","schematic, symbol, layout, extracted","17:42"],["bias_gen","schematic, symbol, layout","16:19"],["cmfb","schematic, symbol","14:51"],["current_mirror","schematic, symbol, layout","11:02"],["diff_pair","schematic, symbol, layout","10:44"],["output_stage","schematic, extracted","09:38"],["startup","schematic","Yesterday"],["tb_ota_ac","schematic","17:41"]];
+  stage.innerHTML=`<div class="pad"><div class="cards">
+   <div class="card"><h5>Project</h5><div class="v" style="font-size:15px">aurora_65 · gpdk65</div></div>
+   <div class="card"><h5>Top cell</h5><div class="v" style="font-size:15px">ota_core · 1.2 V</div></div>
+   <div class="card"><h5>Revisions</h5><div class="v">r138–r142</div></div>
+   <div class="card"><h5>Run history</h5><div class="v">42 <span style="font-size:12px;color:var(--muted-fg)">67.4dB best</span></div></div></div>
+   <table class="grid"><tr><th>Cell</th><th>Views</th><th>Modified</th></tr>
+   ${cells.map(c=>`<tr><td>${c[0]}</td><td style="color:var(--subtle)">${c[1]}</td><td>${c[2]}</td></tr>`).join("")}</table></div>`;
+}
+function renderTech(){
+  const devs=[["nmos_1v2","60 nm","1.2 V","W L nf m ad as pd ps"],["pmos_1v2","60 nm","1.2 V","W L nf m ad as pd ps"],["nmos_lvt","60 nm","1.2 V","W L nf m"],["mimcap","2 µm","1.2 V","w l c"],["polyres","0.4 µm","1.2 V","w l r"],["diode","0.2 µm","1.2 V","area pj"]];
+  stage.innerHTML=`<div class="pad"><div class="cards">
+   <div class="card"><h5>PDK</h5><div class="v" style="font-size:15px">gpdk65 (mock)</div></div>
+   <div class="card"><h5>Devices</h5><div class="v">6</div></div>
+   <div class="card"><h5>Metal stack</h5><div class="v">M1–M6</div></div>
+   <div class="card"><h5>Status</h5><div class="v" style="font-size:15px;color:var(--warning)">UNVALIDATED</div></div></div>
+   <table class="grid"><tr><th>Device</th><th>minL</th><th>VDD</th><th>Params</th></tr>
+   ${devs.map(d=>`<tr><td>${d[0]}</td><td>${d[1]}</td><td>${d[2]}</td><td style="color:var(--subtle)">${d[3]}</td></tr>`).join("")}</table></div>`;
+}
+function renderIntent(){
+  stage.innerHTML=`<div class="pad"><div class="card" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:14px;max-width:900px">
+  <h4 style="margin:0 0 8px;font-size:11px;color:var(--subtle)">DESIGN INTENT — ota_core</h4>
+  <div class="mono" style="font-size:12.5px;line-height:2">Gain ≥ 60 dB <span class="pill p-pass">67.41 measured</span><br>UGBW ≥ 150 MHz <span class="pill p-pass">184.2 measured</span><br>PM ≥ 60° <span class="pill p-pass">63.8 measured</span><br>Power ≤ 2.5 mW <span class="pill p-pass">2.41 measured</span><br>Swing ≥ 0.95 V <span class="pill p-fail">0.91 measured — open issue</span></div>
+  <h4 style="margin:14px 0 8px;font-size:11px;color:var(--subtle)">MATCHING CONSTRAINTS</h4>
+  <div class="mono" style="font-size:12.5px;line-height:2">INPUT_PAIR: M1/M2 · common-centroid · dummies · 0.5%<br>CURRENT_MIRROR_1: M3/M4 · interdigitated · 0.8%<br>OUTPUT_BRANCH: M6/M7/M8 · mirror-Y · 1.0%</div>
+  </div></div>`;
+}
+const RENDER={schematic:renderSchem,layout:renderLayout,sim:renderSim,waves:renderWaves,assembler:renderAsm,pv:renderPV,project:renderProj,tech:renderTech,intent:renderIntent};
+function render(){(RENDER[cur]||renderSchem)();}
+/* bottom dock */
+let btab="console";
+const BBTABS=document.querySelectorAll("#bottom .btabs button");
+BBTABS.forEach(b=>b.addEventListener("click",()=>{btab=b.dataset.b;BBTABS.forEach(x=>x.classList.toggle("active",x===b));bbody();}));
+function bbody(){
+  const el=document.getElementById("bbody");
+  if(btab==="console")el.innerHTML=`<div><span style="color:var(--subtle)">[17:42]</span> Saved ota_core/schematic.</div><div><span style="color:var(--subtle)">[17:41]</span> <span style="color:var(--success)">Run 42 complete</span> — gain 67.41 dB · UGBW 184.2 MHz · PM 63.8°</div><div><span style="color:var(--subtle)">[17:30]</span> Run 41 complete — 65.8 dB · 171 MHz · 66.2°</div><div><span style="color:var(--subtle)">[16:58]</span> <span style="color:var(--warning)">SS/Stability WARN</span> — PM 55.3° at 125 °C / 1.08 V</div>`;
+  else if(btab==="jobs")el.innerHTML=`<table class="grid"><tr><th>ID</th><th>Type</th><th>Status</th><th>Host</th><th>Runtime</th></tr>${JOBS.map(j=>`<tr><td>${j[0]}</td><td>${j[1]}</td><td><span class="pill ${j[3]==="Complete"?"p-pass":"p-idle"}">${j[3]}</span></td><td>${j[4]||""}</td><td>${j[5]||""}</td></tr>`).join("")}</table>`;
+  else el.innerHTML=`<div><span style="color:var(--warning)">▲ Floating input: M7.G</span> <span style="color:var(--subtle)">— ota_core/schematic</span></div><div><span style="color:var(--critical)">● 5 DRC errors</span> <span style="color:var(--subtle)">— ota_core/layout (M1.MIN.SPACE ×2, VIA1.ENC, DIFF.ENC.CONT, M2.DENSITY)</span></div><div><span style="color:var(--warning)">▲ 2 DRC warnings</span> <span style="color:var(--subtle)">— POLY.MIN.WIDTH, NWELL.MIN.SPACE</span></div><div><span style="color:var(--critical)">● Output swing 0.91 V &lt; 0.95 V spec</span></div>`;
+}
+/* palette */
+const CMDS=[["Go: Schematic","schematic"],["Go: Layout","layout"],["Go: Sim Explorer","sim"],["Go: Waveforms","waves"],["Go: Assembler","assembler"],["Go: Physical Verification","pv"],["Go: Project","project"],["Go: Tech Browser","tech"],["Go: Design Intent","intent"],["Run simulation","__run"],["Save cell","__save"],["Toggle theme note","__theme"]];
+function palRender(f=""){
+  document.getElementById("pal-list").innerHTML=CMDS.filter(c=>c[0].toLowerCase().includes(f.toLowerCase()))
+    .map((c,i)=>`<div class="cmd${i===0?" sel":""}" data-c="${c[1]}">${c[0]}<kbd>${c[1].startsWith("__")?"action":"go"}</kbd></div>`).join("")||'<div class="cmd">No match</div>';
+  document.querySelectorAll("#pal-list .cmd").forEach(d=>d.addEventListener("click",()=>palGo(d.dataset.c)));
+}
+function palGo(c){
+  document.getElementById("palette").classList.remove("open");
+  if(c==="__run")return toast("Run launched (mockup — deterministic mock data)");
+  if(c==="__save")return toast("Saved ota_core/schematic (mockup)");
+  if(c==="__theme")return toast("Single dark theme in this showcase");
+  document.querySelector(`#wstabs button[data-w="${c}"]`)?.click();
+}
+document.getElementById("pal-in").addEventListener("input",e=>palRender(e.target.value));
+/* keys */
+window.addEventListener("keydown",e=>{
+  const mod=e.ctrlKey||e.metaKey, tag=e.target.tagName, typing=tag==="INPUT"||tag==="TEXTAREA";
+  if(mod&&e.key.toLowerCase()==="k"){e.preventDefault();document.getElementById("palette").classList.add("open");document.getElementById("pal-in").value="";palRender();setTimeout(()=>document.getElementById("pal-in").focus(),30);}
+  else if(mod&&e.key.toLowerCase()==="r"){e.preventDefault();toast("Run launched (mockup)");}
+  else if(e.key==="Escape"){document.getElementById("palette").classList.remove("open");}
+  else if(e.key==="?"&&!typing){toast("Esc select · W wire · I instance · P pin · M move · R rotate · X probe · Ctrl+K palette · Ctrl+R run");}
+});
+document.getElementById("btn-sim").addEventListener("click",()=>toast("Run launched (mockup — deterministic mock data)"));
+document.getElementById("btn-pal").addEventListener("click",()=>{document.getElementById("palette").classList.add("open");palRender();});
+document.getElementById("palette").addEventListener("click",e=>{if(e.target.id==="palette")e.target.classList.remove("open");});
+/* boot */
+palRender();bbody();render();inspect();
+</script>
+</body>
+</html>
