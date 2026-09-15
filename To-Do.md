@@ -228,8 +228,8 @@ analyzer traces, 1.9 min).
 - [x] **Stage 7 — Schematic UI**
   - [x] Interactive UI client calling `DesignEngine v0.1` API exclusively (Lovable shell, store.tsx API client, NewCellDialog, SimulationExplorer, WaveformAnalyzer).
   - [x] Playwright automated equivalence test (UI cell creation produces netlist byte-identical to direct Engine API instantiation, proven in `e2e/cockpit.spec.ts` in 5.5s).
-- [ ] **Stage 8 — Physical Design**
-  - [ ] Single-device backend technology spike (KLayout vs Magic vs Netgen).
+- [-] **Stage 8 — Physical Design** (spike recon done 2026-09-15: pya via `klayout -b -r` proven; magic 8.3 + netgen + sky130A.magicrc/setup.tcl present; layers quoted from `sky130A.lyp`)
+  - [x] Spike K `pya` (`scripts/layout_spike_nmos.py` + `tests/test_layout_spike.py`): single NMOS, 8 PDK-quoted layers, 16 boxes, 507-byte OASIS, re-read round-trip True on KLayout 0.30.12. argv lesson: `klayout -b -r` eats positionals as inputs — fixed contract name + cwd. EDA 2 passed.
   - [ ] `LayoutBackend` PCell placement, DRC, and LVS flow.
   - [ ] 🔴 **HUMAN CHECKPOINT**: Visual layout inspection in KLayout on first clean DRC/LVS.
 - [ ] **Stage 9 — Post-Layout Physical Verification Loop**
