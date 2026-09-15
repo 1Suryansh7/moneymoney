@@ -41,8 +41,8 @@ def test_unknown_bench_fails_closed() -> None:
 
 
 def test_deferred_benches_raise_with_owner(tmp_path: Path) -> None:
-    with pytest.raises(NotImplementedError, match="R0-4"):
-        run_bench("B6", db_path=str(tmp_path / "b.sqlite"))
+    with pytest.raises(NotImplementedError, match="R0-5"):
+        run_bench("B7", db_path=str(tmp_path / "b.sqlite"))
 
 
 def test_b0_without_backend_reports_error(tmp_path: Path) -> None:
@@ -219,3 +219,23 @@ def test_b5_live_passes_with_evidence(tmp_path: Path) -> None:
     assert result.metrics["vout_min_v"] < 0.1
     assert result.metrics["vout_max_v"] > 1.7
     assert len(result.evidence) == 1 and len(result.evidence[0]) == 64
+
+
+def test_b6_without_backend_reports_error(tmp_path: Path) -> None:
+    result = run_bench("B6", db_path=str(tmp_path / "b6.sqlite"))
+    assert isinstance(result, BenchResult)
+    if libngspice_available():
+        pytest.skip("backend present; fail-closed path covered on base")
+    assert result.status == "error"
+    assert "Schema" in result.message or "SimError" in result.message
+
+
+@NEEDS_LIB
+def test_b6_live_passes_with_evidence(tmp_path: Path) -> None:
+    result = run_bench("B6", db_path=str(tmp_path / "b6live.sqlite"))
+    assert result.status == "pass", result.message
+    for proc in ("tt", "ff", "ss", "fs", "sf"):
+        assert result.metrics[f"gain_db_{proc}"] >= 60.0
+        assert result.metrics[f"pm_deg_{proc}"] >= 45.0
+        assert result.metrics[f"ugb_hz_{proc}"] > 1e6
+    assert len(result.evidence) == 5 and all(len(r) == 64 for r in result.evidence)

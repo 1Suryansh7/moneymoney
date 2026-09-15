@@ -1,10 +1,10 @@
 """AnalogBench registry + runner (R0 trust core).
 
 Eight canonical benchmarks B0–B7 form the release scoreboard. B0 (inverter),
-B1 (mirror), B2 (diff pair), B3 (common-source), B4 (cascode) and B5
-(folded-cascode OTA) execute today; B6–B7 raise NotImplementedError with
-per-bench defer owners instead of faking results. Runner returns data
-(BenchResult), never raises on simulation faults — failures are scoreboard
+B1 (mirror), B2 (diff pair), B3 (common-source), B4 (cascode), B5
+(folded-cascode OTA) and B6 (Miller op-amp PVT) execute today; B7 raises
+NotImplementedError with its defer owner instead of faking results. Runner
+returns data (BenchResult), never raises on simulation faults — failures are scoreboard
 rows, and the fail-closed contract surfaces them as status="error" with the
 taxonomy message attached.
 """
@@ -19,16 +19,20 @@ from typing import Final
 from analog_ic_design.engine.engine_v01 import EngineV01
 from analog_ic_design.metrics.bandwidth import extract_bandwidth
 from analog_ic_design.metrics.gain import extract_ac_gain, extract_dc_gain
+from analog_ic_design.metrics.phase_margin import extract_phase_margin
+from analog_ic_design.robust.corner import FAST_5_CORNER_ENVELOPE
 from analog_ic_design.sim.cascode import build_cascode
 from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.diff_pair import build_diff_pair
 from analog_ic_design.sim.folded_cascode import build_folded_cascode
 from analog_ic_design.sim.inverter import build_inverter
+from analog_ic_design.sim.miller_opamp import MILLER_TRIAL17_WINNER, assemble_miller_ac_deck
 from analog_ic_design.sim.mirror import build_mirror
 from analog_ic_design.sim.ngspice import RawSim, SimError
 from analog_ic_design.sim.testbench import assemble_ac, assemble_dc_sweep, assemble_transient
 from analog_ic_design.sim.waveform import parse_ac, parse_transient
 from analog_ic_design.store.schema import connect, migrate
+from analog_ic_design.topology.templates import instantiate_template
 
 SKY130_LIB = "/usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice"
 
@@ -518,6 +522,71 @@ def _run_b5(*, db_path: str, seed: int) -> BenchResult:
         eng.close()
 
 
+def _run_b6(*, db_path: str, seed: int) -> BenchResult:
+    setup = connect(db_path)
+    try:
+        migrate(setup)
+        cell = instantiate_template(
+            setup,
+            "two_stage_miller",
+            params=dict(MILLER_TRIAL17_WINNER),
+            cell_name="b6_miller",
+        )
+    finally:
+        setup.close()
+    eng = EngineV01(db_path=db_path)
+    try:
+        valid, violations = eng.validate(cell_id=cell)
+        if not valid:
+            return BenchResult("B6", "fail", {}, (),
+                               f"Constraint: validation gate failed: {violations}")
+        frag = eng.netlist(cell_id=cell)
+        metrics: dict[str, float] = {}
+        repros: list[str] = []
+        for corner in FAST_5_CORNER_ENVELOPE:
+            deck = assemble_miller_ac_deck(frag, libs=[(SKY130_LIB, "tt")], corner=corner)
+            try:
+                repro = eng.simulate(netlist=deck, seed=seed)
+            except SimError as exc:
+                return BenchResult("B6", "error", {}, (), f"{exc}")
+            jobs = eng.list_jobs()
+            detail = eng.job_result(job_id=jobs[0]["job_id"])
+            payload = json.loads(str(detail["result"]))
+            cx = {k: [complex(p[0], p[1]) for p in v]
+                  for k, v in payload.get("complex_vectors", {}).items()}
+            wave = parse_ac(RawSim(vectors=payload["vectors"], complex_vectors=cx, log=""))
+            try:
+                ugb = extract_bandwidth(wave, in_node="vip", out_node="out")
+                pm = extract_phase_margin(wave, in_node="vip", out_node="out")
+                vip_mag = wave.trace("vip").magnitude()
+                gain_v_v = wave.trace("out").magnitude()[0] / vip_mag[0]
+            except SimError as exc:
+                return BenchResult("B6", "error", {}, (repro,), f"{exc}")
+            proc = corner.process
+            metrics[f"gain_db_{proc}"] = 20.0 * math.log10(gain_v_v)
+            metrics[f"ugb_hz_{proc}"] = ugb
+            metrics[f"pm_deg_{proc}"] = pm
+            repros.append(repro)
+        # MEASURED envelope (Trial-17, ADR-028): tt 81.30dB/16.58M/63.64,
+        # ff 85.40/15.07M/65.07, ss 66.32/16.10M/63.67, fs 84.52/4.96M/63.83,
+        # sf 60.78/29.33M/66.06. Bands pin the honest story: the 60dB gain
+        # spec survives every corner (worst sf 60.78) and PM stays STABLE
+        # (>=45, VERIFY-PM-001) everywhere; UGB is reported per corner with
+        # a 1MHz reality floor (worst fs 4.96M) instead of the shorted 40MHz
+        # target. One bad corner fails the bench — that IS the PVT claim.
+        worst_gain = min(metrics[f"gain_db_{c.process}"] for c in FAST_5_CORNER_ENVELOPE)
+        worst_pm = min(metrics[f"pm_deg_{c.process}"] for c in FAST_5_CORNER_ENVELOPE)
+        worst_ugb = min(metrics[f"ugb_hz_{c.process}"] for c in FAST_5_CORNER_ENVELOPE)
+        if worst_gain >= 60.0 and worst_pm >= 45.0 and worst_ugb > 1e6:
+            return BenchResult("B6", "pass", metrics, tuple(repros), "")
+        return BenchResult(
+            "B6", "fail", metrics, tuple(repros),
+            f"Constraint: Miller PVT broken (gain>={worst_gain:.2f}dB,"
+            f" pm>={worst_pm:.2f}, ugb>={worst_ugb:.3e})")
+    finally:
+        eng.close()
+
+
 def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
     """Execute one benchmark by id; unknown ids fail closed (Schema)."""
     if bench_id not in BENCHES:
@@ -534,5 +603,7 @@ def run_bench(bench_id: str, *, db_path: str, seed: int = 21) -> BenchResult:
         return _run_b4(db_path=db_path, seed=seed)
     if bench_id == "B5":
         return _run_b5(db_path=db_path, seed=seed)
+    if bench_id == "B6":
+        return _run_b6(db_path=db_path, seed=seed)
     owner = BENCHES[bench_id].owner
     raise NotImplementedError(f"{bench_id} deferred to {owner}")

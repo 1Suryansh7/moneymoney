@@ -84,6 +84,25 @@ MILLER_SEARCH_SPACE: Final = SearchSpace({
     "rz": (200.0, 8000.0),
 })
 
+#: Empirical winner, focused physics-guided study (seed 200, trial 17,
+#: cost 117.08): gain 81.30dB / UGB 16.58MHz / PM 63.64deg (ADR-028).
+#: Single source of truth for the B6 bench and the Stage 6 live demo —
+#: gain+PM honestly pass, UGB shorts 40MHz. SI base units throughout.
+MILLER_TRIAL17_WINNER: Final = {
+    "w_in": 2.3878988974264008e-05,
+    "l_in": 8.251754636271495e-07,
+    "w_load": 1.4489908233410598e-05,
+    "l_load": 1.6606568666651572e-06,
+    "w_tail": 1.4389752825540067e-05,
+    "l_tail": 1.4084257570195117e-06,
+    "w_out": 8.625576773440542e-05,
+    "l_out": 1.0546596108596654e-06,
+    "w_load2": 5.7093097344949095e-05,
+    "l_load2": 1.0984928168417911e-06,
+    "cc": 1.3346124994111663e-12,
+    "rz": 2237.6590261105234,
+}
+
 
 def assemble_miller_ac_deck(
     fragment: str,

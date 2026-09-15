@@ -28,6 +28,7 @@ from analog_ic_design.circuit.validator import validate
 from analog_ic_design.robust.corner import FAST_5_CORNER_ENVELOPE
 from analog_ic_design.sim.jobs import JobRunner
 from analog_ic_design.sim.miller_opamp import (
+    MILLER_TRIAL17_WINNER,
     assemble_miller_ac_deck,
     evaluate_miller_candidate,
     format_stage6_checkpoint_alert,
@@ -233,22 +234,10 @@ def test_live_two_stage_miller_spice_simulation(tmp_path: Path) -> None:
     # trial 17, cost 117.08): gain 81.30dB, UGB 16.58MHz, PM 63.64deg.
     # Gain + PM pass honestly; UGB shorts the 40MHz target. Exact study
     # point, re-simulated here; spec compliance stays a human verdict.
+    # Parameters live in MILLER_TRIAL17_WINNER (single source of truth).
     cand = CandidateCircuitIR(
         topology_id="two_stage_miller",
-        parameters={
-            "w_in": 2.3878988974264008e-05,
-            "l_in": 8.251754636271495e-07,
-            "w_load": 1.4489908233410598e-05,
-            "l_load": 1.6606568666651572e-06,
-            "w_tail": 1.4389752825540067e-05,
-            "l_tail": 1.4084257570195117e-06,
-            "w_out": 8.625576773440542e-05,
-            "l_out": 1.0546596108596654e-06,
-            "w_load2": 5.7093097344949095e-05,
-            "l_load2": 1.0984928168457911e-06,
-            "cc": 1.3346124994111663e-12,
-            "rz": 2237.6590261105234,
-        },
+        parameters=dict(MILLER_TRIAL17_WINNER),
         reasoning="Live BSIM4 measurement of the re-baselined empirical winner",
         evidence_ids=("LIVE-1",),
         requested_spec_id="SPEC-LIVE-60DB",

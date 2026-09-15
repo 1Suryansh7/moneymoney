@@ -203,8 +203,8 @@
   - [x] Track B2: "Run All Corners" rewired (was miswired to nominal sim) + Corner Results rows +
 click-to-view + Playwright. Evidence: tsc + vite build green; corners e2e 1 passed live (5/5 rows, SS click-through to
 analyzer traces, 1.9 min).
-  - [x] B6a: corner plumbing in `assemble_miller_ac_deck` (`corner=None` default keeps nominal decks byte-identical) + deck-text test. Evidence: ruff + mypy clean, stage6+bench files 20+7, full base 420+49 green.
-  - [-] B6b: `_run_b6` Trial-17 winner across envelope + live thresholds + EDA proof.
+  - [x] B6a `89d33b1`: corner plumbing in `assemble_miller_ac_deck` + deck-text test. Full base 420+49 green.
+  - [x] B6b: `_run_b6` Trial-17 winner across envelope + dispatch + live tests (deferral advanced B6→B7/R0-5; `MILLER_TRIAL17_WINNER` single-sourced, demo deduplicated). MEASURED tt 81.30/16.58M/63.64, ff 85.40/15.07M/65.07, ss 66.32/16.10M/63.67, fs 84.52/4.96M/63.83, sf 60.78/29.33M/66.06 — gain≥60dB + PM STABLE hold on all 5 (60dB spec survives PVT; UGB reported, 40MHz target stays shorted). Evidence: EDA b6-live green; full base 421+50 green.
 - [x] Quick-wins debt batch: CORS origins tightened to the two loopback dev URLs (wildcard+credentials rejected by browsers — VERIFIED in `api/server.py:323-324`); Misc.tsx signoff/metrics/margins fiction replaced with run-state truth + live Measured block; test_digital_gates.py deck assembly via assemble_transient (VERIFIED `tests/test_digital_gates.py:24,124` — micron string-replace debt retired).
   - [x] 3e canvas live: cell picker + `activeCellId`/`activeSchematic` in store (mount picks first non-anchor); deterministic auto-layout with W/L engineering notation; connectivity strip + neutral port markers instead of routed-wire fiction; toolbar counts + overlay + Check all live (POST /validate); empty state, no mock fallback. Playwright 4/4 incl. new canvas test (named cell → m1/m2 + counts + sky130 label).
   - [-] **Step 3 — Lovable-shell binding** (host toolchain found: node 25.6.0 / bun 1.3.8; `bun install` 408 pkgs; baseline `tsc --noEmit` clean, `vite build` green)
