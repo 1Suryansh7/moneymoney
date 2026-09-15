@@ -13,6 +13,7 @@ import pytest
 
 from analog_ic_design.bench import BENCHES, BenchResult, run_bench
 from analog_ic_design.circuit import validate
+from analog_ic_design.sim.bandgap import build_bandgap
 from analog_ic_design.sim.cascode import build_cascode
 from analog_ic_design.sim.cs_amp import build_cs_amplifier
 from analog_ic_design.sim.diff_pair import build_diff_pair
@@ -239,3 +240,15 @@ def test_b6_live_passes_with_evidence(tmp_path: Path) -> None:
         assert result.metrics[f"pm_deg_{proc}"] >= 45.0
         assert result.metrics[f"ugb_hz_{proc}"] > 1e6
     assert len(result.evidence) == 5 and all(len(r) == 64 for r in result.evidence)
+
+
+def test_b7_fixture_validates_without_backend(tmp_path: Path) -> None:
+    """Bandgap PNP core passes the pre-simulation gate with no simulator."""
+    conn = connect(str(tmp_path / "b7fix.sqlite"))
+    try:
+        migrate(conn)
+        cell = build_bandgap(conn)
+        report = validate(conn, cell)
+    finally:
+        conn.close()
+    assert report.valid, [v.message for v in report.violations]
