@@ -198,6 +198,12 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 3. **Stage 8+ physical design** — KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow, then Stages 9–10 per `planchanges.md`. B5–B7 benches stay deferred per ADR-033.
 4. **CI Actions observation** — No gh/token from here; confirm the post-`7c4ca71` smoke/eda runs are green in the GitHub tab.
 
+## 2026-09-14 — R0-4 B6 Miller PVT (`89d33b1` + `42180b0`, EDA-proven)
+- B6a: `corner` plumbing in `assemble_miller_ac_deck` (None default keeps nominal decks byte-identical, proven by untouched deck test) + per-corner deck-text test.
+- B6b: `_run_b6` instantiates Trial-17 (now single-sourced as `MILLER_TRIAL17_WINNER`, Stage 6 demo deduplicated) across the 5-envelope; per-corner gain_db/UGB/PM via the Stage 6 extraction path; pass = gain≥60dB + PM STABLE on all 5, UGB reported with 1MHz floor.
+- MEASURED: tt 81.30/16.58M/63.64, ff 85.40/15.07M/65.07, ss 66.32/16.10M/63.67, fs 84.52/4.96M/63.83, sf 60.78/29.33M/66.06. TT reproduces ADR-028 to 4 sig figs through the corner-plumbed path; 60dB spec survives every corner; 40MHz UGB target stays shorted (reported, not gated).
+- Evidence: EDA b6-live green (5 sims, 220 s); full base 421+50 green. Scratch probe deleted pre-commit. Deferral advanced B6→B7/R0-5; only B7 bandgap remains.
+
 ## 2026-09-14 — R0-4 Track B PVT sweep in cockpit (B1 `2e0af41` + B2, EDA-proven)
 - B1 backend: concrete-only `EngineV01.run_corners` (5-envelope inverter sweep, one ledger job per corner, fail-soft rows) + `POST /corners/run` + `tests/test_api_corners.py`. First red was client ReadTimeout (5×20.5 s sweep > 60 s budget, MEASURED single-corner wall) — test-only 300 s fixture timeout per R0-4b precedent. EDA file 4+2.
 - B2 UI: `api.ts` corners transport; store sweep loop (cornerRuns/cornerWaves/cornerPhase, click-to-view through shared liveWave, dumb-frontend kept); "Run All Corners" rewired from nominal `runSimulation` to checkbox-state sweep; Corner Results rows (backend temp/supply/status); Playwright corners test green live in 1.9 min.
