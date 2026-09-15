@@ -198,7 +198,13 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 3. **Stage 8+ physical design** — KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow, then Stages 9–10 per `planchanges.md`. B5–B7 benches stay deferred per ADR-033.
 4. **CI Actions observation** — No gh/token from here; confirm the post-`7c4ca71` smoke/eda runs are green in the GitHub tab.
 
-## 2026-09-14 — RFC-002 v0-backend (`26d1176`, base green, UNPUSHED)
+## 2026-09-14 — R0-4 Track A B5 folded-cascode (`07ed471` + `5db39ea`, EDA-proven)
+- A1 fixture: hand-built `sim/folded_cascode.py` (9-device OTA, template-default 0.5 µm sizes, independent of the `folded_cascode` template for cross-check) + gate test + deferral advanced B5→B6. Base bench file 13+5.
+- A2 runner: `_run_b5` (DC sweep on vip → trip → AC at trip with declared 1 pF `Cload`, dual DC/AC assertions + UGB band) + dispatch + base/EDA tests. Bias recipe probed live (16-combo grid; NMOS-strong parks out at vss, PMOS-strong at vdd; winner tail=1.0/bp=1.0/n1=0.5/n2=1.0/vcm=0.9).
+- MEASURED: DC 28.070 == AC 28.070 @trip 0.870V, UGB 39.6kHz @1pF, rails 0.063–1.775V. PM deliberately unasserted (single-ended open-loop PM ill-defined; B5 acceptance text updated to dc/ac+UGB).
+- Evidence: EDA `-k b5` 3 passed + 1 skip; full base 414+48 green. Scratch probe deleted pre-commit.
+
+## 2026-09-14 — RFC-002 v0-backend (`26d1176`, base green, PUSHED)
 - RFC-002 ACCEPTED by human (all 4 §10 verdicts = proposals); status flipped in-file.
 - Claim: tutor explain-or-refuse chat over HTTP + 20-prompt refusal Eval. `ai/tutor.py` keyword classifier (9 stems, pure), concrete-only `EngineV01.chat` (newest-first failed-job scan, unclassifiable skipped, fail-soft refusal, chat never raises), `POST /copilot/chat` (ChatIn/ChatOut, trail echoes action_id or `refused-no-evidence`), `tests/test_tutor_refusal.py` (10 in-domain must-ground verbatim + AIAction row; 10 out-of-domain must-refuse with zero provenance rows; newest-fallback, no-job, unclassifiable-only edges; uncited-refusal covered at explainer level in `test_ai_explain.py`).
 - Evidence: ruff clean, mypy strict clean, new file 24 passed, full base **412 passed + 47 skipped**. One ruff I001 fixed en route (tutor import sorts after taxonomy). Frontend (AssistPanel rewire + Playwright), v1, ADR-036/037 remain.
