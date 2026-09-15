@@ -121,6 +121,17 @@ export type ExplainOut = {
   model: string;
 };
 export type DemoRunOut = { job_id: string; cell_id: string; reproducibility_id: string };
+export type CornerRun = {
+  corner: string;
+  process: string;
+  temp_c: number;
+  vdd_v: number;
+  job_id: string | null;
+  status: string;
+  message: string;
+  reproducibility_id: string | null;
+};
+export type CornersOut = { name: string; runs: CornerRun[] };
 export type MeasureOut = { metric_id: string; value: number; unit: string };
 export type StudyOut = { job_id: string; study_id: string };
 export type Trial = {
@@ -146,6 +157,8 @@ export const getSchematic = (cellId: string): Promise<Schematic> =>
   request<Schematic>(`/cells/${encodeURIComponent(cellId)}/schematic`);
 export const runDemo = (name: string, seed = 21): Promise<DemoRunOut> =>
   post<DemoRunOut>("/testbenches/run", { name, seed });
+export const runCorners = (corners: string[] | null, seed = 21): Promise<CornersOut> =>
+  post<CornersOut>("/corners/run", { corners, seed });
 export const measure = (cellId: string, metricId: string): Promise<MeasureOut> =>
   post<MeasureOut>("/measure", { cell_id: cellId, metric_id: metricId });
 export const createSpec = (

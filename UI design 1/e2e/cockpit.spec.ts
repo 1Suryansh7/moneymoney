@@ -157,8 +157,7 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
 
   test("optimizer streams trials, cancels mid-run, then completes", async ({
     page,
-  }) => {
-    test.slow(); // real sims behind every trial: ~10min on shared hardware
+  }) => {    test.slow(); // real sims behind every trial: ~10min on shared hardware
     await page.goto("http://localhost:5173", { waitUntil: "networkidle" });
     const simTab = page.getByRole("tab", { name: "Simulation Explorer" });
     await simTab.click();
@@ -183,4 +182,37 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     const svgPlot = page.locator("svg").first();
     await expect(svgPlot).toBeVisible({ timeout: 10000 });
   });
+
+  test("corner sweep runs the envelope and shows per-corner rows", async ({ page }) => {
+    test.slow(); // five ngspice sims behind one button: ~2min on shared hardware
+    await page.goto("http://localhost:5173", { waitUntil: "networkidle" });
+    const simTab = page.getByRole("tab", { name: "Simulation Explorer" });
+    await simTab.click();
+
+    // Run All Corners previously called the nominal sim (miswired): it
+    // must now drive POST /corners/run for the checked envelope ids.
+    await page.getByRole("button", { name: "Run All Corners" }).click();
+
+    // Five per-corner rows render with backend truth (temp + supply +
+    // status); the sweep log line proves completion.
+    await expect(page.getByText("Corners done: 5/5 succeeded")).toBeVisible({
+      timeout: 600000,
+    });
+    for (const id of ["TT", "FF", "SS", "FS", "SF"]) {
+      await expect(
+        page.getByRole("button", { name: new RegExp(`${id}.*succeeded`) }),
+      ).toBeVisible({ timeout: 10000 });
+    }
+
+    // Clicking a corner row shows its wave in the analyzer (display
+    // routing through the shared liveWave state).
+    await page.getByRole("button", { name: /SS.*succeeded/ }).click();
+    const waveTab = page.getByRole("tab", { name: "Waveform Analyzer" });
+    await waveTab.click();
+    const tracePolylines = page.locator("svg polyline");
+    await expect(tracePolylines.first()).toBeVisible({ timeout: 10000 });
+    expect(await tracePolylines.count()).toBeGreaterThan(0);
+  });
 });
+
+

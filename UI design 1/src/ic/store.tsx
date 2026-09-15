@@ -25,9 +25,11 @@ import {
   listTrials,
   measure,
   renameCell,
+  runCorners as requestCorners,
   runDemo,
   startStudy as requestStudy,
   type CellSummary,
+  type CornerRun,
   type JobDetail,
   type JobSummary,
   type Schematic,
@@ -148,6 +150,9 @@ function useStoreValue() {
   const [activeSchematic, setActiveSchematic] = useState<Schematic | null>(null);
   const [liveWave, setLiveWave] = useState<Waveforms | null>(null);
   const [lastJobId, setLastJobId] = useState<string | null>(null);
+  const [cornerRuns, setCornerRuns] = useState<CornerRun[]>([]);
+  const [cornerWaves, setCornerWaves] = useState<Record<string, Waveforms>>({});
+  const [cornerPhase, setCornerPhase] = useState<"IDLE" | "RUNNING" | "DONE">("IDLE");
   const [demoCellId, setDemoCellId] = useState<string | null>(null);
   const [measuredGain, setMeasuredGain] = useState<{ value: number; unit: string } | null>(null);
   const [measuredBandwidth, setMeasuredBandwidth] = useState<{ value: number; unit: string } | null>(
@@ -186,6 +191,7 @@ function useStoreValue() {
   const timers = useRef<number[]>([]);
   const runToken = useRef(0);
   const studyToken = useRef(0);
+  const cornerToken = useRef(0);
 
   const log = useCallback((text: string, kind?: ConsoleLine["kind"]) => {
     setConsole((c) => [...c, { t: now(), text, kind }].slice(-400));
@@ -437,6 +443,77 @@ function useStoreValue() {
     }
   }, [log, lastJobId]);
 
+  /** PVT sweep: POST /corners/run for the checked envelope ids, then pull
+   * one wave per succeeded corner. Display only — no metric math here;
+   * per-corner faults arrive as rows (fail-soft) and render as-is. */
+  const runCorners = useCallback(
+    (processes: string[]) => {
+      cornerToken.current += 1;
+      const token = cornerToken.current;
+      setCornerRuns([]);
+      setCornerPhase("RUNNING");
+      log(`Corners: POST /corners/run [${processes.join(", ")}]`);
+      void (async () => {
+        let runs: CornerRun[];
+        try {
+          const out = await requestCorners(processes, 21);
+          setBackendUp(true);
+          runs = out.runs;
+        } catch (err) {
+          if (token !== cornerToken.current) return;
+          setCornerPhase("IDLE");
+          const msg = err instanceof ApiError ? err.detail : String(err);
+          if (err instanceof ApiError && err.status === 0) setBackendUp(false);
+          log(`Corners run failed: ${msg}`, "err");
+          return;
+        }
+        if (token !== cornerToken.current) return;
+        setCornerRuns(runs);
+        const waves: Record<string, Waveforms> = {};
+        for (const run of runs) {
+          if (run.status !== "succeeded" || !run.job_id) {
+            log(`Corner ${run.process}: ${run.status} — ${run.message.split("\n")[0]}`, "warn");
+            continue;
+          }
+          try {
+            waves[run.process] = await getWaveforms(run.job_id);
+          } catch (err) {
+            if (token !== cornerToken.current) return;
+            log(
+              `Corner ${run.process} wave read failed: ${err instanceof Error ? err.message : String(err)}`,
+              "warn",
+            );
+          }
+        }
+        if (token !== cornerToken.current) return;
+        setCornerWaves(waves);
+        const first = runs.find((r) => waves[r.process] !== undefined);
+        if (first) setLiveWave(waves[first.process]);
+        setCornerPhase("DONE");
+        const ok = runs.filter((r) => r.status === "succeeded").length;
+        log(`Corners done: ${ok}/${runs.length} succeeded`);
+        notify({
+          title: "Corner sweep completed",
+          body: `${ok}/${runs.length} corners live`,
+          time: now().slice(0, 5),
+          kind: ok === runs.length ? "PASS" : "WARN",
+        });
+        void refreshJobs();
+      })();
+    },
+    [log, notify, refreshJobs],
+  );
+
+  /** Show one swept corner's wave in the analyzer (display routing only). */
+  const showCorner = useCallback(
+    (process: string) => {
+      const wave = cornerWaves[process];
+      if (wave) setLiveWave(wave);
+      else log(`Corner ${process} has no wave (run the sweep first)`, "warn");
+    },
+    [cornerWaves, log],
+  );
+
   const startStudy = useCallback(() => {
     if (!demoCellId) {
       log("Optimize needs a completed simulation first — press Run", "warn");
@@ -622,6 +699,11 @@ function useStoreValue() {
     createTemplateCell,
     liveWave,
     lastJobId,
+    cornerRuns,
+    cornerWaves,
+    cornerPhase,
+    runCorners,
+    showCorner,
     demoCellId,
     measuredGain,
     measuredBandwidth,

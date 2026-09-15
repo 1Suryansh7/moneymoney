@@ -198,6 +198,12 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 3. **Stage 8+ physical design** — KLayout/Magic/Netgen backend spike, PCell placement, DRC/LVS flow, then Stages 9–10 per `planchanges.md`. B5–B7 benches stay deferred per ADR-033.
 4. **CI Actions observation** — No gh/token from here; confirm the post-`7c4ca71` smoke/eda runs are green in the GitHub tab.
 
+## 2026-09-14 — R0-4 Track B PVT sweep in cockpit (B1 `2e0af41` + B2, EDA-proven)
+- B1 backend: concrete-only `EngineV01.run_corners` (5-envelope inverter sweep, one ledger job per corner, fail-soft rows) + `POST /corners/run` + `tests/test_api_corners.py`. First red was client ReadTimeout (5×20.5 s sweep > 60 s budget, MEASURED single-corner wall) — test-only 300 s fixture timeout per R0-4b precedent. EDA file 4+2.
+- B2 UI: `api.ts` corners transport; store sweep loop (cornerRuns/cornerWaves/cornerPhase, click-to-view through shared liveWave, dumb-frontend kept); "Run All Corners" rewired from nominal `runSimulation` to checkbox-state sweep; Corner Results rows (backend temp/supply/status); Playwright corners test green live in 1.9 min.
+- Verification notes: loopback-only CORS blocked the alt-port dev server (hardening working as designed) — temp 8081 origins added, verified, REVERTED (committed diff has no server.py change); user's :8000/:5173 stack left untouched (stale, predates B1).
+- Evidence: tsc + vite build green; full base 419+49 green.
+
 ## 2026-09-14 — R0-4 Track A B5 folded-cascode (`07ed471` + `5db39ea`, EDA-proven)
 - A1 fixture: hand-built `sim/folded_cascode.py` (9-device OTA, template-default 0.5 µm sizes, independent of the `folded_cascode` template for cross-check) + gate test + deferral advanced B5→B6. Base bench file 13+5.
 - A2 runner: `_run_b5` (DC sweep on vip → trip → AC at trip with declared 1 pF `Cload`, dual DC/AC assertions + UGB band) + dispatch + base/EDA tests. Bias recipe probed live (16-combo grid; NMOS-strong parks out at vss, PMOS-strong at vdd; winner tail=1.0/bp=1.0/n1=0.5/n2=1.0/vcm=0.9).

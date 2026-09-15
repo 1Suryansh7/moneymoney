@@ -245,13 +245,42 @@ export function SimulationExplorer({ dense = false }: { dense?: boolean }) {
             </label>
           ))}
           <div className="flex gap-1 p-2">
-            <button onClick={s.runSimulation} className="h-[22px] flex-1 rounded-[3px] border border-border text-[11px] hover:bg-raised">
+            <button
+              onClick={() =>
+                s.runCorners(corners.filter((c) => c.enabled).map((c) => c.id.toLowerCase()))
+              }
+              className="h-[22px] flex-1 rounded-[3px] border border-border text-[11px] hover:bg-raised"
+            >
               Run All Corners
             </button>
             <button onClick={() => setMcOpen(true)} className="h-[22px] flex-1 rounded-[3px] border border-border text-[11px] hover:bg-raised">
               Monte Carlo...
             </button>
           </div>
+
+          <SectionTitle>Corner Results</SectionTitle>
+          {s.cornerPhase === "IDLE" && (
+            <div className="num px-2 py-1 text-[10px] text-subtle">
+              No sweep yet — check corners above and press Run All Corners.
+            </div>
+          )}
+          {s.cornerPhase === "RUNNING" && (
+            <div className="num px-2 py-1 text-[10px] text-subtle">
+              Sweeping envelope on the backend…
+            </div>
+          )}
+          {s.cornerRuns.map((r) => (
+            <button
+              key={r.process}
+              onClick={() => s.showCorner(r.process)}
+              className="flex w-full items-center gap-2 border-b border-border/40 px-2 py-[5px] text-left text-[11px] hover:bg-raised/60"
+            >
+              <span className="num w-[26px] text-foreground">{r.process.toUpperCase()}</span>
+              <span className="num text-muted-foreground">{r.temp_c.toFixed(0)} °C</span>
+              <span className="num ml-auto text-muted-foreground">{r.vdd_v.toFixed(2)} V</span>
+              <span className="num text-foreground">{r.status}</span>
+            </button>
+          ))}
 
           <SectionTitle>Model Libraries</SectionTitle>
           <Field label="sky130.lib.spice" value="tt" />
