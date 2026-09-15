@@ -242,6 +242,34 @@ class DemoRunOut(BaseModel):
     reproducibility_id: str
 
 
+class CornersIn(BaseModel):
+    """PVT sweep request: demo deck plus envelope corner ids (all if omitted)."""
+
+    name: str = "inverter_tran"
+    corners: list[str] | None = None
+    seed: int = 21
+
+
+class CornerRun(BaseModel):
+    """One corner's outcome: ledger job handle or fail-soft error row."""
+
+    corner: str
+    process: str
+    temp_c: float
+    vdd_v: float
+    job_id: str | None
+    status: str
+    message: str
+    reproducibility_id: str | None
+
+
+class CornersOut(BaseModel):
+    """Full sweep: per-corner rows for dispersion display."""
+
+    name: str
+    runs: list[CornerRun]
+
+
 class MeasureIn(BaseModel):
     """Measurement request: one registered metric on one cell."""
 
@@ -448,6 +476,17 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
             return _engine(request).run_demo_testbench(name=body.name, seed=body.seed)
         except SimError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/corners/run", response_model=CornersOut)
+    def run_corners(body: CornersIn, request: Request) -> dict[str, Any]:
+        # Per-corner faults stay in rows (fail-soft by design); only bad
+        # requests raise.
+        try:
+            return _engine(request).run_corners(
+                name=body.name, corners=body.corners, seed=body.seed
+            )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 

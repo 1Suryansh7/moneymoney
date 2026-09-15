@@ -44,6 +44,7 @@ from analog_ic_design.metrics.bandwidth import extract_bandwidth
 from analog_ic_design.metrics.contract import METRIC_BY_ID
 from analog_ic_design.metrics.gain import extract_ac_gain, extract_dc_gain
 from analog_ic_design.optimize.scalarizer import TIMEOUT_PENALTY
+from analog_ic_design.robust.corner import FAST_5_CORNER_ENVELOPE
 from analog_ic_design.sim.inverter import build_inverter
 from analog_ic_design.sim.jobs import JobRunner
 from analog_ic_design.sim.ngspice import RawSim, SimError, libngspice_available
@@ -636,6 +637,88 @@ class EngineV01(DesignEngine):
             "cell_id": cell_id,
             "reproducibility_id": reproducibility_id,
         }
+
+    def run_corners(
+        self,
+        *,
+        name: str = "inverter_tran",
+        corners: list[str] | None = None,
+        seed: int = 21,
+    ) -> dict[str, Any]:
+        """Run one canonical demo deck across PVT corners (Track B backend).
+
+        Each corner of the Stage 4.5 five-envelope simulates as its own
+        ledger job (corner process section + supply + `.temp` baked into
+        the deck server-side); the frontend sends corner ids and polls
+        the returned jobs through the existing waveforms route. One bad
+        corner never aborts the sweep — it returns a per-corner error
+        row, which is exactly what dispersion display needs. Unknown
+        names, empty selections, and unknown corner ids fail closed
+        (ValueError/Schema); per-corner simulator faults stay in rows.
+        """
+        if name not in _DEMO_TESTBENCHES:
+            raise ValueError(f"Schema: unknown demo testbench {name!r}")
+        envelope = {c.process: c for c in FAST_5_CORNER_ENVELOPE}
+        wanted = list(envelope) if corners is None else list(corners)
+        if not wanted:
+            raise ValueError("Schema: corners run needs at least one corner id")
+        for proc in wanted:
+            if proc not in envelope:
+                raise ValueError(
+                    f"Schema: unknown corner {proc!r}"
+                    f" (expected one of {sorted(envelope)})"
+                )
+        runs: list[dict[str, Any]] = []
+        for proc in wanted:
+            corner = envelope[proc]
+            with self._lock:
+                cell_id = build_inverter(self._conn)
+                report = validate_cell(self._conn, cell_id)
+                if not report.valid:
+                    runs.append({
+                        "corner": corner.name,
+                        "process": proc,
+                        "temp_c": corner.temp_celsius(),
+                        "vdd_v": corner.vdd,
+                        "job_id": None,
+                        "status": "error",
+                        "message": "Schema: demo fixture failed validation",
+                        "reproducibility_id": None,
+                    })
+                    continue
+                fragment = compile_netlist(self._conn, cell_id)
+            deck = assemble_transient(
+                fragment,
+                tstop_s=30e-9,
+                libs=[(_SKY130_LIB, "tt")],
+                corner=corner,
+            )
+            try:
+                reproducibility_id = self.simulate(netlist=deck, seed=seed)
+            except SimError as exc:
+                runs.append({
+                    "corner": corner.name,
+                    "process": proc,
+                    "temp_c": corner.temp_celsius(),
+                    "vdd_v": corner.vdd,
+                    "job_id": None,
+                    "status": "error",
+                    "message": str(exc),
+                    "reproducibility_id": None,
+                })
+                continue
+            jobs = self.list_jobs()
+            runs.append({
+                "corner": corner.name,
+                "process": proc,
+                "temp_c": corner.temp_celsius(),
+                "vdd_v": corner.vdd,
+                "job_id": jobs[0]["job_id"] if jobs else None,
+                "status": "succeeded",
+                "message": "",
+                "reproducibility_id": reproducibility_id,
+            })
+        return {"name": name, "runs": runs}
 
     def cancel_job(self, *, job_id: str) -> dict[str, str]:
         """Terminate a live study or sim worker; settled jobs keep status.
