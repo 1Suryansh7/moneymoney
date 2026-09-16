@@ -38,6 +38,14 @@ LAYERS: Final = {
     "nwell": (64, 20),
 }
 
+#: Pin layers for GDS TEXT labels, quoted from `sky130A.lyp`
+#: (diff.pin 65/16, poly.pin 66/16, met1.pin 68/16, tap.pin 65/48).
+PIN_LAYERS: Final = {
+    "poly.pin": (66, 16),
+    "met1.pin": (68, 16),
+    "tap.pin": (65, 48),
+}
+
 Rect = tuple[float, float, float, float]
 
 _CONTACT_UM: Final = 0.17
@@ -183,4 +191,47 @@ def rect_areas(rects: Sequence[Rect]) -> float:
     return sum((x1 - x0) * (y1 - y0) for x0, y0, x1, y1 in rects)
 
 
-__all__ = ["LAYERS", "Rect", "nmos_rects", "pmos_rects", "rect_areas"]
+Label = tuple[float, float, str, str]
+
+
+def mos_labels(
+    *,
+    w_m: float,
+    l_m: float,
+    fingers: int = 1,
+) -> list[Label]:
+    """Net labels `(x, y, pin_layer, net)` for Magic extraction.
+
+    Shared by both polarities (identical grid): gate `g` on the poly
+    extension, S/D alternating `s`/`d` by gap starting with source on
+    the met pads, bulk `b` on the tap contact. Positions sit strictly
+    inside their shapes (pinned by containment tests); pin layers are
+    the PDK `.pin` purposes so GDS TEXT attaches in Magic.
+    """
+    w_um, l_um, fingers = _checked(w_m=w_m, l_m=l_m, fingers=fingers)
+    half_w = w_um / 2.0
+    pitch = l_um + _SD_BAR_UM
+    span_x = fingers * pitch + _SD_BAR_UM
+    x0 = -span_x / 2.0
+    gate_hi = half_w + _DIFF_Y_MARGIN_UM + _GATE_ENDCAP_UM
+    gate_cx = x0 + _SD_BAR_UM + l_um / 2.0
+    labels: list[Label] = [(gate_cx, gate_hi - 0.09, "poly.pin", "g")]
+    for i in range(fingers + 1):
+        gx = x0 + _SD_BAR_UM / 2.0 + i * pitch
+        labels.append((gx, 0.0, "met1.pin", "s" if i % 2 == 0 else "d"))
+    tap_y1 = -half_w - _DIFF_Y_MARGIN_UM - _TAP_Y_GAP_UM - _TAP_Y_WIDTH_UM
+    tap_y0 = tap_y1 + _TAP_Y_WIDTH_UM
+    labels.append((0.0, (tap_y0 + tap_y1) / 2.0, "tap.pin", "b"))
+    return labels
+
+
+__all__ = [
+    "LAYERS",
+    "PIN_LAYERS",
+    "Label",
+    "Rect",
+    "mos_labels",
+    "nmos_rects",
+    "pmos_rects",
+    "rect_areas",
+]

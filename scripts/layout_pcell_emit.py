@@ -1,10 +1,12 @@
-"""Stage 8 PCell emitter: JSON rectangles -> OASIS via pya (EDA only).
+"""Stage 8 PCell emitter: JSON rectangles + labels -> OASIS via pya (EDA only).
 
 Dumb pipe by design: geometry math lives in `layout.pcells` (tested on
-base); this script only transfers explicit rectangles into tool boxes.
-Contract (same `klayout -b -r` argv lesson as the spike): reads
-`rects.json` from the working directory
-  {"layers": {"diff": [65, 20], ...}, "rects": {"diff": [[x0,y0,x1,y1], ...]}}
+base); this script only transfers explicit rectangles into tool boxes
+and explicit labels into GDS TEXTs on pin layers. Contract (same
+`klayout -b -r` argv lesson as the spike): reads `rects.json` from the
+working directory
+  {"layers": {...}, "pin_layers": {...},
+   "rects": {...}, "labels": [[x, y, pin_layer, text], ...]}
 writes `pcell.oas` next to it, prints REPORT lines (parsed by
 tests/test_layout_pcell.py). DBU 1nm, matching the model.
 """
@@ -27,6 +29,11 @@ def main() -> None:
         for x0, y0, x1, y1 in rects:
             top.shapes(layout.layer(layer, datatype)).insert(pya.DBox(x0, y0, x1, y1))
         counts[name] = len(rects)
+    texts = 0
+    for x, y, pin_layer, text in spec.get("labels", []):
+        layer, datatype = spec["pin_layers"][pin_layer]
+        top.shapes(layout.layer(layer, datatype)).insert(pya.DText(text, x, y))
+        texts += 1
     layout.write("pcell.oas")
     reread = pya.Layout()
     reread.read("pcell.oas")
@@ -35,8 +42,17 @@ def main() -> None:
         == c
         for n, c in counts.items()
     )
+    ok = ok and sum(
+        sum(
+            1
+            for shape in reread.top_cell().shapes(reread.layer(*spec["pin_layers"][p])).each()
+            if shape.is_text()
+        )
+        for p in {label[2] for label in spec.get("labels", [])}
+    ) == texts
     print(f"REPORT layers={len(counts)}")
     print(f"REPORT boxes_total={sum(counts.values())}")
+    print(f"REPORT texts_total={texts}")
     print(f"REPORT file_bytes={os.path.getsize('pcell.oas')}")
     print(f"REPORT roundtrip_ok={ok}")
 

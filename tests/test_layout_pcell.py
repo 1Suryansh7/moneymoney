@@ -16,7 +16,14 @@ from pathlib import Path
 
 import pytest
 
-from analog_ic_design.layout.pcells import LAYERS, nmos_rects, pmos_rects, rect_areas
+from analog_ic_design.layout.pcells import (
+    LAYERS,
+    PIN_LAYERS,
+    mos_labels,
+    nmos_rects,
+    pmos_rects,
+    rect_areas,
+)
 
 EMIT = Path(__file__).resolve().parent.parent / "scripts" / "layout_pcell_emit.py"
 SKY130_DRC_DECK = (
@@ -106,6 +113,27 @@ def test_rejects_nonsense() -> None:
         nmos_rects(w_m=1e-6, l_m=0.0)
     with pytest.raises(ValueError, match="fingers"):
         nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=0)
+    with pytest.raises(ValueError, match="fingers"):
+        mos_labels(w_m=1e-6, l_m=0.15e-6, fingers=0)
+
+
+def _inside(x: float, y: float, boxes: list[tuple[float, float, float, float]]) -> bool:
+    return any(x0 <= x <= x1 and y0 <= y <= y1 for x0, y0, x1, y1 in boxes)
+
+
+def test_labels_nets_alternate_and_sit_inside_shapes() -> None:
+    rects = nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=2)
+    labels = mos_labels(w_m=1e-6, l_m=0.15e-6, fingers=2)
+    assert [text for _, _, _, text in labels] == ["g", "s", "d", "s", "b"]
+    assert all(pin in PIN_LAYERS for _, _, pin, _ in labels)
+    by_net = {text: (x, y, pin) for x, y, pin, text in labels}
+    gx, gy, gpin = by_net["g"]
+    assert gpin == "poly.pin" and _inside(gx, gy, rects["poly"])
+    bx, by, bpin = by_net["b"]
+    assert bpin == "tap.pin" and _inside(bx, by, rects["tap"])
+    for x, y, pin, text in labels:
+        if text in ("s", "d"):
+            assert pin == "met1.pin" and _inside(x, y, rects["met1"])
 
 
 def test_pmos_mirrors_nmos_plus_well() -> None:
@@ -126,9 +154,12 @@ def test_pmos_mirrors_nmos_plus_well() -> None:
 @NEEDS_KLAYOUT
 def test_emitter_roundtrip_reproduces_model_counts(tmp_path: Path) -> None:
     rects = nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=2)
+    labels = mos_labels(w_m=1e-6, l_m=0.15e-6, fingers=2)
     spec = {
         "layers": {name: list(lv) for name, lv in LAYERS.items()},
+        "pin_layers": {name: list(lv) for name, lv in PIN_LAYERS.items()},
         "rects": {name: [list(r) for r in boxes] for name, boxes in rects.items()},
+        "labels": [list(label) for label in labels],
     }
     (tmp_path / "rects.json").write_text(json.dumps(spec), encoding="utf-8")
     proc = subprocess.run(
@@ -147,6 +178,7 @@ def test_emitter_roundtrip_reproduces_model_counts(tmp_path: Path) -> None:
             rep[key] = value
     assert rep["layers"] == "10"
     assert rep["boxes_total"] == str(sum(len(v) for v in rects.values()))
+    assert rep["texts_total"] == str(len(labels))
     assert rep["roundtrip_ok"] == "True"
 
 
