@@ -235,7 +235,9 @@ analyzer traces, 1.9 min).
   - [x] PCell DRC-clean (`difftap.3` tap gap → 0.30, `poly.8` endcap → 0.18, `licon.16` tap contact + li, `li.5` strap 0.37/bar 0.57 — all deck-quoted): FEOL+BEOL deck reports 0 violations, pinned by `test_pcell_drc_clean` (EDA). Interim visual `artifacts/layout/pcell_nmos.png` via `layout/dump+plot` pipe (KLayout offscreen won't paint fills — GUI review pending).
   - [x] PCell PMOS (`pmos_rects` + nwell ring + psdm, same cleared pattern — no new checkpoint): DRC-clean first try, both polarities parametrized in `test_pcell_drc_clean`. Evidence: EDA layout files 14 passed; full base 440+57 green.
   - [-] LVS closure: net labels on PCell (S/D alternate by gap, gate, bulk) → GDS TEXTs → Magic extract → Netgen vs schematic.
-    - [x] Labels: `mos_labels` (shared grid, containment-pinned) + `PIN_LAYERS` + emitter TEXTs with OASIS round-trip proof. Evidence: base layout files green; EDA emitter incl. texts green.
+    - [x] Labels + extraction + match (see Tasks_Comp Stage 8 LVS entry): full loop green, pushed.
+  - [-] Stage 9 PEX loop: coupled R/C extraction of the PCell → quantified per-net parasitics → scaling proof.
+    - [x] PEX quantify (`layout/pex.py` suffix-explicit parser + conservative per-net budgets + `scripts/magic_pex.tcl` zero-threshold extraction + `tests/test_layout_pex.py`): W=2 device strictly more cap than W=1 on every signal net (ratio < 4). Evidence: EDA 4 passed in 6 s; full base 444+60 green.
     - [x] LVS closed: Magic extract recognizes w=200/l=30 (diff-Y fix: overlap IS the channel) + Netgen "match uniquely" vs 1G golden (W/L→lambda conversion, setup 1% tol). Evidence: EDA `test_layout_lvs` 2 passed; full base 441+59 green.
   - [x] 🔴 HUMAN CHECKPOINT: visual layout review before PCell reuse — CONFIRMED by human 2026-09-16 (single-finger NMOS sane: central vertical poly gate over active, S/D contacts both sides, tap below; PCell NMOS cleared for reuse).
   - [-] PCell PMOS (`layout/pcells.py` + `tests/test_layout_pcell.py`): `nwell` (64/20), `psdm` (94/20), `diff.8`/`diff.10` enclosure $\ge 0.18\,\mu\text{m}$, base tests + EDA DRC-clean proof.
