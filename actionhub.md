@@ -88,6 +88,10 @@ warnings (forced onto Node 24 by the runner) — warnings, not errors.
 - Fix (committed): bounded ×3 retry (60 s backoff) on both
   `docker compose build` steps — genuine Dockerfile breaks still fail,
   only slower. No product code touched.
+- Resolution (run #43, green in 46m23s): three reds → green with zero
+  product-code changes between them — infrastructure verdict proven.
+  (Whether the retry triggered or the flake healed on its own is
+  unrecorded; either way the repo is now resilient to the class.)
 
 ---
 
