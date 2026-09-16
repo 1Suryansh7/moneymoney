@@ -34,6 +34,8 @@ LAYERS: Final = {
     "mcon": (67, 44),
     "met1": (68, 20),
     "nsdm": (93, 44),
+    "psdm": (94, 20),
+    "nwell": (64, 20),
 }
 
 Rect = tuple[float, float, float, float]
@@ -62,25 +64,19 @@ def _positive(value: float, name: str) -> float:
     return float(value)
 
 
-def nmos_rects(
-    *,
-    w_m: float,
-    l_m: float,
-    fingers: int = 1,
-) -> dict[str, list[Rect]]:
-    """Multi-finger NMOS rectangles in microns, keyed by layer name.
+# nwell minimum width (deck: nwell.1 0.84um); well box is grown to it.
+_NWELL_MIN_UM: Final = 0.84
+_NWELL_MARGIN_UM: Final = 0.30
 
-    Fingers tile along X with shared S/D bars (`fingers + 1` gaps);
-    each finger has width `w_m` along Y. Single finger reproduces the
-    Stage 8 spike box counts exactly (16); coordinates follow the
-    closed-form grid below. Contacts land two per gap, centered in
-    their S/D bar; straps/pads follow the contact grid; vias are
-    omitted (documented DRC-dirty grade).
-    """
-    w_um = _positive(w_m, "w_m") * 1e6
-    l_um = _positive(l_m, "l_m") * 1e6
-    if not isinstance(fingers, int) or isinstance(fingers, bool) or fingers < 1:
-        raise ValueError("Schema: pcell fingers must be a positive integer")
+
+def _mos_rects(
+    *,
+    w_um: float,
+    l_um: float,
+    fingers: int,
+    implant: str,
+    well: bool,
+) -> dict[str, list[Rect]]:
     pitch = l_um + _SD_BAR_UM
     span_x = fingers * pitch + _SD_BAR_UM
     x0 = -span_x / 2.0
@@ -89,7 +85,7 @@ def nmos_rects(
     rects: dict[str, list[Rect]] = {name: [] for name in LAYERS}
     # Active + implant.
     rects["diff"] = [(x0, -half_w - _DIFF_Y_MARGIN_UM, x0 + span_x, half_w + _DIFF_Y_MARGIN_UM)]
-    rects["nsdm"] = [
+    rects[implant] = [
         (
             x0 - _IMPLANT_OVERSIZE_UM,
             -half_w - _DIFF_Y_MARGIN_UM - _IMPLANT_OVERSIZE_UM,
@@ -126,7 +122,60 @@ def nmos_rects(
     rects["licon1"].append((-tap_half, tap_cy - tap_half, tap_half, tap_cy + tap_half))
     tap_li_half = _LI_STRAP_UM / 2.0
     rects["li1"].append((-tap_li_half, tap_y1 - 0.05, tap_li_half, tap_y0 + 0.05))
+    if well:
+        # nwell ring around device + tap (deck: nwell.1 min width 0.84um).
+        wx0 = x0 - _NWELL_MARGIN_UM
+        wx1 = x0 + span_x + _NWELL_MARGIN_UM
+        wy0 = tap_y1 - _NWELL_MARGIN_UM
+        wy1 = half_w + _DIFF_Y_MARGIN_UM + _IMPLANT_OVERSIZE_UM + _NWELL_MARGIN_UM
+        if wx1 - wx0 < _NWELL_MIN_UM:
+            mid = (wx0 + wx1) / 2.0
+            wx0, wx1 = mid - _NWELL_MIN_UM / 2.0, mid + _NWELL_MIN_UM / 2.0
+        if wy1 - wy0 < _NWELL_MIN_UM:
+            mid = (wy0 + wy1) / 2.0
+            wy0, wy1 = mid - _NWELL_MIN_UM / 2.0, mid + _NWELL_MIN_UM / 2.0
+        rects["nwell"] = [(wx0, wy0, wx1, wy1)]
     return rects
+
+
+def _checked(*, w_m: float, l_m: float, fingers: int) -> tuple[float, float, int]:
+    w_um = _positive(w_m, "w_m") * 1e6
+    l_um = _positive(l_m, "l_m") * 1e6
+    if not isinstance(fingers, int) or isinstance(fingers, bool) or fingers < 1:
+        raise ValueError("Schema: pcell fingers must be a positive integer")
+    return w_um, l_um, fingers
+
+
+def nmos_rects(
+    *,
+    w_m: float,
+    l_m: float,
+    fingers: int = 1,
+) -> dict[str, list[Rect]]:
+    """Multi-finger NMOS rectangles in microns, keyed by layer name.
+
+    Fingers tile along X with shared S/D bars (`fingers + 1` gaps);
+    each finger has width `w_m` along Y. Contacts land two per gap,
+    centered in their S/D bar; straps/pads follow the contact grid;
+    vias are omitted (documented DRC-dirty grade, since cleaned for
+    the canonical device — see To-Do Stage 8).
+    """
+    w_um, l_um, fingers = _checked(w_m=w_m, l_m=l_m, fingers=fingers)
+    return _mos_rects(w_um=w_um, l_um=l_um, fingers=fingers, implant="nsdm", well=False)
+
+
+def pmos_rects(
+    *,
+    w_m: float,
+    l_m: float,
+    fingers: int = 1,
+) -> dict[str, list[Rect]]:
+    """Multi-finger PMOS rectangles: NMOS geometry in an nwell ring with
+    psdm implant. Tap sits inside the well (n-tap); well box grown to
+    the deck nwell minimum.
+    """
+    w_um, l_um, fingers = _checked(w_m=w_m, l_m=l_m, fingers=fingers)
+    return _mos_rects(w_um=w_um, l_um=l_um, fingers=fingers, implant="psdm", well=True)
 
 
 def rect_areas(rects: Sequence[Rect]) -> float:
@@ -134,4 +183,4 @@ def rect_areas(rects: Sequence[Rect]) -> float:
     return sum((x1 - x0) * (y1 - y0) for x0, y0, x1, y1 in rects)
 
 
-__all__ = ["LAYERS", "Rect", "nmos_rects", "rect_areas"]
+__all__ = ["LAYERS", "Rect", "nmos_rects", "pmos_rects", "rect_areas"]

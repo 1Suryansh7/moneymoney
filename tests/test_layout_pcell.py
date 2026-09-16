@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from analog_ic_design.layout.pcells import LAYERS, nmos_rects, rect_areas
+from analog_ic_design.layout.pcells import LAYERS, nmos_rects, pmos_rects, rect_areas
 
 EMIT = Path(__file__).resolve().parent.parent / "scripts" / "layout_pcell_emit.py"
 SKY130_DRC_DECK = (
@@ -45,6 +45,8 @@ def test_single_finger_counts() -> None:
         "mcon": 4,
         "met1": 2,
         "nsdm": 1,
+        "psdm": 0,
+        "nwell": 0,
     }
 
 
@@ -106,6 +108,21 @@ def test_rejects_nonsense() -> None:
         nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=0)
 
 
+def test_pmos_mirrors_nmos_plus_well() -> None:
+    nmos = nmos_rects(w_m=2e-6, l_m=0.15e-6, fingers=2)
+    pmos = pmos_rects(w_m=2e-6, l_m=0.15e-6, fingers=2)
+    for name in ("diff", "tap", "poly", "licon1", "li1", "mcon", "met1"):
+        assert pmos[name] == nmos[name]
+    assert pmos["psdm"] == nmos["nsdm"]
+    assert pmos["nsdm"] == []
+    assert len(pmos["nwell"]) == 1
+    wx0, wy0, wx1, wy1 = pmos["nwell"][0]
+    assert wx1 - wx0 >= 0.84 and wy1 - wy0 >= 0.84
+    # Well strictly contains device + tap.
+    assert wx0 < min(r[0] for r in pmos["diff"])
+    assert wy0 < min(r[1] for r in pmos["tap"])
+
+
 @NEEDS_KLAYOUT
 def test_emitter_roundtrip_reproduces_model_counts(tmp_path: Path) -> None:
     rects = nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=2)
@@ -128,22 +145,25 @@ def test_emitter_roundtrip_reproduces_model_counts(tmp_path: Path) -> None:
         if line.startswith("REPORT "):
             key, _, value = line[len("REPORT "):].partition("=")
             rep[key] = value
-    assert rep["layers"] == "8"
+    assert rep["layers"] == "10"
     assert rep["boxes_total"] == str(sum(len(v) for v in rects.values()))
     assert rep["roundtrip_ok"] == "True"
 
 
 @NEEDS_KLAYOUT
 @NEEDS_DRC_DECK
-def test_pcell_drc_clean(tmp_path: Path) -> None:
+@pytest.mark.parametrize("polarity", ["nmos", "pmos"])
+def test_pcell_drc_clean(tmp_path: Path, polarity: str) -> None:
     """FEOL+BEOL DRC deck reports zero violations on the canonical device.
 
     The deck copy enables FEOL (upstream default is BEOL-only); the PDK
-    deck itself is never modified. Two seconds on the EDA image.
+    deck itself is never modified. Seconds per polarity on EDA.
     """
     import xml.etree.ElementTree as ET
 
-    rects = nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=1)
+    make = pmos_rects if polarity == "pmos" else nmos_rects
+    w_m = 2e-6 if polarity == "pmos" else 1e-6
+    rects = make(w_m=w_m, l_m=0.15e-6, fingers=1)
     spec = {
         "layers": {name: list(lv) for name, lv in LAYERS.items()},
         "rects": {name: [list(r) for r in boxes] for name, boxes in rects.items()},
