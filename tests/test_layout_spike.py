@@ -82,13 +82,21 @@ Xm1 {d} {g} {s} vss sky130_fd_pr__nfet_01v8 L=1.5e-07 W=1e-06
 """
 
 
-def _lvs(proc_file: str, proc_cell: str, ref_file: str, ref_cell: str) -> subprocess.CompletedProcess[str]:
+def _lvs(
+    proc_file: str,
+    proc_cell: str,
+    ref_file: str,
+    ref_cell: str,
+    run_dir: Path,
+) -> subprocess.CompletedProcess[str]:
+    # cwd pinned: netgen writes comp.out next to the invocation directory.
     return subprocess.run(
         ["netgen", "-batch", "lvs", f"{proc_file} {proc_cell}",
          f"{ref_file} {ref_cell}", SKY130_SETUP],
         capture_output=True,
         text=True,
         timeout=300,
+        cwd=run_dir,
     )
 
 
@@ -128,10 +136,10 @@ def test_netgen_self_lvs_matches_and_asymmetry_fails(tmp_path: Path) -> None:
     broken.write_text(
         _LVS_WRAPPER.format(d="gate", g="drain", s="source"), encoding="utf-8"
     )
-    same = _lvs(str(good), "nmos_golden", str(copy), "nmos_golden")
+    same = _lvs(str(good), "nmos_golden", str(copy), "nmos_golden", tmp_path)
     assert same.returncode == 0
     assert "Circuits match uniquely." in same.stdout
-    sym = _lvs(str(good), "nmos_golden", str(swapped), "nmos_golden")
+    sym = _lvs(str(good), "nmos_golden", str(swapped), "nmos_golden", tmp_path)
     assert "Circuits match uniquely." in sym.stdout
-    bad = _lvs(str(good), "nmos_golden", str(broken), "nmos_golden")
+    bad = _lvs(str(good), "nmos_golden", str(broken), "nmos_golden", tmp_path)
     assert "failed pin matching" in bad.stdout

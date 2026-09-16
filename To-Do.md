@@ -232,6 +232,7 @@ analyzer traces, 1.9 min).
   - [x] Spike K `pya` (`scripts/layout_spike_nmos.py` + `tests/test_layout_spike.py`): single NMOS, 8 PDK-quoted layers, 16 boxes, 507-byte OASIS, re-read round-trip True on KLayout 0.30.12. argv lesson: `klayout -b -r` eats positionals as inputs — fixed contract name + cwd. EDA 2 passed.
   - [x] Spike M/N (`scripts/magic_spike.tcl` + netgen LVS in `tests/test_layout_spike.py`): Magic batch sky130A tech v1.0.608 + paint + save + DRC "No errors found"; Netgen 1.5.323 self-LVS match + gate/drain-swap fail (d/s swap passes by correct `permute default` semantics). EDA file 4 passed.
   - [x] PCell NMOS (`layout/pcells.py` pure + `scripts/layout_pcell_emit.py` JSON pipe + `tests/test_layout_pcell.py`): counts/areas/symmetry/scaling pinned on base (F=1 reproduces spike's 16 boxes); emitter round-trip reproduces model counts on EDA. Grade stays DRC-dirty demo (vias omitted). Base 5+1, EDA 10/10 with spike file.
+  - [x] CI #40–#42 triage (infra verdict, `actionhub.md`): 3 consecutive full failures with locally-green tree — smoke ~1m (build-phase pull fault), eda exit-1 with full local rerun 479+14 green in 50m. Fix = bounded ×3 build retry in `ci.yml` (genuine breaks still fail); Netgen `comp.out` CWD pollution pinned to `tmp_path`. No product code changed.
   - [ ] `LayoutBackend` PCell placement, DRC, and LVS flow.
   - [ ] 🔴 **HUMAN CHECKPOINT**: Visual layout inspection in KLayout on first clean DRC/LVS.
 - [ ] **Stage 9 — Post-Layout Physical Verification Loop**

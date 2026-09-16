@@ -14,7 +14,17 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Build pinned base image and run packaging gate
-        run: make setup
+        # Registry/anonymous-pull flakes fail fast (~1 min: toomanyrequests
+        # on shared runner egress IPs, recurring for hours) and are
+        # indistinguishable from real breaks without a retry. Bounded ×3:
+        # genuine Dockerfile breaks still fail, only slower.
+        run: |
+          for i in 1 2 3; do
+            if docker compose build app; then break; fi
+            if [ "$i" = "3" ]; then exit 1; fi
+            sleep 60
+          done
+          make setup
 
       - name: Run full Stage 0 gate (lint + types + tests)
         run: make test
@@ -30,7 +40,13 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Build pinned EDA image (acceptance probes run inside the build)
-        run: docker compose --profile eda build app-eda
+        # Same bounded retry as the smoke build (shared-egress pull flakes).
+        run: |
+          for i in 1 2 3; do
+            if docker compose --profile eda build app-eda; then break; fi
+            if [ "$i" = "3" ]; then exit 1; fi
+            sleep 60
+          done
 
       - name: Re-probe tool versions in the built image
         run: docker compose --profile eda run --rm app-eda bash -c "ngspice --version && klayout -b -v && test -f /usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice && cat /image-eda-versions.txt"

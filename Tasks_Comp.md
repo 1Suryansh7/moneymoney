@@ -213,6 +213,10 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Human Checkpoint CONFIRMED: electrical correctness, pin order, W/L in meters, single-ended AC drive verified.
 - Evidence: `test_digital_gates.py`, `test_inverter.py`, `test_stage6_demo.py` all green (15 passed in 249.20s). Full base gate clean.
 
+## 2026-09-16 — CI #40–#42 triage (infrastructure verdict, `actionhub.md`)
+- Three consecutive full failures on green code: smoke ~1m ×3 (build-phase pull fault signature), eda exit-1 ×3 with local full rerun 479+14 green in 50m24s. Scare en route (apparent 15-min hang at B7) root-caused to observer load + buffered dots + wrong-container readings; faulthandler proved mid-simulation, and every wait is already 300 s-bounded.
+- Fix: bounded ×3 retry on both compose builds; `comp.out` pinned to tmp_path; `actionhub.md` workflow log + incident record + runbook. Push re-triggers CI as the live verdict.
+
 ## 2026-09-15 — Stage 8 PCell NMOS (`2dabe8f`, EDA-proven)
 - `layout/pcells.py` pure geometry (SI boundary documented, DRC-dirty grade) + JSON-pipe emitter + base/EDA tests. F=1 reproduces spike counts; scaling/symmetry/extents pinned. Base file 5+1, EDA 10/10 with spike file; full base 438+55 green.
 
