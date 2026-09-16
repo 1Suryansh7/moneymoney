@@ -39,11 +39,18 @@ LAYERS: Final = {
 Rect = tuple[float, float, float, float]
 
 _CONTACT_UM: Final = 0.17
-_SD_BAR_UM: Final = 0.35
+# S/D bar width derived from li rules (deck: li.5 enclosure 0.08 by two
+# opposite edges, li.3 spacing 0.17): strap 0.37 (enclosure 0.10) +
+# spacing 0.20 (0.17 + margin).
+_LI_STRAP_UM: Final = 0.37
+_LI_SPACE_UM: Final = 0.20
+_SD_BAR_UM: Final = _LI_STRAP_UM + _LI_SPACE_UM
 _DIFF_Y_MARGIN_UM: Final = 0.25
-_GATE_EXT_UM: Final = 0.30
+# Gate endcap past the diff edge (deck: poly.8 min 0.13um + margin).
+_GATE_ENDCAP_UM: Final = 0.18
 _IMPLANT_OVERSIZE_UM: Final = 0.15
-_TAP_Y_GAP_UM: Final = 0.20
+# Tap gap to diff (deck: difftap.3 min spacing 0.27um + margin).
+_TAP_Y_GAP_UM: Final = 0.30
 _TAP_Y_WIDTH_UM: Final = 0.20
 
 
@@ -91,10 +98,11 @@ def nmos_rects(
         )
     ]
     # Gate stripes + S/D gap grid.
+    gate_hi = half_w + _DIFF_Y_MARGIN_UM + _GATE_ENDCAP_UM
     for i in range(fingers):
         cx = x0 + _SD_BAR_UM + i * pitch + l_um / 2.0
         rects["poly"].append(
-            (cx - l_um / 2.0, -half_w - _GATE_EXT_UM, cx + l_um / 2.0, half_w + _GATE_EXT_UM)
+            (cx - l_um / 2.0, -gate_hi, cx + l_um / 2.0, gate_hi)
         )
     gaps = [x0 + _SD_BAR_UM / 2.0 + i * pitch for i in range(fingers + 1)]
     for gx in gaps:
@@ -104,13 +112,20 @@ def nmos_rects(
             contact: Rect = (gx - half_c, cy - half_c, gx + half_c, cy + half_c)
             rects["licon1"].append(contact)
             rects["mcon"].append(contact)
-        strap: Rect = (gx - 0.15, -half_w - 0.10, gx + 0.15, half_w + 0.10)
+        half_s = _LI_STRAP_UM / 2.0
+        strap: Rect = (gx - half_s, -half_w - 0.10, gx + half_s, half_w + 0.10)
         rects["li1"].append(strap)
         rects["met1"].append(strap)
-    # Substrate tap segment below the device.
+    # Substrate tap segment below the device + its contact (deck:
+    # licon.16 tap must enclose one licon; licon.4 needs li overlap).
     tap_y1 = -half_w - _DIFF_Y_MARGIN_UM - _TAP_Y_GAP_UM - _TAP_Y_WIDTH_UM
     tap_y0 = tap_y1 + _TAP_Y_WIDTH_UM
     rects["tap"] = [(x0, tap_y1, x0 + span_x, tap_y0)]
+    tap_cy = (tap_y0 + tap_y1) / 2.0
+    tap_half = _CONTACT_UM / 2.0
+    rects["licon1"].append((-tap_half, tap_cy - tap_half, tap_half, tap_cy + tap_half))
+    tap_li_half = _LI_STRAP_UM / 2.0
+    rects["li1"].append((-tap_li_half, tap_y1 - 0.05, tap_li_half, tap_y0 + 0.05))
     return rects
 
 

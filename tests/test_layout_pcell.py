@@ -19,13 +19,20 @@ import pytest
 from analog_ic_design.layout.pcells import LAYERS, nmos_rects, rect_areas
 
 EMIT = Path(__file__).resolve().parent.parent / "scripts" / "layout_pcell_emit.py"
+SKY130_DRC_DECK = (
+    "/usr/local/share/pdk/sky130A/libs.tech/klayout/drc/sky130A.lydrc"
+)
 NEEDS_KLAYOUT = pytest.mark.skipif(
     shutil.which("klayout") is None,
     reason="klayout binary absent (base image); covered by CI eda job",
 )
+NEEDS_DRC_DECK = pytest.mark.skipif(
+    not Path(SKY130_DRC_DECK).is_file(),
+    reason="Sky130 DRC deck absent (base image); covered by CI eda job",
+)
 
 
-def test_single_finger_counts_match_spike() -> None:
+def test_single_finger_counts() -> None:
     rects = nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=1)
     assert set(rects) == set(LAYERS)
     counts = {name: len(v) for name, v in rects.items()}
@@ -33,8 +40,8 @@ def test_single_finger_counts_match_spike() -> None:
         "diff": 1,
         "tap": 1,
         "poly": 1,
-        "licon1": 4,
-        "li1": 2,
+        "licon1": 5,
+        "li1": 3,
         "mcon": 4,
         "met1": 2,
         "nsdm": 1,
@@ -45,8 +52,10 @@ def test_counts_scale_with_fingers() -> None:
     rects = nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=4)
     counts = {name: len(v) for name, v in rects.items()}
     assert counts["poly"] == 4
-    assert counts["licon1"] == counts["mcon"] == 2 * 5
-    assert counts["li1"] == counts["met1"] == 5
+    assert counts["licon1"] == 2 * 5 + 1
+    assert counts["mcon"] == 2 * 5
+    assert counts["li1"] == 5 + 1
+    assert counts["met1"] == 5
     assert counts["diff"] == counts["nsdm"] == counts["tap"] == 1
 
 
@@ -85,7 +94,7 @@ def test_x_symmetry_and_positive_area() -> None:
         for x0, y0, x1, y1 in boxes:
             assert x1 > x0 and y1 > y0
         assert _mirrored(boxes)
-    assert rect_areas(rects["poly"]) == pytest.approx(3 * 0.2 * 1.6)
+    assert rect_areas(rects["poly"]) == pytest.approx(3 * 0.2 * 1.86)
 
 
 def test_rejects_nonsense() -> None:
@@ -122,3 +131,49 @@ def test_emitter_roundtrip_reproduces_model_counts(tmp_path: Path) -> None:
     assert rep["layers"] == "8"
     assert rep["boxes_total"] == str(sum(len(v) for v in rects.values()))
     assert rep["roundtrip_ok"] == "True"
+
+
+@NEEDS_KLAYOUT
+@NEEDS_DRC_DECK
+def test_pcell_drc_clean(tmp_path: Path) -> None:
+    """FEOL+BEOL DRC deck reports zero violations on the canonical device.
+
+    The deck copy enables FEOL (upstream default is BEOL-only); the PDK
+    deck itself is never modified. Two seconds on the EDA image.
+    """
+    import xml.etree.ElementTree as ET
+
+    rects = nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=1)
+    spec = {
+        "layers": {name: list(lv) for name, lv in LAYERS.items()},
+        "rects": {name: [list(r) for r in boxes] for name, boxes in rects.items()},
+    }
+    (tmp_path / "rects.json").write_text(json.dumps(spec), encoding="utf-8")
+    emit = subprocess.run(
+        ["klayout", "-b", "-r", str(EMIT)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        cwd=tmp_path,
+    )
+    assert emit.returncode == 0, emit.stderr[-2000:]
+    deck_text = Path(SKY130_DRC_DECK).read_text(encoding="utf-8")
+    assert "FEOL    = false" in deck_text
+    (tmp_path / "sky130A_feol.lydrc").write_text(
+        deck_text.replace("FEOL    = false", "FEOL    = true", 1), encoding="utf-8"
+    )
+    drc = subprocess.run(
+        [
+            "klayout", "-b",
+            "-rd", f"input={tmp_path / 'pcell.oas'}",
+            "-rd", f"report={tmp_path / 'drc.txt'}",
+            "-r", str(tmp_path / "sky130A_feol.lydrc"),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=600,
+        cwd=tmp_path,
+    )
+    assert drc.returncode == 0, drc.stderr[-2000:]
+    items = ET.parse(tmp_path / "drc.txt").getroot().find("items")
+    assert items is not None and len(items) == 0
