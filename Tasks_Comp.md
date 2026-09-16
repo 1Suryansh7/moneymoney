@@ -213,6 +213,9 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Human Checkpoint CONFIRMED: electrical correctness, pin order, W/L in meters, single-ended AC drive verified.
 - Evidence: `test_digital_gates.py`, `test_inverter.py`, `test_stage6_demo.py` all green (15 passed in 249.20s). Full base gate clean.
 
+## 2026-09-15 — Stage 8 PCell NMOS (`2dabe8f`, EDA-proven)
+- `layout/pcells.py` pure geometry (SI boundary documented, DRC-dirty grade) + JSON-pipe emitter + base/EDA tests. F=1 reproduces spike counts; scaling/symmetry/extents pinned. Base file 5+1, EDA 10/10 with spike file; full base 438+55 green.
+
 ## 2026-09-15 — Stage 8 backend spike (`b06df86` + `18f68bd`, ADR-037, EDA-proven)
 - K: pya single-NMOS on 8 PDK-quoted layers, 16 boxes, 507B OASIS, round-trip True (0.30.12). argv lesson: `-b -r` eats positionals — fixed contract name + cwd. `klayout.db` pip package absent; `-b -r` is the path.
 - M: Magic batch `-T sky130A.tech` v1.0.608, paint + save (120B .mag) + DRC "No errors found". (First attempt loaded default tech — `-T` required.)
