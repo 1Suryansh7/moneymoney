@@ -55,7 +55,13 @@ _CONTACT_UM: Final = 0.17
 _LI_STRAP_UM: Final = 0.37
 _LI_SPACE_UM: Final = 0.20
 _SD_BAR_UM: Final = _LI_STRAP_UM + _LI_SPACE_UM
-_DIFF_Y_MARGIN_UM: Final = 0.25
+# Diffusion Y half-extent equals half the channel width EXACTLY: the
+# poly∩diff overlap IS the channel, so any margin here silently inflates
+# extracted W (caught live: 1.5um extracted for 1.0um drawn). Contacts
+# need diff-edge enclosure 0.04 past ±(half_w/2 + 0.085): requires
+# half_w >= 0.25, i.e. W >= 0.5um — narrower needs a single-row layout
+# (fail-closed below, not silently wrong).
+_W_MIN_TWO_ROW_UM: Final = 0.5
 # Gate endcap past the diff edge (deck: poly.8 min 0.13um + margin).
 _GATE_ENDCAP_UM: Final = 0.18
 _IMPLANT_OVERSIZE_UM: Final = 0.15
@@ -92,17 +98,17 @@ def _mos_rects(
 
     rects: dict[str, list[Rect]] = {name: [] for name in LAYERS}
     # Active + implant.
-    rects["diff"] = [(x0, -half_w - _DIFF_Y_MARGIN_UM, x0 + span_x, half_w + _DIFF_Y_MARGIN_UM)]
+    rects["diff"] = [(x0, -half_w, x0 + span_x, half_w)]
     rects[implant] = [
         (
             x0 - _IMPLANT_OVERSIZE_UM,
-            -half_w - _DIFF_Y_MARGIN_UM - _IMPLANT_OVERSIZE_UM,
+            -half_w - _IMPLANT_OVERSIZE_UM,
             x0 + span_x + _IMPLANT_OVERSIZE_UM,
-            half_w + _DIFF_Y_MARGIN_UM + _IMPLANT_OVERSIZE_UM,
+            half_w + _IMPLANT_OVERSIZE_UM,
         )
     ]
     # Gate stripes + S/D gap grid.
-    gate_hi = half_w + _DIFF_Y_MARGIN_UM + _GATE_ENDCAP_UM
+    gate_hi = half_w + _GATE_ENDCAP_UM
     for i in range(fingers):
         cx = x0 + _SD_BAR_UM + i * pitch + l_um / 2.0
         rects["poly"].append(
@@ -122,7 +128,7 @@ def _mos_rects(
         rects["met1"].append(strap)
     # Substrate tap segment below the device + its contact (deck:
     # licon.16 tap must enclose one licon; licon.4 needs li overlap).
-    tap_y1 = -half_w - _DIFF_Y_MARGIN_UM - _TAP_Y_GAP_UM - _TAP_Y_WIDTH_UM
+    tap_y1 = -half_w - _TAP_Y_GAP_UM - _TAP_Y_WIDTH_UM
     tap_y0 = tap_y1 + _TAP_Y_WIDTH_UM
     rects["tap"] = [(x0, tap_y1, x0 + span_x, tap_y0)]
     tap_cy = (tap_y0 + tap_y1) / 2.0
@@ -135,7 +141,7 @@ def _mos_rects(
         wx0 = x0 - _NWELL_MARGIN_UM
         wx1 = x0 + span_x + _NWELL_MARGIN_UM
         wy0 = tap_y1 - _NWELL_MARGIN_UM
-        wy1 = half_w + _DIFF_Y_MARGIN_UM + _IMPLANT_OVERSIZE_UM + _NWELL_MARGIN_UM
+        wy1 = half_w + _IMPLANT_OVERSIZE_UM + _NWELL_MARGIN_UM
         if wx1 - wx0 < _NWELL_MIN_UM:
             mid = (wx0 + wx1) / 2.0
             wx0, wx1 = mid - _NWELL_MIN_UM / 2.0, mid + _NWELL_MIN_UM / 2.0
@@ -151,6 +157,10 @@ def _checked(*, w_m: float, l_m: float, fingers: int) -> tuple[float, float, int
     l_um = _positive(l_m, "l_m") * 1e6
     if not isinstance(fingers, int) or isinstance(fingers, bool) or fingers < 1:
         raise ValueError("Schema: pcell fingers must be a positive integer")
+    if w_um < _W_MIN_TWO_ROW_UM:
+        raise ValueError(
+            "Schema: pcell W below 0.5um needs a single-row contact layout (not implemented)"
+        )
     return w_um, l_um, fingers
 
 
@@ -202,9 +212,11 @@ def mos_labels(
 ) -> list[Label]:
     """Net labels `(x, y, pin_layer, net)` for Magic extraction.
 
-    Shared by both polarities (identical grid): gate `g` on the poly
-    extension, S/D alternating `s`/`d` by gap starting with source on
-    the met pads, bulk `b` on the tap contact. Positions sit strictly
+    Net names use the schematic vocabulary (drain/gate/source/vss) so
+    extracted netlists compare directly against schematic fragments.
+    Shared by both polarities (identical grid): gate on the poly
+    extension, source/drain alternating by gap starting with source on
+    the met pads, bulk on the tap contact. Positions sit strictly
     inside their shapes (pinned by containment tests); pin layers are
     the PDK `.pin` purposes so GDS TEXT attaches in Magic.
     """
@@ -213,15 +225,15 @@ def mos_labels(
     pitch = l_um + _SD_BAR_UM
     span_x = fingers * pitch + _SD_BAR_UM
     x0 = -span_x / 2.0
-    gate_hi = half_w + _DIFF_Y_MARGIN_UM + _GATE_ENDCAP_UM
+    gate_hi = half_w + _GATE_ENDCAP_UM
     gate_cx = x0 + _SD_BAR_UM + l_um / 2.0
-    labels: list[Label] = [(gate_cx, gate_hi - 0.09, "poly.pin", "g")]
+    labels: list[Label] = [(gate_cx, gate_hi - 0.09, "poly.pin", "gate")]
     for i in range(fingers + 1):
         gx = x0 + _SD_BAR_UM / 2.0 + i * pitch
-        labels.append((gx, 0.0, "met1.pin", "s" if i % 2 == 0 else "d"))
-    tap_y1 = -half_w - _DIFF_Y_MARGIN_UM - _TAP_Y_GAP_UM - _TAP_Y_WIDTH_UM
+        labels.append((gx, 0.0, "met1.pin", "source" if i % 2 == 0 else "drain"))
+    tap_y1 = -half_w - _TAP_Y_GAP_UM - _TAP_Y_WIDTH_UM
     tap_y0 = tap_y1 + _TAP_Y_WIDTH_UM
-    labels.append((0.0, (tap_y0 + tap_y1) / 2.0, "tap.pin", "b"))
+    labels.append((0.0, (tap_y0 + tap_y1) / 2.0, "tap.pin", "vss"))
     return labels
 
 

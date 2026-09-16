@@ -7,7 +7,8 @@ and explicit labels into GDS TEXTs on pin layers. Contract (same
 working directory
   {"layers": {...}, "pin_layers": {...},
    "rects": {...}, "labels": [[x, y, pin_layer, text], ...]}
-writes `pcell.oas` next to it, prints REPORT lines (parsed by
+writes `pcell.oas` + `pcell.gds` next to it (GDS feeds Magic
+extraction), prints REPORT lines (parsed by
 tests/test_layout_pcell.py). DBU 1nm, matching the model.
 """
 
@@ -35,6 +36,7 @@ def main() -> None:
         top.shapes(layout.layer(layer, datatype)).insert(pya.DText(text, x, y))
         texts += 1
     layout.write("pcell.oas")
+    layout.write("pcell.gds")
     reread = pya.Layout()
     reread.read("pcell.oas")
     ok = all(

@@ -217,6 +217,11 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Three consecutive full failures on green code: smoke ~1m ×3 (build-phase pull fault signature), eda exit-1 ×3 with local full rerun 479+14 green in 50m24s. Scare en route (apparent 15-min hang at B7) root-caused to observer load + buffered dots + wrong-container readings; faulthandler proved mid-simulation, and every wait is already 300 s-bounded.
 - Fix: bounded ×3 retry on both compose builds; `comp.out` pinned to tmp_path; `actionhub.md` workflow log + incident record + runbook. Push re-triggers CI as the live verdict.
 
+## 2026-09-16 — Stage 8 LVS closure (extract w=200/l=30, Netgen match, EDA-proven)
+- Labels renamed to schematic vocabulary (drain/gate/source/vss) so extracted nets compare directly. Diff-Y fix: overlap IS the channel (was extracting W=1.5 for 1.0 drawn) + W≥0.5µm two-row guard.
+- Loop: OASIS→GDS→Magic extract→ext2spice→Netgen vs 1G golden with W/L→lambda conversion (setup compares w/l at 1%, deletes the rest — verified in deck, no wrapper games). Verdict: "Circuits match uniquely."
+- Evidence: EDA `test_layout_lvs` 2 passed; full base 441+59 green.
+
 ## 2026-09-16 — Stage 8 PCell PMOS (DRC-clean first try, same cleared pattern)
 - `pmos_rects`: mirrored grid + psdm + nwell ring (0.84 deck minimum enforced); 19 boxes F=1. DRC-clean with zero iteration; both polarities parametrized in `test_pcell_drc_clean`.
 - Evidence: EDA layout files 14 passed; full base 440+57 green.

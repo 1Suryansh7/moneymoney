@@ -71,6 +71,10 @@ def test_counts_scale_with_fingers() -> None:
 def test_extents_track_w_and_l() -> None:
     narrow = nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=2)
     wide = nmos_rects(w_m=2e-6, l_m=0.15e-6, fingers=2)
+    # Channel width is exact: diff Y span equals W (poly∩diff overlap).
+    for rects, w in ((narrow, 1.0), (wide, 2.0)):
+        (x0, y0, x1, y1) = rects["diff"][0]
+        assert (y1 - y0) == pytest.approx(w)
     # Width direction grows with W: diff Y span is W + 2 × margin.
     for name in ("diff", "nsdm"):
         n_lo = min(r[1] for r in narrow[name])
@@ -103,7 +107,7 @@ def test_x_symmetry_and_positive_area() -> None:
         for x0, y0, x1, y1 in boxes:
             assert x1 > x0 and y1 > y0
         assert _mirrored(boxes)
-    assert rect_areas(rects["poly"]) == pytest.approx(3 * 0.2 * 1.86)
+    assert rect_areas(rects["poly"]) == pytest.approx(3 * 0.2 * 1.36)
 
 
 def test_rejects_nonsense() -> None:
@@ -113,6 +117,8 @@ def test_rejects_nonsense() -> None:
         nmos_rects(w_m=1e-6, l_m=0.0)
     with pytest.raises(ValueError, match="fingers"):
         nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=0)
+    with pytest.raises(ValueError, match="single-row"):
+        nmos_rects(w_m=0.3e-6, l_m=0.15e-6)
     with pytest.raises(ValueError, match="fingers"):
         mos_labels(w_m=1e-6, l_m=0.15e-6, fingers=0)
 
@@ -124,15 +130,15 @@ def _inside(x: float, y: float, boxes: list[tuple[float, float, float, float]]) 
 def test_labels_nets_alternate_and_sit_inside_shapes() -> None:
     rects = nmos_rects(w_m=1e-6, l_m=0.15e-6, fingers=2)
     labels = mos_labels(w_m=1e-6, l_m=0.15e-6, fingers=2)
-    assert [text for _, _, _, text in labels] == ["g", "s", "d", "s", "b"]
+    assert [text for _, _, _, text in labels] == ["gate", "source", "drain", "source", "vss"]
     assert all(pin in PIN_LAYERS for _, _, pin, _ in labels)
     by_net = {text: (x, y, pin) for x, y, pin, text in labels}
-    gx, gy, gpin = by_net["g"]
+    gx, gy, gpin = by_net["gate"]
     assert gpin == "poly.pin" and _inside(gx, gy, rects["poly"])
-    bx, by, bpin = by_net["b"]
+    bx, by, bpin = by_net["vss"]
     assert bpin == "tap.pin" and _inside(bx, by, rects["tap"])
     for x, y, pin, text in labels:
-        if text in ("s", "d"):
+        if text in ("source", "drain"):
             assert pin == "met1.pin" and _inside(x, y, rects["met1"])
 
 
