@@ -220,6 +220,8 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 ## 2026-09-16 — Stage 9 PEX quantify (10 coupling caps, scaling proof, EDA-proven)
 - `extract all` + zero thresholds force femtofarad caps into the netlist (defaults silently drop them on demo cells). Parser is suffix-explicit/fail-closed; budgets are conservative (full value both terminals, documented).
 - Evidence: EDA scaling proof 4 passed in 6 s; full base 444+60 green.
+
+## 2026-09-16 — Stage 8 LVS closure (extract w=200/l=30, Netgen match, EDA-proven)
 - Labels renamed to schematic vocabulary (drain/gate/source/vss) so extracted nets compare directly. Diff-Y fix: overlap IS the channel (was extracting W=1.5 for 1.0 drawn) + W≥0.5µm two-row guard.
 - Loop: OASIS→GDS→Magic extract→ext2spice→Netgen vs 1G golden with W/L→lambda conversion (setup compares w/l at 1%, deletes the rest — verified in deck, no wrapper games). Verdict: "Circuits match uniquely."
 - Evidence: EDA `test_layout_lvs` 2 passed; full base 441+59 green.
