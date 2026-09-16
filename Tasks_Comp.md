@@ -221,6 +221,8 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 - Iterative loop vs the FEOL-enabled Sky130 deck (4 → 1 → 0 violations): tap gap 0.30 (`difftap.3`), gate endcap 0.18 (`poly.8`), tap contact+li (`licon.16`), strap/bar 0.37/0.57 (`li.5`+`li.3`). All numbers deck-quoted.
 - `test_pcell_drc_clean` pins zero violations in CI (EDA). Interim visual pipe (`layout_dump` + `layout.plot` → `artifacts/layout/pcell_nmos.png`): KLayout offscreen won't paint fills (control-proven incl. PDK GDS), so GUI review stays pending.
 - Evidence: full base 439+56 green.
+
+## 2026-09-15 — Stage 8 PCell NMOS (`2dabe8f`, EDA-proven)
 - `layout/pcells.py` pure geometry (SI boundary documented, DRC-dirty grade) + JSON-pipe emitter + base/EDA tests. F=1 reproduces spike counts; scaling/symmetry/extents pinned. Base file 5+1, EDA 10/10 with spike file; full base 438+55 green.
 
 ## 2026-09-15 — Stage 8 backend spike (`b06df86` + `18f68bd`, ADR-037, EDA-proven)
