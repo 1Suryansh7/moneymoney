@@ -1,0 +1,122 @@
+"""Parametric cells: pure geometry models (Stage 8 PCells).
+
+`nmos_rects` computes axis-aligned rectangles in MICRONS from SI-meter
+device sizes — the single SI boundary crossing in physical design,
+mirroring the deck micron rule (documented, one way). No tool imports
+here: this module is importable and fully testable on base. Emission to
+OASIS/GDS lives in `scripts/layout_pcell_emit.py` (pya runtime) over an
+explicit JSON boundary, so no Python object graph ever crosses into the
+layout tool implicitly.
+
+Layer map quoted (Law 2) from the pinned PDK:
+  libs.tech/klayout/tech/sky130A.lyp
+  diff.drawing 65/20, tap.drawing 65/44, poly.drawing 66/20,
+  licon1.drawing 66/44, li1.drawing 67/20, mcon.drawing 67/44,
+  met1.drawing 68/20, nsdm.drawing 93/44.
+
+Grade: honest DRC-dirty demo geometry (vias omitted, minimum-rule
+blind). DRC-clean iteration and the §8 visual checkpoint come later;
+this module proves parameterization (counts/areas scale with W/L and
+finger count), never rule compliance.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import Final
+
+LAYERS: Final = {
+    "diff": (65, 20),
+    "tap": (65, 44),
+    "poly": (66, 20),
+    "licon1": (66, 44),
+    "li1": (67, 20),
+    "mcon": (67, 44),
+    "met1": (68, 20),
+    "nsdm": (93, 44),
+}
+
+Rect = tuple[float, float, float, float]
+
+_CONTACT_UM: Final = 0.17
+_SD_BAR_UM: Final = 0.35
+_DIFF_Y_MARGIN_UM: Final = 0.25
+_GATE_EXT_UM: Final = 0.30
+_IMPLANT_OVERSIZE_UM: Final = 0.15
+_TAP_Y_GAP_UM: Final = 0.20
+_TAP_Y_WIDTH_UM: Final = 0.20
+
+
+def _positive(value: float, name: str) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise ValueError(f"Schema: pcell {name} must be a number")
+    if not value > 0.0 or value != value or value in (float("inf"), float("-inf")):
+        raise ValueError(f"Schema: pcell {name} must be finite and positive")
+    return float(value)
+
+
+def nmos_rects(
+    *,
+    w_m: float,
+    l_m: float,
+    fingers: int = 1,
+) -> dict[str, list[Rect]]:
+    """Multi-finger NMOS rectangles in microns, keyed by layer name.
+
+    Fingers tile along X with shared S/D bars (`fingers + 1` gaps);
+    each finger has width `w_m` along Y. Single finger reproduces the
+    Stage 8 spike box counts exactly (16); coordinates follow the
+    closed-form grid below. Contacts land two per gap, centered in
+    their S/D bar; straps/pads follow the contact grid; vias are
+    omitted (documented DRC-dirty grade).
+    """
+    w_um = _positive(w_m, "w_m") * 1e6
+    l_um = _positive(l_m, "l_m") * 1e6
+    if not isinstance(fingers, int) or isinstance(fingers, bool) or fingers < 1:
+        raise ValueError("Schema: pcell fingers must be a positive integer")
+    pitch = l_um + _SD_BAR_UM
+    span_x = fingers * pitch + _SD_BAR_UM
+    x0 = -span_x / 2.0
+    half_w = w_um / 2.0
+
+    rects: dict[str, list[Rect]] = {name: [] for name in LAYERS}
+    # Active + implant.
+    rects["diff"] = [(x0, -half_w - _DIFF_Y_MARGIN_UM, x0 + span_x, half_w + _DIFF_Y_MARGIN_UM)]
+    rects["nsdm"] = [
+        (
+            x0 - _IMPLANT_OVERSIZE_UM,
+            -half_w - _DIFF_Y_MARGIN_UM - _IMPLANT_OVERSIZE_UM,
+            x0 + span_x + _IMPLANT_OVERSIZE_UM,
+            half_w + _DIFF_Y_MARGIN_UM + _IMPLANT_OVERSIZE_UM,
+        )
+    ]
+    # Gate stripes + S/D gap grid.
+    for i in range(fingers):
+        cx = x0 + _SD_BAR_UM + i * pitch + l_um / 2.0
+        rects["poly"].append(
+            (cx - l_um / 2.0, -half_w - _GATE_EXT_UM, cx + l_um / 2.0, half_w + _GATE_EXT_UM)
+        )
+    gaps = [x0 + _SD_BAR_UM / 2.0 + i * pitch for i in range(fingers + 1)]
+    for gx in gaps:
+        for sign in (-1.0, 1.0):
+            cy = sign * half_w / 2.0
+            half_c = _CONTACT_UM / 2.0
+            contact: Rect = (gx - half_c, cy - half_c, gx + half_c, cy + half_c)
+            rects["licon1"].append(contact)
+            rects["mcon"].append(contact)
+        strap: Rect = (gx - 0.15, -half_w - 0.10, gx + 0.15, half_w + 0.10)
+        rects["li1"].append(strap)
+        rects["met1"].append(strap)
+    # Substrate tap segment below the device.
+    tap_y1 = -half_w - _DIFF_Y_MARGIN_UM - _TAP_Y_GAP_UM - _TAP_Y_WIDTH_UM
+    tap_y0 = tap_y1 + _TAP_Y_WIDTH_UM
+    rects["tap"] = [(x0, tap_y1, x0 + span_x, tap_y0)]
+    return rects
+
+
+def rect_areas(rects: Sequence[Rect]) -> float:
+    """Total area of rectangles (square microns); pure helper for tests."""
+    return sum((x1 - x0) * (y1 - y0) for x0, y0, x1, y1 in rects)
+
+
+__all__ = ["LAYERS", "Rect", "nmos_rects", "rect_areas"]
