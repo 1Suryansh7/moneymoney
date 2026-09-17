@@ -140,9 +140,19 @@ warnings (forced onto Node 24 by the runner) — warnings, not errors.
   reproduced 2 failures at the same value. Suspected cause is same-tree
   interleaving between two sessions (a run executing against a tree
   state that changed mid-flight), but that is inference, not evidence.
-  The pinned `test_pcell_drc_clean` (0.35, green both locally and —
+  The pinned   `test_pcell_drc_clean` (0.35, green both locally and —
   pending — in CI) is now the sole authority; loop-probe printouts are
   not evidence.
+
+### #7 — pristine-tree mirror proof (2026-09-17, second agent)
+- Symptom: CI still red after all product fixes merged.
+- Proof: pristine `git worktree` at HEAD (zero working-tree influence),
+  fresh `docker compose build app` (including one transient pip failure
+  that self-healed on retry — same flake class), then the FULL smoke
+  gate green: pytest 447+62, SMOKE OK, ruff clean, mypy 147 clean.
+- Verdict: the pushed tree is green by construction; remaining CI reds
+  are runner-side. A transient pip-install failure was additionally
+  observed live during this triage (exit 1, gone on rebuild).
 
 ---
 
