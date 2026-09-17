@@ -12,6 +12,7 @@ import { LAYERS, OUTPUTS, DRC_VIOLATIONS, type Status } from "./data";
 import {
   ApiError,
   cancelJob,
+  comparePostlayout as requestCompare,
   createCell,
   createProject,
   createSpec,
@@ -29,6 +30,7 @@ import {
   runDemo,
   startStudy as requestStudy,
   type CellSummary,
+  type CompareOut,
   type CornerRun,
   type JobDetail,
   type JobSummary,
@@ -153,6 +155,8 @@ function useStoreValue() {
   const [cornerRuns, setCornerRuns] = useState<CornerRun[]>([]);
   const [cornerWaves, setCornerWaves] = useState<Record<string, Waveforms>>({});
   const [cornerPhase, setCornerPhase] = useState<"IDLE" | "RUNNING" | "DONE">("IDLE");
+  const [compareData, setCompareData] = useState<CompareOut | null>(null);
+  const [comparePhase, setComparePhase] = useState<"IDLE" | "RUNNING" | "DONE">("IDLE");
   const [demoCellId, setDemoCellId] = useState<string | null>(null);
   const [measuredGain, setMeasuredGain] = useState<{ value: number; unit: string } | null>(null);
   const [measuredBandwidth, setMeasuredBandwidth] = useState<{ value: number; unit: string } | null>(
@@ -192,6 +196,7 @@ function useStoreValue() {
   const runToken = useRef(0);
   const studyToken = useRef(0);
   const cornerToken = useRef(0);
+  const compareToken = useRef(0);
 
   const log = useCallback((text: string, kind?: ConsoleLine["kind"]) => {
     setConsole((c) => [...c, { t: now(), text, kind }].slice(-400));
@@ -514,6 +519,41 @@ function useStoreValue() {
     [cornerWaves, log],
   );
 
+  /** Pre/post-layout comparison: one blocking POST (~2-3 min), table render.
+   * Display only — every number arrives measured from the backend. */
+  const runCompare = useCallback(() => {
+    compareToken.current += 1;
+    const token = compareToken.current;
+    setCompareData(null);
+    setComparePhase("RUNNING");
+    log("Pre/Post: POST /postlayout/compare (canonical CS stage)");
+    void (async () => {
+      try {
+        const out = await requestCompare(21);
+        setBackendUp(true);
+        if (token !== compareToken.current) return;
+        setCompareData(out);
+        setComparePhase("DONE");
+        log(
+          `Pre/Post done: DC ${out.pre.dc_gain.toFixed(2)}→${out.post.dc_gain.toFixed(2)} V/V, ` +
+            `UGB drop ${(out.ugb_drop_frac * 100).toFixed(1)}%`,
+        );
+        notify({
+          title: "Pre/post comparison completed",
+          body: `UGB drop ${(out.ugb_drop_frac * 100).toFixed(1)}%`,
+          time: now().slice(0, 5),
+          kind: "PASS",
+        });
+      } catch (err) {
+        if (token !== compareToken.current) return;
+        setComparePhase("IDLE");
+        const msg = err instanceof ApiError ? err.detail : String(err);
+        if (err instanceof ApiError && err.status === 0) setBackendUp(false);
+        log(`Pre/Post run failed: ${msg}`, "err");
+      }
+    })();
+  }, [log, notify]);
+
   const startStudy = useCallback(() => {
     if (!demoCellId) {
       log("Optimize needs a completed simulation first — press Run", "warn");
@@ -704,6 +744,9 @@ function useStoreValue() {
     cornerPhase,
     runCorners,
     showCorner,
+    compareData,
+    comparePhase,
+    runCompare,
     demoCellId,
     measuredGain,
     measuredBandwidth,

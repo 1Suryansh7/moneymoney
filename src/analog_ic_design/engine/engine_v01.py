@@ -720,6 +720,19 @@ class EngineV01(DesignEngine):
             })
         return {"name": name, "runs": runs}
 
+    def compare_prepost(self, *, seed: int = 21) -> dict[str, Any]:
+        """Pre/post-layout degradation dashboard data (Track B backend).
+
+        Concrete-only delegation to `layout.postlayout.compare_prepost`:
+        canonical CS stage characterized with the schematic M1 and with
+        the extracted-SI PCell M1. Blocks ~2-3 min (documented; the UI
+        shows RUNNING meanwhile). Raises `SimError` when tools, PDK, or
+        backend are absent — the route maps it, the UI renders it.
+        """
+        from analog_ic_design.layout.postlayout import compare_prepost as run_compare
+
+        return run_compare(seed=seed)
+
     def cancel_job(self, *, job_id: str) -> dict[str, str]:
         """Terminate a live study or sim worker; settled jobs keep status.
 

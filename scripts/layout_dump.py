@@ -8,7 +8,6 @@ working directory, writes `polys.json` next to it, prints REPORT lines.
 """
 
 import json
-import os
 
 import pya  # type: ignore[import-not-found]  # klayout runtime only (`klayout -b -r`)
 

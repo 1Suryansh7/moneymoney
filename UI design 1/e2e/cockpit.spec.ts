@@ -214,6 +214,28 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     expect(await tracePolylines.count()).toBeGreaterThan(0);
   });
 
+  test("pre/post comparison renders the degradation table", async ({ page }) => {
+    test.slow(); // emit + extract + four ngspice sims behind one button: ~3min
+    await page.goto("http://localhost:5173", { waitUntil: "networkidle" });
+    const simTab = page.getByRole("tab", { name: "Simulation Explorer" });
+    await simTab.click();
+
+    await page.getByRole("button", { name: "Compare Pre/Post" }).click();
+
+    // Table renders measured pre/post rows plus the UGB drop percentage
+    // ("UGB drop" is unique to the Pre/Post table — the Outputs table
+    // has its own DC Gain/UGBW rows).
+    await expect(page.getByRole("cell", { name: "UGB drop", exact: true })).toBeVisible({
+      timeout: 600000,
+    });
+    const dropRow = page.locator("tr:has(td:text-is('UGB drop'))");
+    await expect(dropRow).toContainText("%", { timeout: 5000 });
+    await expect(dropRow).toContainText("MEASURED", { timeout: 5000 });
+    const prepostTable = dropRow.locator("xpath=ancestor::table[1]");
+    await expect(prepostTable).toContainText("V/V", { timeout: 5000 });
+    await expect(prepostTable).toContainText("MHz", { timeout: 5000 });
+  });
+
   test("UI cell creation produces canonical netlist equivalent to direct engine API", async ({
     page,
     request,
@@ -281,5 +303,7 @@ test.describe("OpenVirtuoso Web Cockpit E2E Tests", () => {
     expect(uiNetlist).toContain(".end");
   });
 });
+
+
 
 

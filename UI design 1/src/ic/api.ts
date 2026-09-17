@@ -132,6 +132,19 @@ export type CornerRun = {
   reproducibility_id: string | null;
 };
 export type CornersOut = { name: string; runs: CornerRun[] };
+export type StageMetrics = {
+  dc_gain: number;
+  ac_gain: number;
+  ugb_hz: number;
+  trip_v: number;
+};
+export type CompareOut = {
+  pre: StageMetrics;
+  post: StageMetrics;
+  dc_rel_diff: number;
+  ac_rel_diff: number;
+  ugb_drop_frac: number;
+};
 export type MeasureOut = { metric_id: string; value: number; unit: string };
 export type StudyOut = { job_id: string; study_id: string };
 export type Trial = {
@@ -159,6 +172,8 @@ export const runDemo = (name: string, seed = 21): Promise<DemoRunOut> =>
   post<DemoRunOut>("/testbenches/run", { name, seed });
 export const runCorners = (corners: string[] | null, seed = 21): Promise<CornersOut> =>
   post<CornersOut>("/corners/run", { corners, seed });
+export const comparePostlayout = (seed = 21): Promise<CompareOut> =>
+  post<CompareOut>("/postlayout/compare", { seed });
 export const measure = (cellId: string, metricId: string): Promise<MeasureOut> =>
   post<MeasureOut>("/measure", { cell_id: cellId, metric_id: metricId });
 export const createSpec = (

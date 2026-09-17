@@ -8,7 +8,7 @@ from analog_ic_design.layout.pcells import (
     nmos_rects,
     pmos_rects,
 )
-from analog_ic_design.layout.pex import parse_capacitance_farads, per_net_capacitance
+from analog_ic_design.layout.pex import parse_capacitance_farads, per_net_capacitance, to_schematic_subckt
 from analog_ic_design.layout.plot import COLORS, render
 
 __all__ = [
@@ -22,4 +22,5 @@ __all__ = [
     "per_net_capacitance",
     "pmos_rects",
     "render",
+    "to_schematic_subckt",
 ]

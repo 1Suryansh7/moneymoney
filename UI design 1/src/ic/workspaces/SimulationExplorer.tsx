@@ -364,6 +364,54 @@ export function SimulationExplorer({ dense = false }: { dense?: boolean }) {
               </tbody>
             </table>
 
+            <SectionTitle>Pre / Post Layout</SectionTitle>
+            <div className="num px-2 pb-1 text-[10px] text-subtle">
+              Canonical common-source: schematic M1 vs extracted-SI PCell M1. One blocking
+              run, ~2–3 min — no numbers shown rather than invented ones.
+            </div>
+            <div className="flex gap-1 px-2 pb-2">
+              <button
+                onClick={s.runCompare}
+                className="h-[22px] flex-1 rounded-[3px] border border-border text-[11px] hover:bg-raised"
+              >
+                Compare Pre/Post
+              </button>
+            </div>
+            {s.comparePhase === "RUNNING" && (
+              <div className="num px-2 py-1 text-[10px] text-subtle">
+                Extracting + simulating both twins…
+              </div>
+            )}
+            {s.compareData && (
+              <table className="w-full border-collapse">
+                <tbody>
+                  {[
+                    [
+                      "DC Gain",
+                      `${s.compareData.pre.dc_gain.toFixed(2)} → ${s.compareData.post.dc_gain.toFixed(2)} V/V`,
+                    ],
+                    [
+                      "AC Gain",
+                      `${s.compareData.pre.ac_gain.toFixed(2)} → ${s.compareData.post.ac_gain.toFixed(2)} V/V`,
+                    ],
+                    [
+                      "UGBW",
+                      `${(s.compareData.pre.ugb_hz / 1e6).toFixed(2)} → ${(s.compareData.post.ugb_hz / 1e6).toFixed(2)} MHz`,
+                    ],
+                    ["UGB drop", `${(s.compareData.ugb_drop_frac * 100).toFixed(1)}%`],
+                  ].map(([k, v]) => (
+                    <tr key={k} className="hover:bg-raised/60">
+                      <td className={cn(td, "text-foreground")}>{k}</td>
+                      <td className={cn(td, "num text-right")}>{v}</td>
+                      <td className={td}>
+                        <StatusCell status="MEASURED" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
             {!dense && (
               <>
                 <SectionTitle>History</SectionTitle>

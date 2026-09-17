@@ -270,6 +270,31 @@ class CornersOut(BaseModel):
     runs: list[CornerRun]
 
 
+class CompareIn(BaseModel):
+    """Pre/post-layout comparison request: seed only (canonical stage)."""
+
+    seed: int = 21
+
+
+class StageMetrics(BaseModel):
+    """One side of the comparison: SI floats, formatting downstream."""
+
+    dc_gain: float
+    ac_gain: float
+    ugb_hz: float
+    trip_v: float
+
+
+class CompareOut(BaseModel):
+    """Pre/post table plus degradation fractions for display."""
+
+    pre: StageMetrics
+    post: StageMetrics
+    dc_rel_diff: float
+    ac_rel_diff: float
+    ugb_drop_frac: float
+
+
 class MeasureIn(BaseModel):
     """Measurement request: one registered metric on one cell."""
 
@@ -487,6 +512,17 @@ def create_app(*, db_path: str | Path | None = None) -> FastAPI:
             return _engine(request).run_corners(
                 name=body.name, corners=body.corners, seed=body.seed
             )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/postlayout/compare", response_model=CompareOut)
+    def compare_postlayout(body: CompareIn, request: Request) -> dict[str, Any]:
+        # Blocks ~2-3 min (documented; the UI holds RUNNING meanwhile).
+        # Toolchain/backend absence surfaces taxonomy (500).
+        try:
+            return _engine(request).compare_prepost(seed=body.seed)
+        except SimError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 

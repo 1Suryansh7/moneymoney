@@ -237,7 +237,10 @@ analyzer traces, 1.9 min).
   - [-] LVS closure: net labels on PCell (S/D alternate by gap, gate, bulk) → GDS TEXTs → Magic extract → Netgen vs schematic.
     - [x] Labels + extraction + match (see Tasks_Comp Stage 8 LVS entry): full loop green, pushed.
   - [-] Stage 9 PEX loop: coupled R/C extraction of the PCell → quantified per-net parasitics → scaling proof.
-    - [x] PEX quantify (`layout/pex.py` suffix-explicit parser + conservative per-net budgets + `scripts/magic_pex.tcl` zero-threshold extraction + `tests/test_layout_pex.py`): W=2 device strictly more cap than W=1 on every signal net (ratio < 4). Evidence: EDA 4 passed in 6 s; full base 444+60 green.
+    - [x] PEX quantify + closed loop (see Tasks_Comp entries): full loop green, pushed.
+  - [-] Degradation dashboard: `layout/postlayout.py` compare runner + `EngineV01.compare_prepost` + POST /postlayout/compare + Explorer table + Playwright.
+    - [x] Dashboard B1 (backend): runner + engine method + route + `tests/test_api_postlayout.py` (base 500 fail-closed + EDA live bands green in 2.5 min).
+    - [x] Dashboard B2 (frontend): api.ts + store + Explorer pre/post table + Playwright green live in 2.2 min (first red was test-locator strict violation on duplicated "UGB drop" text — console log line vs table cell; product was already correct).
     - [-] PEX closed loop: extracted subckt (SI-converted) into R-loaded CS vs schematic twin — DC control + UGB degradation.
       - [x] Closed: DC agrees <5% (control), UGB drops 5–30% (measured 12.6% @2fF). Shared `_pex_spice_path` helper (no duplication). Evidence: EDA closed-loop green in 2.5 min (quiet box; earlier 20-min stall was observer load); full base 446+61 green.
     - [x] LVS closed: Magic extract recognizes w=200/l=30 (diff-Y fix: overlap IS the channel) + Netgen "match uniquely" vs 1G golden (W/L→lambda conversion, setup 1% tol). Evidence: EDA `test_layout_lvs` 2 passed; full base 441+59 green.
