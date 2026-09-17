@@ -238,6 +238,8 @@ analyzer traces, 1.9 min).
     - [x] Labels + extraction + match (see Tasks_Comp Stage 8 LVS entry): full loop green, pushed.
   - [-] Stage 9 PEX loop: coupled R/C extraction of the PCell → quantified per-net parasitics → scaling proof.
     - [x] PEX quantify (`layout/pex.py` suffix-explicit parser + conservative per-net budgets + `scripts/magic_pex.tcl` zero-threshold extraction + `tests/test_layout_pex.py`): W=2 device strictly more cap than W=1 on every signal net (ratio < 4). Evidence: EDA 4 passed in 6 s; full base 444+60 green.
+    - [-] PEX closed loop: extracted subckt (SI-converted) into R-loaded CS vs schematic twin — DC control + UGB degradation.
+      - [x] Closed: DC agrees <5% (control), UGB drops 5–30% (measured 12.6% @2fF). Shared `_pex_spice_path` helper (no duplication). Evidence: EDA closed-loop green in 2.5 min (quiet box; earlier 20-min stall was observer load); full base 446+61 green.
     - [x] LVS closed: Magic extract recognizes w=200/l=30 (diff-Y fix: overlap IS the channel) + Netgen "match uniquely" vs 1G golden (W/L→lambda conversion, setup 1% tol). Evidence: EDA `test_layout_lvs` 2 passed; full base 441+59 green.
   - [x] 🔴 HUMAN CHECKPOINT: visual layout review before PCell reuse — CONFIRMED by human 2026-09-16 (single-finger NMOS sane: central vertical poly gate over active, S/D contacts both sides, tap below; PCell NMOS cleared for reuse).
   - [-] PCell PMOS (`layout/pcells.py` + `tests/test_layout_pcell.py`): `nwell` (64/20), `psdm` (94/20), `diff.8`/`diff.10` enclosure $\ge 0.18\,\mu\text{m}$, base tests + EDA DRC-clean proof.
