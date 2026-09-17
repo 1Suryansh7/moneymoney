@@ -65,8 +65,10 @@ _W_MIN_TWO_ROW_UM: Final = 0.5
 # Gate endcap past the diff edge (deck: poly.8 min 0.13um + margin).
 _GATE_ENDCAP_UM: Final = 0.18
 _IMPLANT_OVERSIZE_UM: Final = 0.15
-# Tap gap to diff (deck: difftap.3 min spacing 0.27um + margin).
-_TAP_Y_GAP_UM: Final = 0.30
+# Tap gap to diff: satisfies difftap.3 min spacing 0.27um and clears li.3
+# (min li spacing 0.17um) between S/D strap (0.10um past diff) and tap LI
+# (0.05um past tap edge): 0.35 - 0.10 - 0.05 = 0.20um > 0.17um.
+_TAP_Y_GAP_UM: Final = 0.35
 _TAP_Y_WIDTH_UM: Final = 0.20
 
 

@@ -93,6 +93,25 @@ warnings (forced onto Node 24 by the runner) — warnings, not errors.
   (Whether the retry triggered or the flake healed on its own is
   unrecorded; either way the repo is now resilient to the class.)
 
+### #5 — smoke ruff failure + EDA PCell DRC failure (runs #44–#53, 2026-09-17)
+- Symptom: smoke red in ~1 min across all 10 runs; EDA red in runs #49–#53.
+- Root causes (product defects, verified & fixed):
+  1. **Smoke job**: `scripts/layout_pcell_emit.py` had an unused `import os`
+     (runs #44–#48); subsequently `src/analog_ic_design/layout/__init__.py`
+     had an unformatted import block with line length > 100 chars (runs #50–#53),
+     causing `ruff check .` to exit 1 during `make test`.
+  2. **EDA job**: in `src/analog_ic_design/layout/pcells.py`, reducing
+     `_TAP_Y_GAP_UM` to 0.30 placed the substrate tap LI only 0.15 µm away
+     from the S/D strap LI (0.30 - 0.10 strap past diff - 0.05 tap LI past tap).
+     Rule `li.3` mandates minimum LI spacing of 0.17 µm. Resulted in 2 DRC
+     violations in `test_pcell_drc_clean` for both NMOS and PMOS.
+- Fix: formatted imports in `src/analog_ic_design/layout/__init__.py`;
+  increased `_TAP_Y_GAP_UM` to 0.35 µm in `src/analog_ic_design/layout/pcells.py`
+  (clearing `li.3` at 0.20 µm and `difftap.3` at 0.35 µm).
+- Local verification: `make test` inside base container (ruff, mypy 147 files,
+  pytest 447 passed + 62 skipped) and `test_pcell_drc_clean` (0 violations)
+  all 100% green.
+
 ---
 
 ## 3. Operator runbook
