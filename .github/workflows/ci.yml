@@ -13,12 +13,24 @@ jobs:
         # Pinned to immutable SHA (v4, 2026-07-16, PGP-verified); never float majors.
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
+      - name: Diagnose runner (versions, disk, memory, clock)
+        # Runs #40-44 died in ~1 min with exit 2 and no step-level evidence
+        # collected locally. This step makes the next red self-diagnosing.
+        run: |
+          date -u
+          df -h / /tmp | head -6
+          free -m | head -2
+          docker --version
+          docker compose version
+          make --version | head -1
+
       - name: Build pinned base image and run packaging gate
         # Registry/anonymous-pull flakes fail fast (~1 min: toomanyrequests
         # on shared runner egress IPs, recurring for hours) and are
         # indistinguishable from real breaks without a retry. Bounded ×3:
         # genuine Dockerfile breaks still fail, only slower.
         run: |
+          set -x
           for i in 1 2 3; do
             if docker compose build app; then break; fi
             if [ "$i" = "3" ]; then exit 1; fi
@@ -42,6 +54,7 @@ jobs:
       - name: Build pinned EDA image (acceptance probes run inside the build)
         # Same bounded retry as the smoke build (shared-egress pull flakes).
         run: |
+          set -x
           for i in 1 2 3; do
             if docker compose --profile eda build app-eda; then break; fi
             if [ "$i" = "3" ]; then exit 1; fi

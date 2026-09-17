@@ -93,6 +93,19 @@ warnings (forced onto Node 24 by the runner) — warnings, not errors.
   (Whether the retry triggered or the flake healed on its own is
   unrecorded; either way the repo is now resilient to the class.)
 
+### #5 — smoke red AGAIN with retry in place (run #44, exit 2, ~1m7s;
+  eda GREEN 58m41s on the same push)
+- New evidence: the bounded ×3 retry did NOT fix it, and 67 s cannot fit
+  three attempts plus two 60 s sleeps — the failure is faster than the
+  loop, i.e. at/before the first build attempt (checkout, daemon,
+  compose, or instant build rejection), and it is NOT transient pull
+  flake (retry would ride that through).
+- EDA green on the identical tree exonerates product code for the fifth
+  time; the defect is smoke-runner-specific and pre-build.
+- Fix (committed): runner-diagnostics step (date, disk, memory, docker /
+  compose / make versions) plus `set -x` on both build loops, so run #45
+  names its killer instead of another blind exit 2.
+
 ### #5 — smoke ruff failure + EDA PCell DRC failure (runs #44–#53, 2026-09-17)
 - Symptom: smoke red in ~1 min across all 10 runs; EDA red in runs #49–#53.
 - Root causes (product defects, verified & fixed):
