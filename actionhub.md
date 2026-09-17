@@ -125,6 +125,25 @@ warnings (forced onto Node 24 by the runner) — warnings, not errors.
   pytest 447 passed + 62 skipped) and `test_pcell_drc_clean` (0 violations)
   all 100% green.
 
+### #6 — reconciliation + process root cause (2026-09-17, second agent)
+- Independently confirmed just now: gap 0.30 fails `test_pcell_drc_clean`
+  on EDA with exactly 2 violations (NMOS + PMOS param runs) — the `li.3`
+  analysis above reproduces. Gap restored to 0.35; tree green
+  (ruff full, mypy 147, pytest 447+62).
+- Owned process failure (mine): the ruff breaks shipped because pushes
+  went out after scoped `ruff check <files>` instead of full
+  `ruff check .` — same lesson as the 7c4ca71 incident, third occurrence.
+  Rule restated as law: FULL gate (`ruff check .` + `mypy .` +
+  `pytest -q`) before every push, no scoped shortcuts, no exceptions.
+- One honest open puzzle (recorded, not hidden): an earlier in-session
+  DRC loop reported 0 violations at gap 0.30, contradicting today's
+  reproduced 2 failures at the same value. Suspected cause is same-tree
+  interleaving between two sessions (a run executing against a tree
+  state that changed mid-flight), but that is inference, not evidence.
+  The pinned `test_pcell_drc_clean` (0.35, green both locally and —
+  pending — in CI) is now the sole authority; loop-probe printouts are
+  not evidence.
+
 ---
 
 ## 3. Operator runbook
