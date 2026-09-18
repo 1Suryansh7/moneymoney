@@ -387,4 +387,7 @@ then 167+14 (2G) → 168+14 (2H) → 170+16 (error-log hardening) →
 ## 2026-09-09 — R0-1 AnalogBench + full EDA proof (370 green)
 - Registry B0–B7 + executable B0 (`bench/__init__.py`, `tests/test_bench.py`, commit `ca588c7`); B1–B7 raise with R0 owners. Full EDA suite: **370 passed, 1 skipped** (legit `pytest.skip` inside b0-nolib test on lib images) in 16.5 min — covers 7B API routes, thin slice, PM wrap suite, bench B0-live, and all prior stages. Tallies reconcile: 371 collected both images (base 338+33).
 
+## 2026-09-18 — Stage 8 DRC verdict parser (base green)
+- `layout/drc.py`: `parse_klayout_drc_xml` over the real `drc.txt` report database → `DrcVerdict(clean, violation_count, rules)`; deck-quoted rule names (`'li.3'`) stripped, malformed/wrong-root/missing-items fail closed via `SimError` (Schema). Fixtures are observed EDA shapes (clean empty `<items>`; 0.30 um gap → exactly two `li.3` edge-pair items, values verbatim — independently re-confirms the #6 `li.3` analysis with direct evidence). Magic stdout parsing deferred (no dirty fixture observed). Base file 5 passed; full base 452+62, ruff + mypy (149 files) clean.
+
 

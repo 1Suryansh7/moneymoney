@@ -246,6 +246,7 @@ analyzer traces, 1.9 min).
     - [x] LVS closed: Magic extract recognizes w=200/l=30 (diff-Y fix: overlap IS the channel) + Netgen "match uniquely" vs 1G golden (W/L→lambda conversion, setup 1% tol). Evidence: EDA `test_layout_lvs` 2 passed; full base 441+59 green.
   - [x] 🔴 HUMAN CHECKPOINT: visual layout review before PCell reuse — CONFIRMED by human 2026-09-16 (single-finger NMOS sane: central vertical poly gate over active, S/D contacts both sides, tap below; PCell NMOS cleared for reuse).
   - [-] PCell PMOS (`layout/pcells.py` + `tests/test_layout_pcell.py`): `nwell` (64/20), `psdm` (94/20), `diff.8`/`diff.10` enclosure $\ge 0.18\,\mu\text{m}$, base tests + EDA DRC-clean proof.
+  - [x] DRC verdict parser (`layout/drc.py` + `tests/test_layout_drc.py`): `parse_klayout_drc_xml` → `DrcVerdict(clean, violation_count, rules)`; fixtures are real observed `drc.txt` shapes (clean empty-items; 0.30 um gap → 2× `'li.3'` edge-pairs verbatim); malformed/wrong-root/missing-items fail closed. Base 5 passed; full base 452+62 green.
   - [x] CI #40–#42 triage (infra verdict, `actionhub.md`): 3 consecutive full failures with locally-green tree — smoke ~1m (build-phase pull fault), eda exit-1 with full local rerun 479+14 green in 50m. Fix = bounded ×3 build retry in `ci.yml` (genuine breaks still fail); Netgen `comp.out` CWD pollution pinned to `tmp_path`. No product code changed.
   - [ ] `LayoutBackend` PCell placement, DRC, and LVS flow.
   - [ ] 🔴 **HUMAN CHECKPOINT**: Visual layout inspection in KLayout on first clean DRC/LVS.
